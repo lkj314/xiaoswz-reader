@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+*/build/
+
+# Android Studio / IDEA
+*.iml
+.idea/
+.cxx/
+
+# 本地配置（含 SDK 路径，不提交）
+local.properties
+
+# 签名
+*.jks
+*.keystore
+
+# 临时下载目录（环境搭建用，不入库）
+.setup/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# Kotlin/编译
+*.class
+kotlin-compiler/
