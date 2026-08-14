@@ -1,8 +1,12 @@
 package com.xiaoswz.reader.ui.reader
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xiaoswz.reader.data.BookRepository
+import com.xiaoswz.reader.data.model.ChapterDto
+import com.xiaoswz.reader.data.settings.ReaderSettings
+import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,54 +14,89 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ReaderUiState(
+    val bookSlug: String = "",
+    val currentChapterId: String = "",
     val chapterTitle: String = "",
     val bookName: String = "",
-    val content: String = "",
+    val rawContent: String = "",
+    val toc: List<ChapterDto> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
-    val currentIndex: Int = 0,
-    val totalChapters: Int = 0,
-    val prevChapterId: String? = null,
-    val nextChapterId: String? = null,
-    val fontSize: Int = DEFAULT_FONT_SIZE,
-    val isDark: Boolean = false,
+    val menuVisible: Boolean = false,
+    val settingsVisible: Boolean = false,
+    val settings: ReaderSettings = ReaderSettings(),
 ) {
-    companion object {
-        const val DEFAULT_FONT_SIZE = 18
-        const val MIN_FONT_SIZE = 14
-        const val MAX_FONT_SIZE = 28
-    }
+    val currentIndex: Int get() = toc.indexOfFirst { it.id == currentChapterId }.let { if (it < 0) 0 else it }
+    val totalChapters: Int get() = toc.size
+    val prevChapterId: String? get() = toc.getOrNull(toc.indexOfFirst { it.id == currentChapterId } - 1)?.id
+    val nextChapterId: String? get() = toc.getOrNull(toc.indexOfFirst { it.id == currentChapterId } + 1)?.id
 }
 
 class ReaderViewModel(
+    application: Application,
     private val repository: BookRepository = BookRepository(),
-) : ViewModel() {
+) : AndroidViewModel(application) {
+
+    private val settingsRepo = ReaderSettingsRepository(application)
 
     private val _uiState = MutableStateFlow(ReaderUiState())
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
+    init {
+        // 订阅设置流，实时应用到阅读器
+        viewModelScope.launch {
+            settingsRepo.settingsFlow.collect { settings ->
+                _uiState.update { it.copy(settings = settings) }
+            }
+        }
+    }
+
+    /** 入口：加载书籍目录 + 指定章节 */
     fun load(bookSlug: String, chapterId: String) {
+        if (_uiState.value.bookSlug == bookSlug && _uiState.value.toc.isNotEmpty()) {
+            // 同一本书已就绪，直接切章
+            if (_uiState.value.currentChapterId != chapterId) loadChapter(chapterId)
+            return
+        }
+        _uiState.update { it.copy(bookSlug = bookSlug, isLoading = true, error = null) }
+        viewModelScope.launch {
+            repository.getBookDetail(bookSlug)
+                .onSuccess { detail ->
+                    _uiState.update {
+                        it.copy(
+                            toc = detail.chapters.orEmpty(),
+                            bookName = detail.name.orEmpty(),
+                        )
+                    }
+                    loadChapter(chapterId)
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = e.message ?: "目录加载失败")
+                    }
+                }
+        }
+    }
+
+    private fun loadChapter(chapterId: String) {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            // 正文 + 目录并行加载（目录用于计算上一章/下一章）
-            val contentResult = repository.getChapterContent(chapterId)
-            val detailResult = repository.getBookDetail(bookSlug)
-
-            contentResult
+            repository.getChapterContent(chapterId)
                 .onSuccess { chapter ->
-                    val chapters = detailResult.getOrNull()?.chapters.orEmpty()
-                    val index = chapters.indexOfFirst { it.id == chapterId }
                     _uiState.update {
                         it.copy(
                             isLoading = false,
+                            currentChapterId = chapterId,
                             chapterTitle = chapter.title.orEmpty(),
-                            bookName = chapter.bookName.orEmpty(),
-                            content = chapter.content.orEmpty(),
-                            currentIndex = if (index >= 0) index + 1 else 0,
-                            totalChapters = chapters.size,
-                            prevChapterId = if (index > 0) chapters.getOrNull(index - 1)?.id else null,
-                            nextChapterId = if (index >= 0) chapters.getOrNull(index + 1)?.id else null,
+                            rawContent = chapter.content.orEmpty(),
+                            bookName = it.bookName.ifBlank { chapter.bookName.orEmpty() },
+                            menuVisible = false,
+                            settingsVisible = false,
                         )
+                    }
+                    // 预读下一章，翻章零等待
+                    _uiState.value.nextChapterId?.let { nextId ->
+                        launch { repository.prefetchChapter(nextId) }
                     }
                 }
                 .onFailure { e ->
@@ -68,21 +107,44 @@ class ReaderViewModel(
         }
     }
 
-    fun retry(bookSlug: String, chapterId: String) = load(bookSlug, chapterId)
+    fun goToChapter(chapterId: String) = loadChapter(chapterId)
 
-    fun increaseFontSize() {
-        _uiState.update {
-            it.copy(fontSize = (it.fontSize + 1).coerceAtMost(ReaderUiState.MAX_FONT_SIZE))
+    /** 翻到下一章；没有下一章返回 false */
+    fun nextChapter(): Boolean =
+        _uiState.value.nextChapterId?.let { loadChapter(it); true } ?: false
+
+    /** 翻到上一章；没有上一章返回 false */
+    fun prevChapter(): Boolean =
+        _uiState.value.prevChapterId?.let { loadChapter(it); true } ?: false
+
+    fun retry() {
+        val state = _uiState.value
+        if (state.toc.isEmpty()) {
+            load(state.bookSlug, state.currentChapterId)
+        } else {
+            loadChapter(state.currentChapterId)
         }
     }
 
-    fun decreaseFontSize() {
-        _uiState.update {
-            it.copy(fontSize = (it.fontSize - 1).coerceAtLeast(ReaderUiState.MIN_FONT_SIZE))
-        }
+    fun toggleMenu() {
+        _uiState.update { it.copy(menuVisible = !it.menuVisible, settingsVisible = false) }
     }
 
-    fun toggleDarkMode() {
-        _uiState.update { it.copy(isDark = !it.isDark) }
+    fun hideMenu() {
+        _uiState.update { it.copy(menuVisible = false, settingsVisible = false) }
+    }
+
+    fun showSettings() {
+        _uiState.update { it.copy(settingsVisible = true) }
+    }
+
+    fun hideSettings() {
+        _uiState.update { it.copy(settingsVisible = false) }
+    }
+
+    fun updateSettings(transform: (ReaderSettings) -> ReaderSettings) {
+        viewModelScope.launch {
+            settingsRepo.update(transform)
+        }
     }
 }

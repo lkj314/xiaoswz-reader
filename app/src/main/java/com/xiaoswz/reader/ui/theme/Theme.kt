@@ -55,7 +55,29 @@ object ReaderColors {
     val DayBackground = Color(0xFFFAF7F2)
     val DayText = Color(0xFF1F2937)
 
+    // 护眼绿
+    val EyeGreenBackground = Color(0xFFCCE8CF)
+    val EyeGreenText = Color(0xFF1E3323)
+
     // 夜间
     val NightBackground = Color(0xFF0B0F14)
     val NightText = Color(0xFFB8C0C8)
+
+    // 纯黑（OLED）
+    val BlackBackground = Color(0xFF000000)
+    val BlackText = Color(0xFF9AA0A6)
 }
+
+/** 阅读主题定义（下标与 ReaderSettings.themeIndex 对应） */
+data class ReaderTheme(
+    val name: String,
+    val background: Color,
+    val text: Color,
+)
+
+val ReaderThemes = listOf(
+    ReaderTheme("米纸", ReaderColors.DayBackground, ReaderColors.DayText),
+    ReaderTheme("护眼绿", ReaderColors.EyeGreenBackground, ReaderColors.EyeGreenText),
+    ReaderTheme("夜间", ReaderColors.NightBackground, ReaderColors.NightText),
+    ReaderTheme("纯黑", ReaderColors.BlackBackground, ReaderColors.BlackText),
+)

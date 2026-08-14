@@ -13,11 +13,13 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
+        // 局域网更新服务器默认地址（可在 APP 内修改）
+        buildConfigField("String", "DEFAULT_UPDATE_SERVER", "\"http://192.168.2.4:8765\"")
     }
 
     buildTypes {
@@ -70,4 +72,7 @@ dependencies {
 
     // 图片加载
     implementation(libs.coil.compose)
+
+    // 设置持久化
+    implementation(libs.androidx.datastore.preferences)
 }

@@ -24,11 +24,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -40,19 +42,29 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.data.model.BookDto
 import com.xiaoswz.reader.data.model.formatWordCount
+import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
+import com.xiaoswz.reader.data.update.UpdateManager
+import com.xiaoswz.reader.ui.update.UpdateDialog
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +74,40 @@ fun BookstoreScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val gridState = rememberLazyGridState()
+
+    // ── 局域网自动更新 ──
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val settingsRepo = remember { ReaderSettingsRepository(context.applicationContext) }
+    var updateServerUrl by remember { mutableStateOf(BuildConfig.DEFAULT_UPDATE_SERVER) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateDialogAutoCheck by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        updateServerUrl = settingsRepo.settingsFlow.first().updateServerUrl
+        // 启动时静默检查一次，有更新才弹窗
+        UpdateManager(context.applicationContext).check(updateServerUrl)
+            .onSuccess { info ->
+                if (info != null) {
+                    updateDialogAutoCheck = true
+                    showUpdateDialog = true
+                }
+            }
+    }
+
+    if (showUpdateDialog) {
+        UpdateDialog(
+            serverUrl = updateServerUrl,
+            autoCheck = updateDialogAutoCheck,
+            onServerUrlChange = { newUrl ->
+                updateServerUrl = newUrl
+                scope.launch {
+                    settingsRepo.update { it.copy(updateServerUrl = newUrl) }
+                }
+            },
+            onDismiss = { showUpdateDialog = false },
+        )
+    }
 
     // 滚动接近底部时自动加载更多
     val shouldLoadMore by remember {
@@ -79,6 +125,18 @@ fun BookstoreScreen(
         topBar = {
             TopAppBar(
                 title = { Text("冲浪阅读") },
+                actions = {
+                    IconButton(onClick = {
+                        updateDialogAutoCheck = false
+                        showUpdateDialog = true
+                    }) {
+                        Icon(
+                            Icons.Default.SystemUpdate,
+                            contentDescription = "检查更新",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,

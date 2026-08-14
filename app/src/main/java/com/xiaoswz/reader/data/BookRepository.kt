@@ -20,6 +20,11 @@ class BookRepository(
      */
     private val detailCache = mutableMapOf<String, BookDetailDto>()
 
+    /**
+     * 章节正文缓存：支持预读（提前拉取下一章，翻章零等待）
+     */
+    private val contentCache = mutableMapOf<String, ChapterContentDto>()
+
     suspend fun getBooks(
         page: Int,
         sort: String,
@@ -41,11 +46,25 @@ class BookRepository(
         }
     }
 
-    suspend fun getChapterContent(chapterId: String): Result<ChapterContentDto> = runCatching {
-        api.getChapterContent(chapterId = chapterId)
+    suspend fun getChapterContent(chapterId: String): Result<ChapterContentDto> {
+        contentCache[chapterId]?.let { return Result.success(it) }
+        return runCatching {
+            api.getChapterContent(chapterId = chapterId).also { content ->
+                contentCache[chapterId] = content
+            }
+        }
+    }
+
+    /** 预取章节正文（不阻塞，失败静默） */
+    suspend fun prefetchChapter(chapterId: String) {
+        if (contentCache.containsKey(chapterId)) return
+        runCatching {
+            contentCache[chapterId] = api.getChapterContent(chapterId = chapterId)
+        }
     }
 
     fun clearCache() {
         detailCache.clear()
+        contentCache.clear()
     }
 }

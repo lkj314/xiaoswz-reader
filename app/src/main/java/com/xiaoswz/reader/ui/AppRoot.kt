@@ -61,12 +61,6 @@ fun AppRoot() {
                 bookSlug = bookSlug,
                 chapterId = chapterId,
                 onBack = { navController.popBackStack() },
-                onChapterChange = { newChapterId ->
-                    // 替换当前阅读页，返回时直接回到书籍详情
-                    navController.navigate(Routes.reader(bookSlug, newChapterId)) {
-                        popUpTo(Routes.READER) { inclusive = true }
-                    }
-                },
             )
         }
     }
