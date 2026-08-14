@@ -32,6 +32,22 @@ object CrashLogger {
         runCatching { write(context, t) }
     }
 
+    /** 读取最近一次崩溃日志（外部存储优先，回退内部存储）。无日志返回 null */
+    fun getLog(context: Context): String? {
+        val external = runCatching {
+            context.getExternalFilesDir(null)?.let { File(it, "crash.log") }
+                ?.takeIf { it.exists() }?.readText()
+        }.getOrNull()
+        if (!external.isNullOrBlank()) return external
+
+        return runCatching {
+            File(context.filesDir, "crash.log").takeIf { it.exists() }?.readText()
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+    }
+
+    /** 是否存在崩溃日志 */
+    fun hasLog(context: Context): Boolean = getLog(context) != null
+
     private fun write(context: Context, t: Throwable) {
         val sw = StringWriter()
         sw.append("==== 崩溃时间: ")

@@ -175,3 +175,71 @@ CLEARTEXT communication to 192.168.2.4 not permitted by network security policy
 - 服务端 `http://127.0.0.1:8765/version.json` 返回 200（v0.2.6 / versionCode 5）
 - `http://127.0.0.1:8765/surf-reader-0.2.6.apk` HEAD 返回 200，Content-Length=18,460,664
 - APK 前 4 字节 `PK\x03\x04`（ZIP/APK 魔数，文件完整）
+
+---
+
+## 十、安卓调试工作流（USB + ADB，2026-08-14 新增）
+
+**铁律变更**：冲浪阅读 APP 的闪退/异常一律**先 `adb logcat` 拿真实堆栈，再动手改**，禁止"猜原因改代码"。USB 调试是首选手段；不连 USB 时退化为 CrashLogger 文件 + 设置页导出，但仍需真实堆栈最终确认。
+
+### 1. 连接确认
+```bash
+adb devices                                # 列出设备，状态为 device 即在
+adb get-state                              # 单设备状态
+adb shell getprop ro.product.model         # 看机型
+adb shell getprop ro.build.version.release  # 看 Android 版本
+```
+当前测试机：**vivo V2121A / Android 13**，序列号 `1562128293000XD`。
+
+### 2. 抓闪退（FATAL）标准流程
+```bash
+adb logcat -c                              # 先清空缓冲区，避免历史噪声
+# ← 在手机上复现：打开 APP → 点开任意章节 → 等闪退
+adb logcat -d > /tmp/crashlog.txt          # dump 全量（抓完即退出）
+# 或直接抓崩溃环形缓冲（最干净）：
+adb logcat -d -b crash > /tmp/crash.txt
+# 过滤关键异常：
+grep -iE "FATAL|AndroidRuntime|Exception|crash|Caused by" /tmp/crashlog.txt
+```
+`CrashLogger` 写的 `Android/data/com.xiaoswz.reader/files/crash.log` 可作补充，但 logcat 含系统层堆栈，更全面。
+
+### 3. 直接安装（替代手动浏览器下载）
+```bash
+adb install -r <path-to-apk>              # -r 保留数据覆盖安装，比走局域网快
+adb shell pm clear com.xiaoswz.reader      # 清数据，测干净首装
+adb shell am start -n com.xiaoswz.reader/.MainActivity   # 冷启动
+```
+**以后发版省掉手动下载**：构建完直接 `adb install -r`。
+
+### 4. APP 壳子缺失清单（用户 2026-08-14 指出）
+当前导航仅 `书城 → 详情 → 阅读器` 三段直线，壳子为零：
+- ❌ 全局设置页（仅有阅读器内 ReaderSettingsSheet，退出阅读摸不到）
+- ❌ 底部导航 / 侧边抽屉 / 顶栏菜单
+- ❌ 关于 / 版本 / 更新服务器配置入口
+- ❌ 崩溃反馈通道（无导出按钮）
+- 设置页（含崩溃日志查看+分享、更新服务器配置、版本信息）已开建 `ui/settings/SettingsScreen.kt`，待接导航 + 编译验证。
+
+---
+
+## 十一、章节闪退真实根因（2026-08-14，v0.2.7 修复）
+
+### 真相：和分页无关，是 ViewModel 构造签名
+用户实测 v0.2.6 点开章节**依旧**闪退。接上 USB 用 `adb logcat` 抓到真实堆栈（非猜测）：
+```
+java.lang.RuntimeException: Cannot create an instance of class
+    com.xiaoswz.reader.ui.reader.ReaderViewModel
+  at androidx.lifecycle.ViewModelProvider$AndroidViewModelFactory.create(...)
+  at com.xiaoswz.reader.ui.reader.ReaderScreenKt.ReaderScreen(ReaderScreen.kt:526)
+```
+`AndroidViewModelFactory.create` 内部用 `modelClass.getConstructor(Application.class)` 反射，**只认单一 `Application` 参数的构造函数**。
+原构造：`ReaderViewModel(application: Application, private val repository: BookRepository = BookRepository())`
+Kotlin 默认参数在 JVM 上**不会**生成额外 Java 重载，故 JVM 层面只有 `(Application, BookRepository)` 这一个构造 → 反射找不到单参构造 → 抛异常 → 一进阅读器就崩。
+
+### 修复（最小改动，单文件）
+`ReaderViewModel.kt`：把 `repository` 从构造参数挪到类体内 `private val repository = BookRepository()`，构造函数只剩 `Application` 单参，默认工厂正常创建。无需 factory、无需改 ReaderScreen。
+
+### 教训（重要）
+- v0.2.1（分页移协程）、v0.2.6（try/catch 降级）两次修复都是**盲猜**，浪费两轮；真实根因是 ViewModel 构造签名。
+- 安卓闪退一律先 `adb logcat -d -b crash`（或后台 logcat）拿真实堆栈，再动手；USB 调试是首选手段。
+
+### 验证（构建后 `adb install -r` 装真机复现）

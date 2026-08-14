@@ -1,0 +1,6 @@
+{
+  "versionCode": 6,
+  "versionName": "0.2.7",
+  "apkUrl": "surf-reader-0.2.7.apk",
+  "notes": "修复「点开章节闪退」：ReaderViewModel 构造函数单参化（原双参构造导致 AndroidViewModelFactory 反射失败崩溃）。同步含 v0.2.6 的 CLEARTEXT 局域网更新修复，以及设置/关于页（崩溃日志查看分享、更新服务器配置、版本信息、阅读主题）。"
+}

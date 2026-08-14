@@ -32,11 +32,12 @@ data class ReaderUiState(
     val nextChapterId: String? get() = toc.getOrNull(toc.indexOfFirst { it.id == currentChapterId } + 1)?.id
 }
 
-class ReaderViewModel(
-    application: Application,
-    private val repository: BookRepository = BookRepository(),
-) : AndroidViewModel(application) {
+class ReaderViewModel(application: Application) : AndroidViewModel(application) {
 
+    // repository 在类体内初始化，确保构造函数只剩单一 Application 参数，
+    // 否则 AndroidViewModelFactory.getConstructor(Application.class) 反射失败 →
+    // "Cannot create an instance of ReaderViewModel" 闪退（点开章节必崩）。
+    private val repository = BookRepository()
     private val settingsRepo = ReaderSettingsRepository(application)
 
     private val _uiState = MutableStateFlow(ReaderUiState())

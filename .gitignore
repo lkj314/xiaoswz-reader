@@ -29,3 +29,10 @@ kotlin-compiler/
 # 构建日志 / WorkBuddy 记忆
 build.log
 .workbuddy/
+
+# 隔离构建输出目录（safe-delete 规避：每次新建 app_N 目录，不入库）
+builds/
+.build_seq
+
+# 局域网更新服务器（APK 体积大，不入库；仅保留 version.json 清单与脚本）
+lan-update/*.apk
