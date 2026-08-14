@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.2.9"
+        versionCode = 18
+        versionName = "0.3.9"
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
@@ -70,6 +70,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons)
+    // M2 material 仅用于 androidx.compose.material.pullrefresh（下拉刷新），主题仍由 M3 提供
+    implementation("androidx.compose.material:material")
     implementation(libs.androidx.navigation.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
 

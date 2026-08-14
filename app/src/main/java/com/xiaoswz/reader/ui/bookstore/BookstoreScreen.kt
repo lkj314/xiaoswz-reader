@@ -1,5 +1,7 @@
 package com.xiaoswz.reader.ui.bookstore
 
+import com.xiaoswz.reader.ui.components.AppTopBar
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,29 +16,36 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items as lazyItems
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,24 +58,37 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.data.model.BookDto
-import com.xiaoswz.reader.data.model.formatWordCount
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import com.xiaoswz.reader.data.update.UpdateManager
+import com.xiaoswz.reader.ui.components.BookCoverCard
+import com.xiaoswz.reader.ui.components.BookCoverSkeleton
+import com.xiaoswz.reader.ui.components.EmptyState
+import com.xiaoswz.reader.ui.components.SectionHeader
+import com.xiaoswz.reader.ui.components.StatusPill
 import com.xiaoswz.reader.ui.update.UpdateDialog
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+private const val STATUS_ALL = "all"
+private const val STATUS_ONGOING = "ONGOING"
+private const val STATUS_COMPLETED = "COMPLETED"
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun BookstoreScreen(
     onBookClick: (String) -> Unit,
@@ -85,7 +107,6 @@ fun BookstoreScreen(
 
     LaunchedEffect(Unit) {
         updateServerUrl = settingsRepo.settingsFlow.first().updateServerUrl
-        // 启动时静默检查一次，有更新才弹窗
         UpdateManager(context.applicationContext).check(updateServerUrl)
             .onSuccess { info ->
                 if (info != null) {
@@ -101,13 +122,14 @@ fun BookstoreScreen(
             autoCheck = updateDialogAutoCheck,
             onServerUrlChange = { newUrl ->
                 updateServerUrl = newUrl
-                scope.launch {
-                    settingsRepo.update { it.copy(updateServerUrl = newUrl) }
-                }
+                scope.launch { settingsRepo.update { it.copy(updateServerUrl = newUrl) } }
             },
             onDismiss = { showUpdateDialog = false },
         )
     }
+
+    // 状态筛选（纯前端，按 status 字段过滤已加载列表）
+    var statusFilter by remember { mutableStateOf(STATUS_ALL) }
 
     // 滚动接近底部时自动加载更多
     val shouldLoadMore by remember {
@@ -121,116 +143,190 @@ fun BookstoreScreen(
         if (shouldLoadMore) viewModel.loadMore()
     }
 
+    val statusFiltered = remember(state.books, statusFilter) {
+        state.books.filter { b ->
+            statusFilter == STATUS_ALL || b.status == statusFilter
+        }
+    }
+    val featured = statusFiltered.take(5)
+    val popular = statusFiltered.drop(5).take(8)
+    val gridBooks = statusFiltered.drop(13)
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("冲浪阅读") },
+            AppTopBar(
+                title = null,
                 actions = {
-                    IconButton(onClick = {
-                        updateDialogAutoCheck = false
-                        showUpdateDialog = true
-                    }) {
-                        Icon(
-                            Icons.Default.SystemUpdate,
-                            contentDescription = "检查更新",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.SystemUpdate,
+                        contentDescription = "检查更新",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier
+                            .clickable(onClick = {
+                                updateDialogAutoCheck = false
+                                showUpdateDialog = true
+                            })
+                            .padding(6.dp)
+                            .size(26.dp),
+                    )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
             )
         },
     ) { padding ->
-        Column(
+        val pullState = rememberPullRefreshState(
+            refreshing = state.isLoading,
+            onRefresh = { viewModel.refresh() },
+        )
+        Box(
             modifier = Modifier
                 .padding(padding)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .pullRefresh(pullState),
         ) {
-            // 搜索框
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::onQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("搜索书名 / 简介") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "搜索") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { viewModel.refresh() }),
-                shape = RoundedCornerShape(12.dp),
-            )
-
-            // 排序切换
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                state = gridState,
+                contentPadding = PaddingValues(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                FilterChip(
-                    selected = state.sort == BookstoreUiState.SORT_LATEST,
-                    onClick = { viewModel.onSortChange(BookstoreUiState.SORT_LATEST) },
-                    label = { Text("最新更新") },
-                )
-                FilterChip(
-                    selected = state.sort == BookstoreUiState.SORT_POPULAR,
-                    onClick = { viewModel.onSortChange(BookstoreUiState.SORT_POPULAR) },
-                    label = { Text("最受欢迎") },
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            when {
-                state.isLoading && state.books.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                // 搜索 + 筛选（常驻顶部）
+                item(span = { GridItemSpan(3) }) {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        OutlinedTextField(
+                            value = state.query,
+                            onValueChange = viewModel::onQueryChange,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            placeholder = { Text("搜索书名 / 简介") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "搜索") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { viewModel.refresh() }),
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(bottom = 4.dp),
+                        ) {
+                            StatusFilterChip("全部", statusFilter == STATUS_ALL) {
+                                statusFilter = STATUS_ALL
+                            }
+                            StatusFilterChip("连载中", statusFilter == STATUS_ONGOING) {
+                                statusFilter = STATUS_ONGOING
+                            }
+                            StatusFilterChip("已完结", statusFilter == STATUS_COMPLETED) {
+                                statusFilter = STATUS_COMPLETED
+                            }
+                            Spacer(Modifier.weight(1f))
+                            // 排序切换
+                            FilterChip(
+                                selected = state.sort == BookstoreUiState.SORT_LATEST,
+                                onClick = { viewModel.onSortChange(BookstoreUiState.SORT_LATEST) },
+                                label = { Text("最新") },
+                            )
+                            FilterChip(
+                                selected = state.sort == BookstoreUiState.SORT_POPULAR,
+                                onClick = { viewModel.onSortChange(BookstoreUiState.SORT_POPULAR) },
+                                label = { Text("热门") },
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
                     }
                 }
 
-                state.error != null && state.books.isEmpty() -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text(
-                            text = state.error ?: "加载失败",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(onClick = { viewModel.refresh() }) {
-                            Text("重试")
+                when {
+                    state.books.isEmpty() && state.isLoading -> {
+                        items(6) {
+                            BookCoverSkeleton(Modifier.padding(horizontal = 4.dp))
                         }
                     }
-                }
 
-                state.books.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = if (state.query.isBlank()) "暂无书籍" else "没有找到「${state.query}」相关书籍",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    state.books.isEmpty() && state.error != null -> {
+                        item(span = { GridItemSpan(3) }) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    text = state.error ?: "加载失败",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                Button(onClick = { viewModel.refresh() }) { Text("重试") }
+                            }
+                        }
                     }
-                }
 
-                else -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        state = gridState,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
+                    state.books.isEmpty() -> {
+                        item(span = { GridItemSpan(3) }) {
+                            EmptyState(
+                                icon = Icons.Default.AutoStories,
+                                title = if (state.query.isBlank()) "暂无书籍" else "没有找到相关书籍",
+                                subtitle = if (state.query.isBlank()) "去书城收藏喜欢的书籍吧" else "换个关键词试试",
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+
+                    else -> {
+                        // 封面轮播 Banner
+                        if (featured.isNotEmpty()) {
+                            item(span = { GridItemSpan(3) }) {
+                                FeaturedCarousel(
+                                    books = featured,
+                                    onBookClick = onBookClick,
+                                )
+                            }
+                        }
+
+                        // 热门推荐（横向）
+                        if (popular.isNotEmpty()) {
+                            item(span = { GridItemSpan(3) }) {
+                                SectionHeader(title = "热门推荐")
+                            }
+                            item(span = { GridItemSpan(3) }) {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    lazyItems(
+                                        items = popular,
+                                        key = { it.id ?: it.slug ?: it.title.orEmpty() },
+                                    ) { book ->
+                                        BookCoverCard(
+                                            coverUrl = book.coverImage,
+                                            title = book.title.orEmpty(),
+                                            author = book.displayAuthor,
+                                            wordCount = book.wordCount,
+                                            onClick = { book.slug?.let(onBookClick) },
+                                            modifier = Modifier.width(120.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // 最新上架（网格）
+                        item(span = { GridItemSpan(3) }) {
+                            SectionHeader(title = "最新上架")
+                        }
                         items(
-                            items = state.books,
+                            items = gridBooks,
                             key = { it.id ?: it.slug ?: it.title.orEmpty() },
+                            span = { GridItemSpan(1) },
                         ) { book ->
-                            BookCard(
-                                book = book,
+                            BookCoverCard(
+                                coverUrl = book.coverImage,
+                                title = book.title.orEmpty(),
+                                author = book.displayAuthor,
+                                wordCount = book.wordCount,
                                 onClick = { book.slug?.let(onBookClick) },
+                                modifier = Modifier.padding(horizontal = 4.dp),
                             )
                         }
 
@@ -247,7 +343,7 @@ fun BookstoreScreen(
                             }
                         }
 
-                        if (!state.canLoadMore && state.books.isNotEmpty()) {
+                        if (!state.canLoadMore && gridBooks.isNotEmpty()) {
                             item(span = { GridItemSpan(3) }) {
                                 Text(
                                     text = "—— 到底啦 ——",
@@ -263,51 +359,129 @@ fun BookstoreScreen(
                     }
                 }
             }
+            PullRefreshIndicator(
+                refreshing = state.isLoading,
+                state = pullState,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
     }
 }
 
 @Composable
-private fun BookCard(
-    book: BookDto,
+private fun StatusFilterChip(
+    label: String,
+    selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
-    ) {
-        // 封面（2:3 比例）
-        AsyncImage(
-            model = book.coverImage,
-            contentDescription = book.title,
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+    )
+}
+
+/** 封面轮播 Banner：渐变遮罩 + 标题 + 状态标签 + 自动轮播 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FeaturedCarousel(
+    books: List<BookDto>,
+    onBookClick: (String) -> Unit,
+) {
+    val pagerState = rememberPagerState(pageCount = { books.size })
+
+    LaunchedEffect(pagerState, books.size) {
+        if (books.size <= 1) return@LaunchedEffect
+        while (true) {
+            delay(4000)
+            val next = (pagerState.currentPage + 1) % books.size
+            pagerState.animateScrollToPage(next)
+        }
+    }
+
+    Column {
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentScale = ContentScale.Crop,
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = book.title.orEmpty(),
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = buildString {
-                append(book.displayAuthor)
-                val wc = formatWordCount(book.wordCount)
-                if (wc.isNotEmpty()) {
-                    append(" · ")
-                    append(wc)
+                .padding(horizontal = 16.dp)
+                .height(220.dp)
+                .clip(RoundedCornerShape(20.dp)),
+            pageSpacing = 12.dp,
+        ) { page ->
+            val book = books[page]
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { book.slug?.let(onBookClick) },
+            ) {
+                AsyncImage(
+                    model = book.coverImage,
+                    contentDescription = book.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.scrim.copy(alpha = 0.75f),
+                                ),
+                            ),
+                        ),
+                )
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp),
+                ) {
+                    if (book.statusText.isNotBlank()) {
+                        StatusPill(text = book.statusText)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    Text(
+                        text = book.title.orEmpty(),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = book.displayAuthor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                    )
                 }
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+            }
+        }
+
+        // 页面指示点
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            repeat(books.size) { i ->
+                val selected = i == pagerState.currentPage
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 3.dp)
+                        .size(if (selected) 18.dp else 6.dp, 6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            if (selected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            },
+                        ),
+                )
+            }
+        }
     }
 }
+

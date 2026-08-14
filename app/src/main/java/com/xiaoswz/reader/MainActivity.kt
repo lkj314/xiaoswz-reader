@@ -8,7 +8,6 @@ import androidx.activity.enableEdgeToEdge
 import com.xiaoswz.reader.data.AppContext
 import com.xiaoswz.reader.ui.AppRoot
 import com.xiaoswz.reader.ui.reader.VolumeKeyBus
-import com.xiaoswz.reader.ui.theme.SurfReaderTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,9 +16,7 @@ class MainActivity : ComponentActivity() {
         CrashLogger.install(this)
         enableEdgeToEdge()
         setContent {
-            SurfReaderTheme {
-                AppRoot()
-            }
+            AppRoot()
         }
     }
 

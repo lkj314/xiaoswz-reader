@@ -15,20 +15,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,6 +46,16 @@ import com.xiaoswz.reader.data.model.formatWordCount
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookEntity
 import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
+import com.xiaoswz.reader.ui.components.StatusPill
+import com.xiaoswz.reader.ui.components.AppTopBar
+
+private fun statusText(s: String?): String = when (s) {
+    "ONGOING" -> "连载中"
+    "COMPLETED" -> "已完结"
+    "HIATUS" -> "暂停中"
+    "DROPPED" -> "已切书"
+    else -> s ?: ""
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +77,6 @@ fun BookDetailScreen(
         collected = bookshelfRepo.isCollected(slug)
     }
 
-    // 书籍详情加载后，比对服务端章节数与已知章节数，标"有更新"
     LaunchedEffect(state.detail) {
         val d = state.detail ?: return@LaunchedEffect
         val known = BookUpdateStore.getKnown(slug)
@@ -84,24 +88,10 @@ fun BookDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = state.detail?.name ?: "书籍详情",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+            AppTopBar(
+                title = state.detail?.name ?: "书籍详情",
+                onBack = onBack,
+                showLogo = false,
             )
         },
     ) { padding ->
@@ -125,7 +115,7 @@ fun BookDetailScreen(
                         text = state.error ?: "加载失败",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(Modifier.height(12.dp))
                     Button(onClick = { viewModel.retry(slug) }) {
                         Text("重试")
                     }
@@ -136,7 +126,6 @@ fun BookDetailScreen(
                 val detail = state.detail ?: return@Scaffold
                 val chapters = detail.chapters.orEmpty()
                 val currentCount = detail.chapterCount ?: chapters.size
-                // 打开任意章节即视为已看更新，清除"有更新"标记并记录当前章节数
                 val openChapter: (String?) -> Unit = { id ->
                     BookUpdateStore.markSeen(slug, currentCount)
                     hasUpdate = false
@@ -146,85 +135,114 @@ fun BookDetailScreen(
                 LazyColumn(
                     modifier = Modifier.padding(padding).fillMaxSize(),
                 ) {
-                    // 书籍信息头部
+                    // 书籍信息头部（渐变背景）
                     item {
-                        Row(modifier = Modifier.padding(16.dp)) {
-                            AsyncImage(
-                                model = detail.coverUrl,
-                                contentDescription = detail.name,
-                                modifier = Modifier
-                                    .width(100.dp)
-                                    .height(150.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                contentScale = ContentScale.Crop,
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text(
-                                    text = detail.name.orEmpty(),
-                                    style = MaterialTheme.typography.titleLarge,
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primaryContainer,
+                                            MaterialTheme.colorScheme.background,
+                                        ),
+                                    ),
                                 )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = detail.author.orEmpty(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                .padding(16.dp),
+                        ) {
+                            Row {
+                                AsyncImage(
+                                    model = detail.coverUrl,
+                                    contentDescription = detail.name,
+                                    modifier = Modifier
+                                        .width(120.dp)
+                                        .height(180.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentScale = ContentScale.Crop,
                                 )
-                                if (hasUpdate) {
-                                    Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(Modifier.width(16.dp))
+                                Column {
                                     Text(
-                                        text = "● 有更新",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error,
+                                        text = detail.name.orEmpty(),
+                                        style = MaterialTheme.typography.titleLarge,
                                     )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = buildList {
-                                        if (!detail.status.isNullOrBlank()) add(detail.status)
-                                        add(formatWordCount(detail.wordCount))
-                                        add("${detail.chapterCount ?: chapters.size}章")
-                                    }.filter { it.isNotBlank() }.joinToString(" · "),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                val firstChapter = chapters.firstOrNull()
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(
-                                        onClick = { openChapter(firstChapter?.id) },
-                                        enabled = firstChapter != null,
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        text = detail.author.orEmpty(),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Spacer(Modifier.height(10.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     ) {
-                                        Text("开始阅读")
+                                        val st = statusText(detail.status)
+                                        if (st.isNotBlank()) {
+                                            StatusPill(text = st)
+                                        }
+                                        if (hasUpdate) {
+                                            StatusPill(
+                                                text = "有更新",
+                                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                                            )
+                                        }
                                     }
-                                    OutlinedButton(
-                                        onClick = {
-                                            scope.launch {
-                                                if (collected) {
-                                                    bookshelfRepo.remove(slug)
-                                                    collected = false
-                                                } else {
-                                                    bookshelfRepo.add(
-                                                        BookEntity(
-                                                            slug = slug,
-                                                            title = detail.name ?: "",
-                                                            author = detail.author,
-                                                            coverUrl = detail.coverUrl,
-                                                            firstChapterId = firstChapter?.id,
-                                                            lastChapterId = firstChapter?.id,
-                                                            lastChapterTitle = firstChapter?.name,
-                                                            addedAt = System.currentTimeMillis(),
-                                                            lastReadAt = System.currentTimeMillis(),
-                                                        )
-                                                    )
-                                                    collected = true
-                                                    BookUpdateStore.setKnown(slug, currentCount)
-                                                }
-                                            }
-                                        },
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     ) {
-                                        Text(if (collected) "移出书架" else "加入书架")
+                                        StatusPill(
+                                            text = formatWordCount(detail.wordCount),
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        StatusPill(
+                                            text = "${detail.chapterCount ?: chapters.size}章",
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Spacer(Modifier.height(14.dp))
+                                    val firstChapter = chapters.firstOrNull()
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Button(
+                                            onClick = { openChapter(firstChapter?.id) },
+                                            enabled = firstChapter != null,
+                                        ) {
+                                            Text("开始阅读")
+                                        }
+                                        OutlinedButton(
+                                            onClick = {
+                                                scope.launch {
+                                                    if (collected) {
+                                                        bookshelfRepo.remove(slug)
+                                                        collected = false
+                                                    } else {
+                                                        bookshelfRepo.add(
+                                                            BookEntity(
+                                                                slug = slug,
+                                                                title = detail.name ?: "",
+                                                                author = detail.author,
+                                                                coverUrl = detail.coverUrl,
+                                                                firstChapterId = firstChapter?.id,
+                                                                lastChapterId = firstChapter?.id,
+                                                                lastChapterTitle = firstChapter?.name,
+                                                                addedAt = System.currentTimeMillis(),
+                                                                lastReadAt = System.currentTimeMillis(),
+                                                            )
+                                                        )
+                                                        collected = true
+                                                        BookUpdateStore.setKnown(slug, currentCount)
+                                                    }
+                                                }
+                                            },
+                                        ) {
+                                            Text(if (collected) "移出书架" else "加入书架")
+                                        }
                                     }
                                 }
                             }
@@ -234,18 +252,17 @@ fun BookDetailScreen(
                     // 简介
                     if (!detail.intro.isNullOrBlank()) {
                         item {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
                                     text = "简介",
                                     style = MaterialTheme.typography.titleMedium,
                                 )
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(Modifier.height(6.dp))
                                 Text(
                                     text = detail.intro,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
                     }

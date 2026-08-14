@@ -1,31 +1,43 @@
 package com.xiaoswz.reader.ui
 
 import android.net.Uri
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -33,11 +45,17 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.xiaoswz.reader.data.settings.AppSettingsRepository
+import com.xiaoswz.reader.data.settings.AppThemeMode
 import com.xiaoswz.reader.ui.bookstore.BookstoreScreen
 import com.xiaoswz.reader.ui.detail.BookDetailScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
 import com.xiaoswz.reader.ui.bookshelf.BookshelfScreen
+import com.xiaoswz.reader.ui.theme.SurfReaderTheme
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 object Routes {
     const val BOOKSTORE = "bookstore"
@@ -58,7 +76,7 @@ private val TopLevelRoutes = setOf(Routes.BOOKSTORE, Routes.BOOKSHELF, Routes.SE
 private data class BottomTab(
     val route: String,
     val label: String,
-    val icon: ImageVector,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
 )
 
 private val BottomTabs = listOf(
@@ -68,28 +86,28 @@ private val BottomTabs = listOf(
 )
 
 // 全应用页面转场：横向滑动 + 淡入（书城→详情→阅读不再硬切）
-private val EnterTransitionX: EnterTransition =
-    slideInHorizontally(
+private val EnterTransitionX: androidx.compose.animation.EnterTransition =
+    androidx.compose.animation.slideInHorizontally(
         initialOffsetX = { it },
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        animationSpec = tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
     ) + fadeIn(animationSpec = tween(300))
 
-private val ExitTransitionX: ExitTransition =
-    slideOutHorizontally(
+private val ExitTransitionX: androidx.compose.animation.ExitTransition =
+    androidx.compose.animation.slideOutHorizontally(
         targetOffsetX = { -it },
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        animationSpec = tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
     ) + fadeOut(animationSpec = tween(300))
 
-private val PopEnterTransitionX: EnterTransition =
-    slideInHorizontally(
+private val PopEnterTransitionX: androidx.compose.animation.EnterTransition =
+    androidx.compose.animation.slideInHorizontally(
         initialOffsetX = { -it },
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        animationSpec = tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
     ) + fadeIn(animationSpec = tween(300))
 
-private val PopExitTransitionX: ExitTransition =
-    slideOutHorizontally(
+private val PopExitTransitionX: androidx.compose.animation.ExitTransition =
+    androidx.compose.animation.slideOutHorizontally(
         targetOffsetX = { it },
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
+        animationSpec = tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
     ) + fadeOut(animationSpec = tween(300))
 
 /** 底部导航切换：回到起始目的地之上再跳转，避免堆叠 */
@@ -103,6 +121,32 @@ private fun NavHostController.navigateTopLevel(route: String) {
 
 @Composable
 fun AppRoot() {
+    val context = LocalContext.current
+    val appSettings = remember { AppSettingsRepository(context.applicationContext) }
+    val themeMode by appSettings.themeModeFlow.collectAsState(initial = AppThemeMode.SYSTEM)
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme = when (themeMode) {
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+        else -> systemDark
+    }
+    var showSplash by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { delay(1100); showSplash = false }
+
+    SurfReaderTheme(darkTheme = darkTheme) {
+        AnimatedVisibility(
+            visible = showSplash,
+            exit = fadeOut(animationSpec = tween(300)),
+        ) { SplashScreen() }
+        AnimatedVisibility(
+            visible = !showSplash,
+            enter = fadeIn(animationSpec = tween(500)),
+        ) { AppShell() }
+    }
+}
+
+@Composable
+private fun AppShell() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -186,6 +230,52 @@ fun AppRoot() {
                     onBack = { navController.popBackStack() },
                 )
             }
+        }
+    }
+}
+
+/** 品牌闪屏：渐变背景 + 图标 + 应用名，约 1.1s 后淡出 */
+@Composable
+private fun SplashScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.primaryContainer,
+                    ),
+                ),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoStories,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(RoundedCornerShape(24.dp)),
+                tint = MaterialTheme.colorScheme.onPrimary,
+            )
+            Text(
+                text = "冲浪阅读",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+            Text(
+                text = "畅读每一页",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
     }
 }

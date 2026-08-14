@@ -11,41 +11,53 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
-// 品牌色：海洋青（呼应"冲浪"主题）
+// 品牌色：海洋青（呼应"冲浪"主题），M3 Expressive 更鲜艳、对比更强
 private val OceanPrimary = Color(0xFF0E7490)
-private val OceanPrimaryLight = Color(0xFF67E8F9)
+private val OceanPrimaryLight = Color(0xFF22D3EE)
+private val OceanSecondary = Color(0xFF0891B2)
+private val OceanTertiary = Color(0xFF0D9488)
 
 private val LightColors = lightColorScheme(
     primary = OceanPrimary,
     onPrimary = Color.White,
     primaryContainer = Color(0xFFCFFAFE),
-    onPrimaryContainer = Color(0xFF164E63),
-    secondary = Color(0xFF0891B2),
-    background = Color(0xFFFAFAFA),
-    surface = Color.White,
-    surfaceVariant = Color(0xFFF1F5F9),
-    onSurfaceVariant = Color(0xFF475569),
+    onPrimaryContainer = Color(0xFF0B3A47),
+    secondary = OceanSecondary,
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFC2ECF5),
+    onSecondaryContainer = Color(0xFF06455A),
+    tertiary = OceanTertiary,
+    background = Color(0xFFF6FAFB),
+    surface = Color(0xFFFDFDFD),
+    surfaceVariant = Color(0xFFE3EDF1),
+    onSurfaceVariant = Color(0xFF45586A),
+    outline = Color(0xFFC3D3DC),
 )
 
 private val DarkColors = darkColorScheme(
     primary = OceanPrimaryLight,
-    onPrimary = Color(0xFF083344),
-    primaryContainer = Color(0xFF155E75),
-    onPrimaryContainer = Color(0xFFCFFAFE),
-    secondary = Color(0xFF22D3EE),
-    background = Color(0xFF0F172A),
-    surface = Color(0xFF1E293B),
-    surfaceVariant = Color(0xFF334155),
-    onSurfaceVariant = Color(0xFFCBD5E1),
+    onPrimary = Color(0xFF003844),
+    primaryContainer = Color(0xFF0B5566),
+    onPrimaryContainer = Color(0xFFA8EEF8),
+    secondary = Color(0xFF5BD0E6),
+    onSecondary = Color(0xFF003542),
+    secondaryContainer = Color(0xFF044C5C),
+    onSecondaryContainer = Color(0xFFA7E6F3),
+    tertiary = Color(0xFF4FD1C5),
+    background = Color(0xFF0A1118),
+    surface = Color(0xFF121B24),
+    surfaceVariant = Color(0xFF22303D),
+    onSurfaceVariant = Color(0xFFB6C6D2),
+    outline = Color(0xFF34444F),
 )
 
-// 圆角形状：让外壳的 Card / Button / Surface 更具 Material You 的圆润观感
+// 圆角形状：M3 Expressive —— 大圆角，卡片更具包裹感
 private val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(14.dp),
-    large = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(28.dp),
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp),
 )
 
 @Composable

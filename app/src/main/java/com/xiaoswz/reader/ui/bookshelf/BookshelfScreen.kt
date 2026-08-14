@@ -13,21 +13,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,10 +43,11 @@ import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.bookshelf.BookEntity
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
+import com.xiaoswz.reader.ui.components.BookCoverCard
+import com.xiaoswz.reader.ui.components.EmptyState
+import com.xiaoswz.reader.ui.components.StatusPill
+import com.xiaoswz.reader.ui.components.AppTopBar
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,14 +59,21 @@ fun BookshelfScreen(
     val repo = remember { BookshelfRepository(context.applicationContext) }
     val books by repo.observeAll().collectAsState(initial = emptyList())
 
+    val sorted = books.sortedByDescending { it.lastReadAt }
+    val hero = sorted.firstOrNull()
+    val rest = sorted.drop(1)
+
+    val openBook: (BookEntity) -> Unit = { book ->
+        BookUpdateStore.clearUpdate(book.slug)
+        val target = book.lastChapterId ?: book.firstChapterId
+        if (target != null) onBookClick(book.slug, target)
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("我的书架") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+            AppTopBar(
+                title = "我的书架",
+                showLogo = true,
             )
         },
     ) { padding ->
@@ -75,31 +82,49 @@ fun BookshelfScreen(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
-                contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "书架还是空的，去书城收藏喜欢的书籍吧",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                EmptyState(
+                    icon = Icons.Default.MenuBook,
+                    title = "书架还是空的",
+                    subtitle = "去书城收藏喜欢的书籍吧",
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
         } else {
-            LazyColumn(
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
                 contentPadding = PaddingValues(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                items(books, key = { it.slug }) { book ->
-                    val hasUpdate = BookUpdateStore.getHasUpdate(book.slug)
-                    BookshelfItem(
-                        book = book,
-                        hasUpdate = hasUpdate,
-                        onClick = {
-                            BookUpdateStore.clearUpdate(book.slug)
-                            val target = book.lastChapterId ?: book.firstChapterId
-                            if (target != null) onBookClick(book.slug, target)
-                        },
+                // 最近阅读大卡
+                if (hero != null) {
+                    item(span = { GridItemSpan(3) }) {
+                        HeroBookCard(
+                            book = hero,
+                            hasUpdate = BookUpdateStore.getHasUpdate(hero.slug),
+                            onClick = { openBook(hero) },
+                        )
+                    }
+                }
+
+                // 封面网格
+                items(
+                    items = rest,
+                    key = { it.slug },
+                    span = { GridItemSpan(1) },
+                ) { book ->
+                    BookCoverCard(
+                        coverUrl = book.coverUrl,
+                        title = book.title,
+                        author = book.author,
+                        onClick = { openBook(book) },
+                        badge = if (BookUpdateStore.getHasUpdate(book.slug)) {
+                            { StatusPill(text = "有更新", containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) }
+                        } else null,
                         onRemove = { scope.launch { repo.remove(book.slug) } },
                     )
                 }
@@ -109,81 +134,66 @@ fun BookshelfScreen(
 }
 
 @Composable
-private fun BookshelfItem(
+private fun HeroBookCard(
     book: BookEntity,
-    hasUpdate: Boolean = false,
+    hasUpdate: Boolean,
     onClick: () -> Unit,
-    onRemove: () -> Unit,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        shape = RoundedCornerShape(20.dp),
     ) {
-        Row(modifier = Modifier.padding(12.dp)) {
+        Row(modifier = Modifier.padding(16.dp)) {
             AsyncImage(
                 model = book.coverUrl,
                 contentDescription = book.title,
                 modifier = Modifier
-                    .width(64.dp)
-                    .height(96.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .width(100.dp)
+                    .height(150.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentScale = ContentScale.Crop,
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = book.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     text = book.author ?: "佚名",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
+                if (hasUpdate) {
+                    StatusPill(
+                        text = "● 有更新",
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
                 Text(
                     text = book.lastChapterTitle ?: "未开始阅读",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                if (hasUpdate) {
-                    Text(
-                        text = "● 有更新",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
+                Spacer(Modifier.weight(1f))
+                Button(onClick = onClick) {
+                    Text("继续阅读")
                 }
-                Text(
-                    text = formatTime(book.lastReadAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "移出书架",
-                    tint = MaterialTheme.colorScheme.error,
-                )
             }
         }
     }
-}
-
-private fun formatTime(ts: Long): String {
-    if (ts <= 0L) return ""
-    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-    return sdf.format(Date(ts))
 }
