@@ -49,5 +49,3 @@ BASE_URL 在 `app/build.gradle.kts` 的 `buildConfigField` 中配置。
 ```bash
 GIT_TERMINAL_PROMPT=0 git -c credential.helper= push -u origin main
 ```
-
-- ⚠️ **严禁把任何 Token / 密钥提交进本仓库**。Token 仅保存在本地非仓库文件（`~/.workbuddy/MEMORY.md`、`U:\xiaoswz\项目交接文档.txt`），推送前务必确认仓库内不含任何密钥。
