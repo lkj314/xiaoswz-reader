@@ -1,6 +1,6 @@
 {
-  "versionCode": 18,
-  "versionName": "0.3.9",
-  "apkUrl": "surf-reader-0.3.9.apk",
-  "notes": "0.3.9 全站顶部栏统一（复用 0.3.8 修好的海浪 logo + 内容高度顶栏）：抽出共享 AppTopBar 组件（内容高度 + 主色背景从 y=0 起 + 零状态栏预留），让书城/书架/设置/详情四个页面统一，消除书城矮、其他页 64dp 标准栏的割裂感；详情页保留返回键+书名。闪屏在 AutoStories+文字设计原样保留前提下，仅新增一个海浪 logo 标识（additive）。"
+  "versionCode": 21,
+  "versionName": "0.4.2",
+  "apkUrl": "surf-reader-0.4.2.apk",
+  "notes": "0.4.2 封面根因修复：真机文件日志确认主站封面返回的是 data:image/jpeg;base64,... 绝对 data URI，Coil 的 AsyncImage 对 String 类型的 data URI 无 fetcher 会静默失败。改为 base64 解码成 ByteBuffer 交给 Coil 的 ByteBufferFetcher，封面正常显示。之前 0.4.0/0.4.1 的 URL 拼接修复对 data URI 无效，已保留但非主因。"
 }

@@ -1,5 +1,6 @@
 package com.xiaoswz.reader.ui.bookshelf
 
+import com.xiaoswz.reader.data.model.resolveCoverUrl
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -148,7 +149,7 @@ private fun HeroBookCard(
     ) {
         Row(modifier = Modifier.padding(16.dp)) {
             AsyncImage(
-                model = book.coverUrl,
+                model = resolveCoverUrl(book.coverUrl),
                 contentDescription = book.title,
                 modifier = Modifier
                     .width(100.dp)

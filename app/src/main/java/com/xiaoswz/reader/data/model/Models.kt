@@ -1,5 +1,8 @@
 package com.xiaoswz.reader.data.model
 
+import android.util.Base64
+import com.xiaoswz.reader.BuildConfig
+import java.nio.ByteBuffer
 import kotlinx.serialization.Serializable
 
 /**
@@ -118,5 +121,84 @@ fun formatWordCount(count: Int?): String {
         if (wan >= 100) "${wan.toInt()}万字" else "%.1f万字".format(wan)
     } else {
         "${c}字"
+    }
+}
+
+/**
+ * 把封面字段解析成 Coil 能直接加载的对象。
+ *
+ * 真机文件日志（cover_debug.txt）已确认：主站封面返回的是
+ * `data:image/jpeg;base64,...` 这种**绝对 data URI**，URL 拼接本身没问题。
+ * 真正导致封面不显示的根因：**Coil 的 AsyncImage 把 String 类型的 data URI 当成
+ * 普通 URL 去解析，没有对应的 fetcher，于是静默加载失败**（文字正常、图全空）。
+ * 网页 <img> 与阅读3.0 能直接显示 data URI，但 Coil 不行。
+ *
+ * 规则：
+ * - 空 / 空白 → 返回 null（交给 Coil 显示占位）
+ * - data: URI → base64 解码成 ByteBuffer，交给 Coil 的 ByteBufferFetcher
+ * - 已是 http(s) → 原样返回
+ * - 协议相对路径 //host/x → 补 https: 协议
+ * - 其他相对路径 → 拼上 API_BASE_URL(origin)
+ */
+fun resolveCoverUrl(raw: String?): Any? {
+    if (raw.isNullOrBlank()) {
+        logCoverToFile(raw, "null")
+        return null
+    }
+    val trimmed = raw.trim()
+    val resolved: Any? = when {
+        // data: URI —— 必须解码成字节，否则 Coil 无法加载（这是封面不显示的真正原因）
+        trimmed.startsWith("data:", ignoreCase = true) -> decodeDataUri(trimmed)
+        trimmed.startsWith("http://", ignoreCase = true)
+            || trimmed.startsWith("https://", ignoreCase = true) -> trimmed
+        // 协议相对路径（如 //cdn.xxx.com/x.jpg）：浏览器/阅读3.0 会补 https: 协议
+        trimmed.startsWith("//") -> "https:$trimmed"
+        else -> {
+            val origin = BuildConfig.API_BASE_URL.trimEnd('/')
+            if (trimmed.startsWith("/")) "$origin$trimmed" else "$origin/$trimmed"
+        }
+    }
+    val desc = when {
+        resolved == null -> "null"
+        resolved is ByteBuffer -> "ByteBuffer(${resolved.remaining()}B)"
+        resolved is ByteArray -> "ByteArray(${resolved.size}B)"
+        else -> (resolved as String).take(120)
+    }
+    logCoverToFile(raw, desc)
+    return resolved
+}
+
+/** data: URI 解码：仅支持 base64，输出 ByteBuffer 供 Coil 的 ByteBufferFetcher 加载 */
+private fun decodeDataUri(uri: String): Any? {
+    return try {
+        val comma = uri.indexOf(',')
+        if (comma < 0) return uri
+        val meta = uri.substring(5, comma) // 去掉 "data:" 前缀
+        val payload = uri.substring(comma + 1)
+        if (meta.contains(";base64", ignoreCase = true)) {
+            ByteBuffer.wrap(Base64.decode(payload, Base64.DEFAULT))
+        } else {
+            uri // 非 base64（如 urlencoded）暂回退原样，不崩溃
+        }
+    } catch (_: Throwable) {
+        uri
+    }
+}
+
+/**
+ * 调试用：把封面解析结果写入 App 内部文件（vivo 等 ROM 会屏蔽第三方 App 的 logcat，
+ * 故改用文件落地，再用 adb run-as 拉取）。仅调试，不影响正常逻辑。
+ */
+private fun logCoverToFile(raw: String?, resolvedDesc: String?) {
+    try {
+        val at = Class.forName("android.app.ActivityThread")
+        val ctx = at.getMethod("currentApplication").invoke(null) as? android.content.Context
+        ctx?.let {
+            val f = java.io.File(it.filesDir, "cover_debug.txt")
+            val ts = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+            f.appendText("[$ts] raw=[${(raw ?: "null")?.take(120)}] resolved=[${resolvedDesc ?: "null"}]\n")
+        }
+    } catch (_: Throwable) {
+        // 调试日志失败不影响封面加载
     }
 }

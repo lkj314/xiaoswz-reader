@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.model.formatWordCount
+import com.xiaoswz.reader.data.model.resolveCoverUrl
 
 /**
  * 统一封面卡片：书城与书架共用，保证视觉一致。
@@ -51,7 +52,7 @@ fun BookCoverCard(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             AsyncImage(
-                model = coverUrl,
+                model = resolveCoverUrl(coverUrl),
                 contentDescription = title,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,

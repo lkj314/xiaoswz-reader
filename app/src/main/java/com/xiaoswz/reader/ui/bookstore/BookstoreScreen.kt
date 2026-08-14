@@ -72,6 +72,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.data.model.BookDto
+import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import com.xiaoswz.reader.data.update.UpdateManager
 import com.xiaoswz.reader.ui.components.BookCoverCard
@@ -416,7 +417,7 @@ private fun FeaturedCarousel(
                     .clickable { book.slug?.let(onBookClick) },
             ) {
                 AsyncImage(
-                    model = book.coverImage,
+                    model = resolveCoverUrl(book.coverImage),
                     contentDescription = book.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,

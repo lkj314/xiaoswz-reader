@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import com.xiaoswz.reader.data.model.formatWordCount
+import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookEntity
 import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
@@ -152,7 +153,7 @@ fun BookDetailScreen(
                         ) {
                             Row {
                                 AsyncImage(
-                                    model = detail.coverUrl,
+                                    model = resolveCoverUrl(detail.coverUrl),
                                     contentDescription = detail.name,
                                     modifier = Modifier
                                         .width(120.dp)
