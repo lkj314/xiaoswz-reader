@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.bookshelf.BookEntity
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
+import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -90,9 +91,12 @@ fun BookshelfScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(books, key = { it.slug }) { book ->
+                    val hasUpdate = BookUpdateStore.getHasUpdate(book.slug)
                     BookshelfItem(
                         book = book,
+                        hasUpdate = hasUpdate,
                         onClick = {
+                            BookUpdateStore.clearUpdate(book.slug)
                             val target = book.lastChapterId ?: book.firstChapterId
                             if (target != null) onBookClick(book.slug, target)
                         },
@@ -107,6 +111,7 @@ fun BookshelfScreen(
 @Composable
 private fun BookshelfItem(
     book: BookEntity,
+    hasUpdate: Boolean = false,
     onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -152,6 +157,14 @@ private fun BookshelfItem(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+                if (hasUpdate) {
+                    Text(
+                        text = "● 有更新",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
                 Text(
                     text = formatTime(book.lastReadAt),
                     style = MaterialTheme.typography.labelSmall,

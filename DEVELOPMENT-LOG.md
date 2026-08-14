@@ -1,8 +1,8 @@
 # 冲浪阅读 · 安卓 APP 项目开发日志
 
-> 最后更新：2026-08-14（v0.2.8 壳子重构 + 本地书架(Room)；v0.2.7 修复章节闪退 + 设置/关于页）
-> 包名：`com.xiaoswz.reader` · 当前版本：**v0.2.8**（versionCode 7）
-> 仓库：`U:\xiaoswz-reader`（独立 Git 仓库，未推 GitHub）
+> 最后更新：2026-08-14（v0.2.9 M3：章节离线缓存 + 书籍更新检测；v0.2.8 壳子重构 + 本地书架(Room)）
+> 包名：`com.xiaoswz.reader` · 当前版本：**v0.2.9**（versionCode 8）
+> 仓库：`U:\xiaoswz-reader`（独立 Git 仓库，已推 GitHub 公开仓库 `lkj314/xiaoswz-reader`）
 
 ---
 
@@ -121,7 +121,7 @@ http://192.168.2.4:8765/version.json      ← 自动更新清单（APP 内更新
 | ~~v0.2.6~~ | 局域网明文流量修复 + 章节闪退防护 | v0.2.6 ✅ |
 | ~~v0.2.7~~ | 章节真实崩溃修复 + 全局设置/关于页 | v0.2.7 ✅ |
 | ~~v0.2.8~~ | 壳子重构（底部导航/设置入口）+ 本地书架（Room：收藏/进度/续读） | v0.2.8 ✅ |
-| **M3 剩余项** | 章节离线缓存（断网可读）、书架更新检测（标记「有更新」） | v0.3.0 |
+| **v0.2.9** | M3：章节离线缓存（断网可读）+ 书籍更新检测（标记「有更新」） | v0.2.9 ✅ |
 | **M4** | 分类浏览、搜索增强、热度榜（需动后端，单独审批） | v0.4.0 |
 | **M5** | Release 签名、图标/启动页、混淆与包体积优化（目标 < 10MB） | v1.0.0 |
 | 远期 | 登录/云同步/月票/推送（配合主站大更新统一规划） | — |
@@ -158,7 +158,7 @@ http://192.168.2.4:8765/version.json      ← 自动更新清单（APP 内更新
 - M2 仅完成编译，未真机运行，阅读器分页、翻页动画、音量键等手感需你实测反馈。
 - 本地局域网更新依赖电脑端下载服务在线；离开局域网或电脑关机则自动更新不可用。
 - 主题「纯黑 OLED」与「护眼绿」为新加，配色观感待你确认是否满意。
-- 离线缓存、书架更新检测尚未做（M3 剩余项）；书架收藏与阅读进度记忆已在 v0.2.8 随本地书架（Room）落地，退出阅读后会记忆进度。
+- 离线缓存、书架更新检测已在 v0.2.9 落地（文件缓存，未碰 Room 书架库）。
 
 ---
 
@@ -296,3 +296,35 @@ Kotlin 默认参数在 JVM 上**不会**生成额外 Java 重载，故 JVM 层�
 ### 已知约束
 - KAPT 在 Kotlin 2.0+ 下回退 1.9，避免在 lambda 内用 `?: return@launch` 作用域返回取值；优先用显式 `if (x != null)` 或直接使用 Composable 入参。
 - `Icons.Filled.MenuBook/Subject/FormatIndentIncrease/VolumeUp/NavigateBefore/NavigateNext` 已弃用，建议后续替换为 `AutoMirrored` 版本（仅警告，不影响构建）。
+
+---
+
+## 十一、v0.2.9 M3 章节离线缓存 + 书籍更新检测（2026-08-14）
+
+### 目标
+完成 ROADMAP 的 M3 剩余两项：
+- **M3-3 章节离线缓存**：已读章节落盘，杀进程重进、断网仍可阅读。
+- **M3-4 书籍更新检测**：对比书架书籍最新章节数，书架/详情页标记「有更新」。
+
+### 关键决策（铁律 3 / 6：不动 Room）
+`AppDatabase` 使用 `fallbackToDestructiveMigration()`，一旦改 schema（加表/加列/升 version）**整个 `bookshelf.db` 会被清空**（书架与阅读进度全没）。因此 M3-3/M3-4 的数据**全部走文件持久化，零改动 Room**：
+- 章节正文 → `filesDir/chapter_cache/{base64(chapterId)}.json`（每章一个文件，随卸载清除）
+- 书籍更新状态 → `filesDir/book_update.json`（已知章节数 + 有更新标记）
+
+新增 `data/AppContext.kt`（应用上下文持有者，MainActivity 初始化），供无 Context 的仓储层获取 `filesDir`。
+
+### 新增文件
+- `data/AppContext.kt` — 单例持有 applicationContext
+- `data/cache/ChapterCacheManager.kt` — 章节文件缓存：get/put/contains/sizeBytes/clear
+- `data/bookshelf/BookUpdateStore.kt` — 已知章节数 + 有更新标记（JSON 文件）
+
+### 实现
+- **离线缓存**：`BookRepository.getChapterContent()` 改为三级缓存（内存 → 文件 → 网络），网络成功即落文件；`prefetchChapter()` 命中会落文件。阅读器 `ReaderUiState` 新增 `isOffline`，从文件缓存读数时顶部显示「⚠ 离线缓存内容」提示条。
+- **缓存管理**：`SettingsScreen` 新增「离线缓存」卡片，显示大小、一键清空。
+- **更新检测**：加入书架时 `BookUpdateStore.setKnown(slug, 章节数)`；打开书籍详情时比对服务端章节数 > 已知 → `markUpdated`；详情页头部与书架页条目显示「● 有更新」；用户打开阅读后 `markSeen` / `clearUpdate` 清除标记。
+
+### 版本
+- versionCode 7→8 / versionName 0.2.8→0.2.9
+
+### 构建与部署
+- 待 `./gradlew assembleDebug` 验证通过后，输出 `lan-update/surf-reader-0.2.9.apk` 并更新 `version.json`，真机 USB 复现。

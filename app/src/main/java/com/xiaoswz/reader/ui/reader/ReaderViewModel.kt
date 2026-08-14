@@ -25,6 +25,8 @@ data class ReaderUiState(
     val menuVisible: Boolean = false,
     val settingsVisible: Boolean = false,
     val settings: ReaderSettings = ReaderSettings(),
+    /** 当前章节内容是否来自离线文件缓存（断网可读） */
+    val isOffline: Boolean = false,
 ) {
     val currentIndex: Int get() = toc.indexOfFirst { it.id == currentChapterId }.let { if (it < 0) 0 else it }
     val totalChapters: Int get() = toc.size
@@ -80,22 +82,23 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun loadChapter(chapterId: String) {
-        _uiState.update { it.copy(isLoading = true, error = null) }
+        _uiState.update { it.copy(isLoading = true, error = null, isOffline = false) }
         viewModelScope.launch {
             repository.getChapterContent(chapterId)
-                .onSuccess { chapter ->
+                .onSuccess { result ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             currentChapterId = chapterId,
-                            chapterTitle = chapter.title.orEmpty(),
-                            rawContent = chapter.content.orEmpty(),
-                            bookName = it.bookName.ifBlank { chapter.bookName.orEmpty() },
+                            chapterTitle = result.data.title.orEmpty(),
+                            rawContent = result.data.content.orEmpty(),
+                            bookName = it.bookName.ifBlank { result.data.bookName.orEmpty() },
+                            isOffline = result.fromOfflineCache,
                             menuVisible = false,
                             settingsVisible = false,
                         )
                     }
-                    // 预读下一章，翻章零等待
+                    // 预读下一章，翻章零等待（命中会落文件缓存，支持离线）
                     _uiState.value.nextChapterId?.let { nextId ->
                         launch { repository.prefetchChapter(nextId) }
                     }

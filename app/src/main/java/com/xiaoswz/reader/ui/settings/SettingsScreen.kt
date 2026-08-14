@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.CrashLogger
+import com.xiaoswz.reader.data.cache.ChapterCacheManager
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import kotlinx.coroutines.flow.first
@@ -65,6 +66,9 @@ fun SettingsScreen(onBack: () -> Unit) {
     var serverSaved by remember { mutableStateOf(false) }
     var crashLog by remember { mutableStateOf<String?>(null) }
     var showCrashDialog by remember { mutableStateOf(false) }
+
+    // 离线缓存大小（章节正文文件），清空后刷新显示
+    var cacheSizeText by remember { mutableStateOf(formatCacheSize(ChapterCacheManager.sizeBytes())) }
 
     // 当前阅读主题（用于设置页预览/切换示例，真实生效在阅读器内）
     var themeIndex by remember { mutableStateOf(ReaderSettings.THEME_DAY) }
@@ -233,6 +237,32 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
 
+            // ── 离线缓存 ──
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("离线缓存", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "已缓存章节正文：$cacheSizeText（断网可读，随卸载清除）",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                ChapterCacheManager.clear()
+                                cacheSizeText = formatCacheSize(ChapterCacheManager.sizeBytes())
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                    ) {
+                        Text("清空离线缓存")
+                    }
+                }
+            }
+
             // ── 阅读主题（示例：真正生效在阅读器，这里仅做入口）──
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -287,5 +317,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** 缓存字节数格式化：<1MB 显示 KB，否则显示 MB */
+private fun formatCacheSize(bytes: Long): String {
+    return if (bytes < 1024 * 1024) {
+        "${bytes / 1024} KB"
+    } else {
+        "%.1f MB".format(bytes / 1024.0 / 1024.0)
     }
 }

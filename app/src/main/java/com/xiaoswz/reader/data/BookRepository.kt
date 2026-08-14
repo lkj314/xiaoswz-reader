@@ -2,9 +2,18 @@ package com.xiaoswz.reader.data
 
 import com.xiaoswz.reader.data.api.ApiClient
 import com.xiaoswz.reader.data.api.XiaoswzApi
+import com.xiaoswz.reader.data.cache.ChapterCacheManager
 import com.xiaoswz.reader.data.model.BookDetailDto
 import com.xiaoswz.reader.data.model.BookListResponse
 import com.xiaoswz.reader.data.model.ChapterContentDto
+
+/**
+ * 章节加载结果：data 为章节正文，fromOfflineCache=true 表示内容来自磁盘文件（断网可读）
+ */
+data class ChapterResult(
+    val data: ChapterContentDto,
+    val fromOfflineCache: Boolean,
+)
 
 /**
  * 书籍数据仓库
@@ -46,21 +55,25 @@ class BookRepository(
         }
     }
 
-    suspend fun getChapterContent(chapterId: String): Result<ChapterContentDto> {
-        contentCache[chapterId]?.let { return Result.success(it) }
+    /**
+     * 章节正文三级缓存：内存 → 文件离线缓存 → 网络。
+     * 已缓存章节杀进程重进后断网仍可读取。
+     */
+    suspend fun getChapterContent(chapterId: String): Result<ChapterResult> {
+        contentCache[chapterId]?.let { return Result.success(ChapterResult(it, false)) }
+        ChapterCacheManager.get(chapterId)?.let { return Result.success(ChapterResult(it, true)) }
         return runCatching {
-            api.getChapterContent(chapterId = chapterId).also { content ->
-                contentCache[chapterId] = content
-            }
-        }
+            val content = api.getChapterContent(chapterId = chapterId)
+            contentCache[chapterId] = content
+            ChapterCacheManager.put(content)
+            content
+        }.map { ChapterResult(it, false) }
     }
 
-    /** 预取章节正文（不阻塞，失败静默） */
+    /** 预取章节正文（不阻塞，失败静默）；命中会落文件缓存，支持离线 */
     suspend fun prefetchChapter(chapterId: String) {
         if (contentCache.containsKey(chapterId)) return
-        runCatching {
-            contentCache[chapterId] = api.getChapterContent(chapterId = chapterId)
-        }
+        runCatching { getChapterContent(chapterId) }
     }
 
     fun clearCache() {

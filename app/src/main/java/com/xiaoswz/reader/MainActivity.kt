@@ -5,6 +5,7 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.xiaoswz.reader.data.AppContext
 import com.xiaoswz.reader.ui.AppRoot
 import com.xiaoswz.reader.ui.reader.VolumeKeyBus
 import com.xiaoswz.reader.ui.theme.SurfReaderTheme
@@ -12,6 +13,7 @@ import com.xiaoswz.reader.ui.theme.SurfReaderTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppContext.init(application)
         CrashLogger.install(this)
         enableEdgeToEdge()
         setContent {

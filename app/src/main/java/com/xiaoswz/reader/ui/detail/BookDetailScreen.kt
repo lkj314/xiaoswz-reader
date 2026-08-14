@@ -50,6 +50,7 @@ import kotlinx.coroutines.launch
 import com.xiaoswz.reader.data.model.formatWordCount
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookEntity
+import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,10 +65,21 @@ fun BookDetailScreen(
     val scope = rememberCoroutineScope()
     val bookshelfRepo = remember { BookshelfRepository(context.applicationContext) }
     var collected by remember { mutableStateOf(false) }
+    var hasUpdate by remember { mutableStateOf(false) }
 
     LaunchedEffect(slug) {
         viewModel.load(slug)
         collected = bookshelfRepo.isCollected(slug)
+    }
+
+    // 书籍详情加载后，比对服务端章节数与已知章节数，标"有更新"
+    LaunchedEffect(state.detail) {
+        val d = state.detail ?: return@LaunchedEffect
+        val known = BookUpdateStore.getKnown(slug)
+        if (known != null && (d.chapterCount ?: 0) > known) {
+            BookUpdateStore.markUpdated(slug)
+        }
+        hasUpdate = BookUpdateStore.getHasUpdate(slug)
     }
 
     Scaffold(
@@ -123,6 +135,13 @@ fun BookDetailScreen(
             else -> {
                 val detail = state.detail ?: return@Scaffold
                 val chapters = detail.chapters.orEmpty()
+                val currentCount = detail.chapterCount ?: chapters.size
+                // 打开任意章节即视为已看更新，清除"有更新"标记并记录当前章节数
+                val openChapter: (String?) -> Unit = { id ->
+                    BookUpdateStore.markSeen(slug, currentCount)
+                    hasUpdate = false
+                    id?.let(onChapterClick)
+                }
 
                 LazyColumn(
                     modifier = Modifier.padding(padding).fillMaxSize(),
@@ -152,6 +171,14 @@ fun BookDetailScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (hasUpdate) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "● 有更新",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = buildList {
@@ -166,7 +193,7 @@ fun BookDetailScreen(
                                 val firstChapter = chapters.firstOrNull()
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(
-                                        onClick = { firstChapter?.id?.let(onChapterClick) },
+                                        onClick = { openChapter(firstChapter?.id) },
                                         enabled = firstChapter != null,
                                     ) {
                                         Text("开始阅读")
@@ -192,6 +219,7 @@ fun BookDetailScreen(
                                                         )
                                                     )
                                                     collected = true
+                                                    BookUpdateStore.setKnown(slug, currentCount)
                                                 }
                                             }
                                         },
@@ -244,7 +272,7 @@ fun BookDetailScreen(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { chapter.id?.let(onChapterClick) }
+                                .clickable { openChapter(chapter.id) }
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                         )
                         HorizontalDivider(

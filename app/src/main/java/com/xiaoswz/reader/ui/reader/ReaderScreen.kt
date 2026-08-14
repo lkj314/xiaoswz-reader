@@ -461,6 +461,24 @@ fun ReaderScreen(
                 }
             }
 
+            // ── 离线缓存提示条（内容来自磁盘文件、断网可读）──
+            if (state.isOffline) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.94f))
+                        .padding(vertical = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "⚠ 离线缓存内容，可能不是最新",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+            }
+
             // ── 菜单层（圆角浮动卡片 + 图标按钮 + 进出动画）──
             Box(modifier = Modifier.fillMaxSize()) {
                 AnimatedVisibility(
