@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.kapt)
 }
 
 // 本机 safe-delete 在回收站不可用时阻断一切"删除"操作，导致 Gradle 增量构建
@@ -21,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.2.7"
+        versionCode = 7
+        versionName = "0.2.8"
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
@@ -83,4 +84,9 @@ dependencies {
 
     // 设置持久化
     implementation(libs.androidx.datastore.preferences)
+
+    // 本地书架（Room）
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
 }

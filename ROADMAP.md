@@ -98,14 +98,14 @@ minSdk 26 / compileSdk 35 · Gradle 8.11.1 · AGP 8.7.3
 
 ---
 
-## 四、发布流程（每次更新的固定动作）
+## 四、发布流程（每次更新的固定动作，USB 调试为首选）
 
 1. `versionCode` +1，`versionName` 按里程碑递进（M2 完成 = v0.2.0）
 2. `./gradlew assembleDebug` 构建
-3. **交付局域网下载链接**（固定约定，每次更新必做）：
-   - 服务地址：`http://<本机IP>:8765/app-debug.apk`
-   - 若服务已停，重启：`python -m http.server 8765`（工作目录 = APK 输出目录）
-4. git 提交并记录变更
+3. **手机连 USB 且 `adb devices` 显示 `device`** → `adb install -r <apk>` 直接推送（首选，保留数据覆盖安装）
+4. **无 USB 时备用**：局域网 `python -m http.server 8765` 提供 APK + `version.json`（暂且搁置，非每次必做）
+5. 真机复现 + `adb logcat` 抓崩溃，确认稳定
+6. git 提交并记录变更
 
 ---
 

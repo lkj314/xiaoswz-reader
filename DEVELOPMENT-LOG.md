@@ -1,7 +1,7 @@
 # 冲浪阅读 · 安卓 APP 项目开发日志
 
-> 最后更新：2026-08-14（v0.2.6 修复 cleartext）
-> 包名：`com.xiaoswz.reader` · 当前版本：**v0.2.6**（versionCode 5）
+> 最后更新：2026-08-14（v0.2.8 壳子重构 + 本地书架(Room)；v0.2.7 修复章节闪退 + 设置/关于页）
+> 包名：`com.xiaoswz.reader` · 当前版本：**v0.2.8**（versionCode 7）
 > 仓库：`U:\xiaoswz-reader`（独立 Git 仓库，未推 GitHub）
 
 ---
@@ -28,7 +28,12 @@
 - **Git**：当前在 `main` 分支，最新提交 `efebb3f`（M2 全部改动已入库，工作树干净）
 - **实测**：M1 已真机实测全部功能正常；M2 已构建通过，**尚未真机运行**（需你装机验证）
 
-### 局域网下载 / 更新地址
+### 交付方式（2026-08-14 起：USB 调试为首选，局域网降为备用）
+
+> **首选：USB 调试直接 `adb install -r`**（见第十节）。手机已开启开发者模式 + USB 调试并已授权本机，即插即用，不挑网段、还能 `logcat` 抓崩溃。
+> **局域网推送：暂且搁置，仅作无 USB 时的备用**。下方地址保留，需要时再起服务，不再作为每次更新的固定动作。
+
+### 局域网下载 / 更新地址（备用，非首选）
 
 ```
 http://192.168.2.4:8765/app-debug.apk     ← 直接下载安装
@@ -78,6 +83,16 @@ http://192.168.2.4:8765/version.json      ← 自动更新清单（APP 内更新
 - `AndroidManifest` 加 `REQUEST_INSTALL_PACKAGES` 权限 + `FileProvider`
 - 新增 `res/xml/file_paths.xml`
 
+### 版本沿革（M2 之后，v0.2.1 → v0.2.7）
+
+| 版本 | versionCode | 内容 | 说明 |
+|---|---|---|---|
+| v0.2.5 | 4 | M2.5 阅读器壳子美化（菜单层/转场/设置面板分区+预览/纸质衬线） | 仅前端，未碰 data 层 |
+| v0.2.6 | 5 | 修复局域网自动更新明文流量策略 + 章节闪退防护（协程分页/try-catch 降级） | 鸡生蛋：必须手动装一次含修复的版本 |
+| v0.2.7 | 6 | 修复点开章节真实崩溃（ReaderViewModel 构造函数单参化）+ 全局设置/关于页 | 崩溃靠 `adb logcat` 定位，非猜测 |
+
+> 注：M2.5 与 v0.2.6/v0.2.7 由不同会话完成。本日志第十节已记录 USB 调试工作流，v0.2.7 的章节崩溃即借此定位，现正式扶正为首选。
+
 ---
 
 ## 四、已完成功能清单
@@ -101,6 +116,7 @@ http://192.168.2.4:8765/version.json      ← 自动更新清单（APP 内更新
 |---|---|---|
 | ~~M1~~ | 书城→详情→阅读器 | v0.1.0 ✅ |
 | ~~M2~~ | 阅读器打磨 + 局域网自动更新 | v0.2.0 ✅ |
+| **近期增量** | 壳体收尾（底部导航/全局设置整合）+ 阅读体验微打磨（封面占位、进度条、启动页） | v0.2.8（规划中） |
 | **M3** | 本地书架（Room）、阅读进度记忆、章节离线缓存、更新检测 | v0.3.0 |
 | **M4** | 分类浏览、搜索增强、热度榜（需动后端，单独审批） | v0.4.0 |
 | **M5** | Release 签名、图标/启动页、关于页、包体积优化 | v1.0.0 |
@@ -110,13 +126,14 @@ http://192.168.2.4:8765/version.json      ← 自动更新清单（APP 内更新
 
 ---
 
-## 六、构建与发布流程（每次更新都走这套）
+## 六、构建与发布流程（每次更新都走这套，USB 为首选）
 
 1. 改代码，`versionCode` +1、`versionName` 升一档
 2. `./gradlew assembleDebug --no-daemon` 构建
-3. `python tools/write_update_manifest.py "更新说明"` 生成 `version.json`
-4. 在 APK 输出目录起下载服务：`python -m http.server 8765`
-5. 把局域网链接发给手机，APP 内也能自动检测更新
+3. **手机已连 USB 且 `adb devices` 显示 `device`** → 直接推送：
+   `adb install -r <apk>`（保留数据覆盖安装，最快）
+4. **无 USB 时（备用）**：`python tools/write_update_manifest.py "更新说明"` 生成 `version.json`，APK 输出目录起 `python -m http.server 8765`，手机走局域网或 APP 内更新
+5. 真机复现关键路径 + `adb logcat` 抓崩溃，确认无异常
 6. `git add -A && git commit` 入库
 
 > 注意：`build/`、`.setup/`、`build.log`、`.workbuddy/`、签名文件、本地 `local.properties` 均已 `.gitignore`，不入库。
@@ -178,7 +195,7 @@ CLEARTEXT communication to 192.168.2.4 not permitted by network security policy
 
 ---
 
-## 十、安卓调试工作流（USB + ADB，2026-08-14 新增）
+## 十、安卓调试工作流（USB + ADB — 现已扶正为「首选交付 + 排错」手段）
 
 **铁律变更**：冲浪阅读 APP 的闪退/异常一律**先 `adb logcat` 拿真实堆栈，再动手改**，禁止"猜原因改代码"。USB 调试是首选手段；不连 USB 时退化为 CrashLogger 文件 + 设置页导出，但仍需真实堆栈最终确认。
 
@@ -189,7 +206,7 @@ adb get-state                              # 单设备状态
 adb shell getprop ro.product.model         # 看机型
 adb shell getprop ro.build.version.release  # 看 Android 版本
 ```
-当前测试机：**vivo V2121A / Android 13**，序列号 `1562128293000XD`。
+当前测试机：**vivo S10（型号 V2121A）/ Android 13**，序列号 `1562128293000XD`，**状态：已授权（device），2026-08-14 经 USB 连通**。
 
 ### 2. 抓闪退（FATAL）标准流程
 ```bash
@@ -243,3 +260,35 @@ Kotlin 默认参数在 JVM 上**不会**生成额外 Java 重载，故 JVM 层�
 - 安卓闪退一律先 `adb logcat -d -b crash`（或后台 logcat）拿真实堆栈，再动手；USB 调试是首选手段。
 
 ### 验证（构建后 `adb install -r` 装真机复现）
+
+---
+
+## 十二、v0.2.8 壳子重构 + 本地书架（Room，2026-08-14）
+
+### 目标
+用户明确指出 APP「壳子缺失大量功能」：没有全局设置页入口、没有底部导航、没有关于/书架。本轮（合并 M3 部分）目标：
+1. 底部导航栏（书城 / 书架 / 设置），详情/阅读器为覆盖式全屏（隐藏底栏）
+2. 接入已写好的设置/关于页（SettingsScreen.kt，含崩溃日志查看分享、更新服务器配置、版本信息、阅读主题）
+3. 本地书架（Room 持久化）：收藏书籍 + 阅读进度，支持续读
+
+### 实现
+- **导航**：`AppRoot.kt` 改为 `Column { NavHost(weight 1f) + AnimatedVisibility(NavigationBar) }`。新增 `BOOKSHELF`/`SETTINGS` 路由；底栏仅在顶层路由（书城/书架/设置）可见；`navigateTopLevel()` 用 `popUpTo(BOOKSTORE)` 避免堆叠。
+- **数据层**（`data/bookshelf/`）：`BookEntity`、`BookDao`、`AppDatabase`（version 1，fallbackToDestructiveMigration）、`BookshelfRepository`。
+  - 依赖：`room 2.6.1` + KAPT（`kotlin-kapt` 插件，版本随 Kotlin 2.0.21 对齐，规避 KSP 版本匹配风险）。
+- **详情页**：`BookDetailScreen` 顶部加「加入书架 / 移出书架」按钮，收藏时写入标题/作者/封面/首章 id；`LaunchedEffect(slug)` 加载收藏状态。
+- **阅读器**：`ReaderScreen` 在 `LaunchedEffect(state.currentChapterId)` 中调用 `BookshelfRepository.updateProgress()`，仅更新已收藏书籍（未收藏不产生数据），异常由 `CrashLogger` 兜底。
+- **书架页**：`BookshelfScreen.kt` 响应式观察 `observeAll()`（按最后阅读时间倒序），卡片展示封面/标题/作者/最后章节/时间，点击续读（lastChapterId 兜底 firstChapterId），可移除。
+
+### 版本
+- versionCode 6→7 / versionName 0.2.7→0.2.8
+
+### 构建与部署（2026-08-14）
+- `./gradlew assembleDebug` **BUILD SUCCESSFUL**（仅 Material Icons 弃用警告，非错误）。
+- 第 4 次构建前修复：详情页 `detail.slug` 实际不存在于模型 → 改用 Composable 入参 `slug: String`，同时规避 KAPT 1.9 回退对 `val x = y ?: return@launch` 作用域写法的虚假 "Unresolved reference" 报错。
+- APK：`lan-update/surf-reader-0.2.8.apk`（18.7MB）；`version.json` 已指向 0.2.8。
+- 局域网更新服务器（:8765）实时读盘，已验证返回新版 `version.json`，手机 App 内「检查更新」即可拉取。
+- 真机验证待用户 USB 复现（本沙箱 `adb install` 会异常终止父 shell，无法直接装真机；交付走局域网更新通道）。
+
+### 已知约束
+- KAPT 在 Kotlin 2.0+ 下回退 1.9，避免在 lambda 内用 `?: return@launch` 作用域返回取值；优先用显式 `if (x != null)` 或直接使用 Composable 入参。
+- `Icons.Filled.MenuBook/Subject/FormatIndentIncrease/VolumeUp/NavigateBefore/NavigateNext` 已弃用，建议后续替换为 `AutoMirrored` 版本（仅警告，不影响构建）。

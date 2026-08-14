@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -32,15 +33,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
 import com.xiaoswz.reader.data.model.formatWordCount
+import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
+import com.xiaoswz.reader.data.bookshelf.BookEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,9 +60,14 @@ fun BookDetailScreen(
     viewModel: BookDetailViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val bookshelfRepo = remember { BookshelfRepository(context.applicationContext) }
+    var collected by remember { mutableStateOf(false) }
 
     LaunchedEffect(slug) {
         viewModel.load(slug)
+        collected = bookshelfRepo.isCollected(slug)
     }
 
     Scaffold(
@@ -150,11 +164,40 @@ fun BookDetailScreen(
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 val firstChapter = chapters.firstOrNull()
-                                Button(
-                                    onClick = { firstChapter?.id?.let(onChapterClick) },
-                                    enabled = firstChapter != null,
-                                ) {
-                                    Text("开始阅读")
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = { firstChapter?.id?.let(onChapterClick) },
+                                        enabled = firstChapter != null,
+                                    ) {
+                                        Text("开始阅读")
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                if (collected) {
+                                                    bookshelfRepo.remove(slug)
+                                                    collected = false
+                                                } else {
+                                                    bookshelfRepo.add(
+                                                        BookEntity(
+                                                            slug = slug,
+                                                            title = detail.name ?: "",
+                                                            author = detail.author,
+                                                            coverUrl = detail.coverUrl,
+                                                            firstChapterId = firstChapter?.id,
+                                                            lastChapterId = firstChapter?.id,
+                                                            lastChapterTitle = firstChapter?.name,
+                                                            addedAt = System.currentTimeMillis(),
+                                                            lastReadAt = System.currentTimeMillis(),
+                                                        )
+                                                    )
+                                                    collected = true
+                                                }
+                                            }
+                                        },
+                                    ) {
+                                        Text(if (collected) "移出书架" else "加入书架")
+                                    }
                                 }
                             }
                         }

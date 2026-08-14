@@ -65,6 +65,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.CrashLogger
 import com.xiaoswz.reader.data.settings.ReaderSettings
+import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.ui.theme.ReaderThemes
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
@@ -83,6 +84,7 @@ fun ReaderScreen(
     val state by viewModel.uiState.collectAsState()
     val view = LocalView.current
     val context = view.context
+    val bookshelfRepo = remember { BookshelfRepository(context.applicationContext) }
     // 协程级异常兜底：捕获阅读器内所有未处理异常，写入崩溃日志，避免闪退
     val scope = rememberCoroutineScope {
         CoroutineExceptionHandler { _, t -> CrashLogger.report(context, t) }
@@ -91,6 +93,18 @@ fun ReaderScreen(
 
     LaunchedEffect(bookSlug, chapterId) {
         viewModel.load(bookSlug, chapterId)
+    }
+
+    // ── 记录阅读进度到本地书架（仅已收藏书籍，未收藏不产生数据）──
+    LaunchedEffect(state.currentChapterId) {
+        val cid = state.currentChapterId
+        if (!cid.isNullOrBlank()) {
+            try {
+                bookshelfRepo.updateProgress(bookSlug, cid, state.chapterTitle)
+            } catch (e: Exception) {
+                CrashLogger.report(context, e)
+            }
+        }
     }
 
     // ── 屏幕常亮 ──
