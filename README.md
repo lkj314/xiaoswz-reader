@@ -39,3 +39,15 @@ BASE_URL 在 `app/build.gradle.kts` 的 `buildConfigField` 中配置。
 - **M2**：阅读器体验打磨（翻页模式、更多主题、排版细节）
 - **M3**：本地书架（Room）、章节预加载与离线缓存
 - **远期**：账号登录与进度同步（需后端新增 token 端点）、榜单接口
+
+## GitHub 备份
+
+- 仓库：`https://github.com/lkj314/xiaoswz-reader`
+- 本地分支 `main` 已跟踪 `origin/main`
+- ⚠️ 本机 `git-credential-manager` 在 push 时会崩溃杀掉 shell，推送必须禁用它：
+
+```bash
+GIT_TERMINAL_PROMPT=0 git -c credential.helper= push -u origin main
+```
+
+- ⚠️ **严禁把任何 Token / 密钥提交进本仓库**。Token 仅保存在本地非仓库文件（`~/.workbuddy/MEMORY.md`、`U:\xiaoswz\项目交接文档.txt`），推送前务必确认仓库内不含任何密钥。
