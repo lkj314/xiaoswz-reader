@@ -1,11 +1,15 @@
 package com.xiaoswz.reader.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
 
 // 品牌色：海洋青（呼应"冲浪"主题）
 private val OceanPrimary = Color(0xFF0E7490)
@@ -35,6 +39,15 @@ private val DarkColors = darkColorScheme(
     onSurfaceVariant = Color(0xFFCBD5E1),
 )
 
+// 圆角形状：让外壳的 Card / Button / Surface 更具 Material You 的圆润观感
+private val AppShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(28.dp),
+)
+
 @Composable
 fun SurfReaderTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -42,6 +55,7 @@ fun SurfReaderTheme(
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
+        shapes = AppShapes,
         content = content,
     )
 }
@@ -51,8 +65,8 @@ fun SurfReaderTheme(
 // ─────────────────────────────────────────────
 
 object ReaderColors {
-    // 日间（米纸色）
-    val DayBackground = Color(0xFFFAF7F2)
+    // 日间（米纸色，偏暖的米黄，更有纸质感）
+    val DayBackground = Color(0xFFF3EAD8)
     val DayText = Color(0xFF1F2937)
 
     // 护眼绿
@@ -81,3 +95,6 @@ val ReaderThemes = listOf(
     ReaderTheme("夜间", ReaderColors.NightBackground, ReaderColors.NightText),
     ReaderTheme("纯黑", ReaderColors.BlackBackground, ReaderColors.BlackText),
 )
+
+/** 阅读正文衬线字体（系统衬线，零字体文件，呈现纸质书观感） */
+val ReaderBodyFont = FontFamily.Serif

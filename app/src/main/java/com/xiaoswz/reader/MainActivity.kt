@@ -12,6 +12,7 @@ import com.xiaoswz.reader.ui.theme.SurfReaderTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashLogger.install(this)
         enableEdgeToEdge()
         setContent {
             SurfReaderTheme {

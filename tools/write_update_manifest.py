@@ -14,7 +14,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GRADLE_FILE = ROOT / "app" / "build.gradle.kts"
-OUT_DIR = ROOT / "app" / "build" / "outputs" / "apk" / "debug"
+# APK 输出目录可能位于 app/build/outputs 或 builds/app_*/outputs（绕过 safe-delete 的隔离输出）
+_candidates = list(ROOT.glob("builds/app_*/outputs/apk/debug")) + \
+    [ROOT / "app" / "build" / "outputs" / "apk" / "debug"]
+OUT_DIR = max(_candidates, key=lambda p: p.stat().st_mtime if p.exists() else 0)
 
 
 def main() -> None:

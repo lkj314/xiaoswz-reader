@@ -1,7 +1,7 @@
 # 冲浪阅读 · 安卓 APP 项目开发日志
 
-> 最后更新：2026-08-14
-> 包名：`com.xiaoswz.reader` · 当前版本：**v0.2.0**（versionCode 2）
+> 最后更新：2026-08-14（v0.2.6 修复 cleartext）
+> 包名：`com.xiaoswz.reader` · 当前版本：**v0.2.6**（versionCode 5）
 > 仓库：`U:\xiaoswz-reader`（独立 Git 仓库，未推 GitHub）
 
 ---
@@ -138,3 +138,40 @@ http://192.168.2.4:8765/version.json      ← 自动更新清单（APP 内更新
 - 本地局域网更新依赖电脑端下载服务在线；离开局域网或电脑关机则自动更新不可用。
 - 主题「纯黑 OLED」与「护眼绿」为新加，配色观感待你确认是否满意。
 - 书架、离线缓存尚未做（M3），当前退出阅读后不记忆进度（设置项已预留，进度记忆随 M3 落地）。
+
+---
+
+## 九、v0.2.6 关键修复（2026-08-14 12:55）
+
+### 问题
+用户在 v0.2.0 上点 APP 内"检查更新"报错：
+```
+CLEARTEXT communication to 192.168.2.4 not permitted by network security policy
+```
+
+**根因**：Android 9 (API 28) 起默认禁止 APP 走 HTTP 明文流量，必须 HTTPS 或在 network-security-config 里显式放行。原 `AndroidManifest.xml` 未配置任何 cleartext 策略 → APP 拉 `http://192.168.2.4:8765/version.json` 直接被系统拦截。
+
+这是一个**鸡生蛋问题**：v0.2.0 因为这条规则永远收不到任何自动更新，必须先手动装一次含修复的版本。
+
+### 修复内容（v0.2.6 / versionCode 5）
+1. `AndroidManifest.xml` 增加 `android:usesCleartextTraffic="true"` + `android:networkSecurityConfig="@xml/network_security_config"`
+2. 新增 `app/src/main/res/xml/network_security_config.xml`：
+   - `base-config` 仍强制 HTTPS Only（公网安全不受影响）
+   - `domain-config` 仅放行局域网服务器：`192.168.2.4`、`192.168.1.1`、`192.168.0.1`、`10.0.2.2`（模拟器）、`127.0.0.1`、`localhost`
+
+### 同步加固（章节闪退防护）
+- `ReaderScreen.kt` 分页计算移入 `LaunchedEffect` 协程（原 v0.2.0 在组合阶段同步测量整章，主线程阻塞导致闪退）
+- `paginateText` 加 `try/catch`，失败时降级为滚动模式（保证任何异常下都可读，绝不闪退）
+- `MainActivity.onCreate` 安装 `CrashLogger` 全局崩溃采集器，崩溃日志写入 `Android/data/com.xiaoswz.reader/files/crash.log`
+
+### 用户操作（首次）
+1. 手机浏览器打开 `http://192.168.2.4:8765/surf-reader-0.2.6.apk` 下载
+2. 系统会提示"允许此来源安装"，给浏览器授权一次
+3. 装完后 APP 内"检查更新"即可拉取后续版本（鸡生蛋问题解决）
+
+### 验证记录
+- `aapt2 dump xmltree` 确认 APK manifest 包含 `usesCleartextTraffic=true` 和 `networkSecurityConfig` 资源引用
+- `unzip -l` 确认 `res/xml/network_security_config.xml` 已打包
+- 服务端 `http://127.0.0.1:8765/version.json` 返回 200（v0.2.6 / versionCode 5）
+- `http://127.0.0.1:8765/surf-reader-0.2.6.apk` HEAD 返回 200，Content-Length=18,460,664
+- APK 前 4 字节 `PK\x03\x04`（ZIP/APK 魔数，文件完整）

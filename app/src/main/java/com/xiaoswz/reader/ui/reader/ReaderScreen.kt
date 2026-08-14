@@ -21,14 +21,19 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import com.xiaoswz.reader.ui.reader.components.ReaderBottomBar
+import com.xiaoswz.reader.ui.reader.components.ReaderTopBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
@@ -47,7 +52,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -59,14 +63,11 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.xiaoswz.reader.CrashLogger
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.ui.theme.ReaderThemes
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
-
-/** 菜单遮罩底色（所有阅读主题下都可读） */
-private val OverlayBg = Color(0xCC14181D)
-private val OverlayText = Color.White
-private val OverlayTextDim = Color.White.copy(alpha = 0.35f)
 
 /** 左右边距档位对应的 dp */
 private val MarginDpOptions = listOf(12.dp, 20.dp, 28.dp)
@@ -80,9 +81,13 @@ fun ReaderScreen(
     viewModel: ReaderViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
     val view = LocalView.current
+    val context = view.context
+    // 协程级异常兜底：捕获阅读器内所有未处理异常，写入崩溃日志，避免闪退
+    val scope = rememberCoroutineScope {
+        CoroutineExceptionHandler { _, t -> CrashLogger.report(context, t) }
+    }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
 
     LaunchedEffect(bookSlug, chapterId) {
         viewModel.load(bookSlug, chapterId)
@@ -178,8 +183,10 @@ fun ReaderScreen(
                 )
             }
 
-            // 覆盖模式分页
-            val pages = remember(
+            // 覆盖模式分页（在协程中计算，避免组合阶段同步测量整章卡顿/崩溃）
+            val pages = remember { mutableStateOf(emptyList<String>()) }
+            var paginationFailed by remember { mutableStateOf(false) }
+            LaunchedEffect(
                 processed,
                 state.settings.pageMode,
                 state.settings.fontSize,
@@ -187,10 +194,13 @@ fun ReaderScreen(
                 widthPx,
                 heightPx,
             ) {
+                paginationFailed = false
                 if (state.settings.pageMode != ReaderSettings.MODE_COVER) {
-                    emptyList()
-                } else {
-                    paginateText(
+                    pages.value = emptyList()
+                    return@LaunchedEffect
+                }
+                try {
+                    pages.value = paginateText(
                         text = processed,
                         fontSizeSp = state.settings.fontSize,
                         lineSpacingMultiplier = state.settings.lineSpacing,
@@ -198,10 +208,14 @@ fun ReaderScreen(
                         maxHeightPx = (heightPx - reservedHeightPx).toInt(),
                         textMeasurer = textMeasurer,
                     )
+                } catch (e: Exception) {
+                    // 分页异常兜底：降级为滚动模式，保证可读、不闪退
+                    CrashLogger.report(context, e)
+                    paginationFailed = true
                 }
             }
 
-            val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
+            val pagerState = rememberPagerState(pageCount = { pages.value.size.coerceAtLeast(1) })
             var pendingJumpToEnd by remember { mutableStateOf(false) }
 
             // 翻页/翻章动作（覆盖模式）
@@ -215,7 +229,7 @@ fun ReaderScreen(
             }
 
             fun coverNext() {
-                if (pagerState.currentPage < pages.size - 1) {
+                if (pagerState.currentPage < pages.value.size - 1) {
                     scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                 } else {
                     viewModel.nextChapter()
@@ -286,9 +300,9 @@ fun ReaderScreen(
                 }
             }
             // 上一章切换完成后跳到其末页
-            LaunchedEffect(pages) {
-                if (pendingJumpToEnd && pages.isNotEmpty()) {
-                    pagerState.scrollToPage(pages.lastIndex)
+            LaunchedEffect(pages.value) {
+                if (pendingJumpToEnd && pages.value.isNotEmpty()) {
+                    pagerState.scrollToPage(pages.value.lastIndex)
                     pendingJumpToEnd = false
                 }
             }
@@ -315,8 +329,8 @@ fun ReaderScreen(
                     }
                 }
 
-                state.settings.pageMode == ReaderSettings.MODE_COVER -> {
-                    if (pages.isEmpty()) {
+                state.settings.pageMode == ReaderSettings.MODE_COVER && !paginationFailed -> {
+                    if (pages.value.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
                         }
@@ -343,7 +357,7 @@ fun ReaderScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = pages.getOrElse(pageIndex) { "" },
+                                    text = pages.value.getOrElse(pageIndex) { "" },
                                     fontSize = state.settings.fontSize.sp,
                                     lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
                                     color = theme.text,
@@ -360,7 +374,7 @@ fun ReaderScreen(
                                         color = theme.text.copy(alpha = 0.45f),
                                     )
                                     Text(
-                                        text = "${pageIndex + 1}/${pages.size}",
+                                        text = "${pageIndex + 1}/${pages.value.size}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = theme.text.copy(alpha = 0.45f),
                                     )
@@ -433,80 +447,56 @@ fun ReaderScreen(
                 }
             }
 
-            // ── 菜单层 ──
-            if (state.menuVisible) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // 顶栏
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.TopCenter)
-                            .background(OverlayBg)
-                            .statusBarsPadding()
-                            .padding(horizontal = 4.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
-                                tint = OverlayText,
-                            )
-                        }
-                        Text(
-                            text = state.bookName.ifBlank { "阅读" },
-                            style = MaterialTheme.typography.titleMedium,
-                            color = OverlayText,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-                        if (state.totalChapters > 0) {
-                            Text(
-                                text = "${state.currentIndex + 1}/${state.totalChapters}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OverlayText.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(end = 12.dp),
-                            )
-                        }
-                    }
+            // ── 菜单层（圆角浮动卡片 + 图标按钮 + 进出动画）──
+            Box(modifier = Modifier.fillMaxSize()) {
+                AnimatedVisibility(
+                    visible = state.menuVisible,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 12.dp),
+                    enter = fadeIn(animationSpec = tween(220)) +
+                        slideInVertically(
+                            initialOffsetY = { -it },
+                            animationSpec = tween(260, easing = FastOutSlowInEasing),
+                        ),
+                    exit = fadeOut(animationSpec = tween(180)) +
+                        slideOutVertically(
+                            targetOffsetY = { -it },
+                            animationSpec = tween(200, easing = FastOutSlowInEasing),
+                        ),
+                ) {
+                    ReaderTopBar(
+                        bookName = state.bookName,
+                        chapterProgress = if (state.totalChapters > 0)
+                            "${state.currentIndex + 1}/${state.totalChapters}" else "",
+                        onBack = onBack,
+                    )
+                }
 
-                    // 底栏
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .background(OverlayBg)
-                            .navigationBarsPadding()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        TextButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Text("目录", color = OverlayText)
-                        }
-                        TextButton(
-                            onClick = { viewModel.prevChapter() },
-                            enabled = state.prevChapterId != null,
-                        ) {
-                            Text(
-                                "上一章",
-                                color = if (state.prevChapterId != null) OverlayText else OverlayTextDim,
-                            )
-                        }
-                        TextButton(onClick = { viewModel.showSettings() }) {
-                            Text("设置", color = OverlayText)
-                        }
-                        TextButton(
-                            onClick = { viewModel.nextChapter() },
-                            enabled = state.nextChapterId != null,
-                        ) {
-                            Text(
-                                "下一章",
-                                color = if (state.nextChapterId != null) OverlayText else OverlayTextDim,
-                            )
-                        }
-                    }
+                AnimatedVisibility(
+                    visible = state.menuVisible,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 12.dp),
+                    enter = fadeIn(animationSpec = tween(220)) +
+                        slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(260, easing = FastOutSlowInEasing),
+                        ),
+                    exit = fadeOut(animationSpec = tween(180)) +
+                        slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(200, easing = FastOutSlowInEasing),
+                        ),
+                ) {
+                    ReaderBottomBar(
+                        hasPrev = state.prevChapterId != null,
+                        hasNext = state.nextChapterId != null,
+                        onToc = { scope.launch { drawerState.open() } },
+                        onPrev = { viewModel.prevChapter() },
+                        onSettings = { viewModel.showSettings() },
+                        onNext = { viewModel.nextChapter() },
+                    )
                 }
             }
 

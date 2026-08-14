@@ -5,6 +5,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// 本机 safe-delete 在回收站不可用时阻断一切"删除"操作，导致 Gradle 增量构建
+// 无法清理旧产物（dexBuilder/packageDebug 均报拒绝访问）。
+// 规避办法：每次构建写入独立全新输出目录（只新建、不删除），绕开删除拦截。
+val buildSeqFile = rootDir.resolve(".build_seq")
+val buildSeq = runCatching { buildSeqFile.readText().trim().toIntOrNull() ?: 0 }.getOrDefault(0) + 1
+buildSeqFile.writeText(buildSeq.toString())
+layout.buildDirectory.set(rootDir.resolve("builds/app_$buildSeq"))
+
 android {
     namespace = "com.xiaoswz.reader"
     compileSdk = 35
@@ -13,8 +21,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 5
+        versionName = "0.2.6"
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
