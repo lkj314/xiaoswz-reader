@@ -1,6 +1,6 @@
 {
-  "versionCode": 39,
-  "versionName": "0.6.2",
-  "apkUrl": "https://xiaoswz-reader-backend.vercel.app/surf-reader-0.6.2.apk",
-  "notes": "默认更新源切云端：App 内「应用更新」默认指向 Vercel 独立项目 xiaoswz-reader-backend（与主站 xiaoswz 物理隔离），APK 通过 public/ CDN 托管，4G/任意网络可直连。局域网本目录保留为兜底（仅当手机与 192.168.2.4 同网时可用）。0.6.2 功能未变动，仅更新通道升级。"
+  "versionCode": 40,
+  "versionName": "0.6.3",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/latest/download/surf-reader-0.6.3.apk",
+  "notes": "0.6.3 更新通道迁 GitHub：version.json 经 raw.githubusercontent.com 读取，APK 经 GitHub Releases latest CDN 下载；绕开 *.vercel.app 域名 DNS 污染。设置页输入框默认改为 raw 地址，APK 文件名按版本号自动匹配 releases 资产。"
 }

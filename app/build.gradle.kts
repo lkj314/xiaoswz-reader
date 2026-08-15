@@ -22,15 +22,15 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 39
-        versionName = "0.6.2" // 默认更新源切云端（Vercel 独立项目 public/version.json + APK），局域网仍可手填
+        versionCode = 40
+        versionName = "0.6.3" // 0.6.3 更新通道迁 GitHub raw + releases/latest，绕开 *.vercel.app 域名污染
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
         // 冲浪阅读专属后端（独立 Vercel 项目 + 独立 Neon 数据库 chonglang，与主站 xiaoswz 物理隔离）
         buildConfigField("String", "BACKEND_BASE_URL", "\"https://xiaoswz-reader-backend.vercel.app\"")
-        // 应用更新服务器（云端优先；局域网地址仍可手填兜底）
-        buildConfigField("String", "DEFAULT_UPDATE_SERVER", "\"https://xiaoswz-reader-backend.vercel.app\"")
+        // 应用更新服务器：云端走 GitHub raw（绕开 Vercel 域名污染）；局域网地址仍可手填兜底
+        buildConfigField("String", "DEFAULT_UPDATE_SERVER", "\"https://raw.githubusercontent.com/lkj314/xiaoswz-reader/main/lan-update\"")
     }
 
     // 测试构建：release 复用 AGP 默认 debug 密钥库（~/.android/debug.keystore）签名，
