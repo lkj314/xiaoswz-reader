@@ -45,6 +45,8 @@ class SyncRepository(context: Context) {
     suspend fun syncIfNeeded() {
         try {
             if (!appSettings.getAutoSync()) return
+            // 云同步仅对已登录账号开放；游客直接跳过，不触发任何网络请求
+            if (appSettings.getAuthToken().isNullOrBlank()) return
             val last = appSettings.getLastSyncAt()
             if (System.currentTimeMillis() - last < SYNC_INTERVAL_MS) return
             syncNow()
@@ -55,9 +57,14 @@ class SyncRepository(context: Context) {
 
     /**
      * 执行一次完整同步（离线安全）。
-     * 流程：确保设备ID → 设后端地址/设备头 → 匿名登录 → 拉取云端合并 → 推送本地全量+删除传播 → 记录时间。
+     * 流程：确保设备ID → 设后端地址/设备头（Bearer 已注入）→ 拉取云端合并 → 推送本地全量+删除传播 → 记录时间。
+     * 游客（无 token）直接失败，提示先登录。
      */
     suspend fun syncNow(): Result<SyncResult> {
+        // 云同步需登录账号（user / admin）；游客不可使用
+        if (appSettings.getAuthToken().isNullOrBlank()) {
+            return Result.failure(SecurityException("请先登录后再使用云同步"))
+        }
         return try {
             val deviceId = appSettings.getDeviceId()
             BackendClient.setDeviceId(deviceId)

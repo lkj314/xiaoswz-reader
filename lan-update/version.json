@@ -1,6 +1,6 @@
 {
-  "versionCode": 43,
-  "versionName": "0.6.6",
-  "apkUrl": "https://raw.githubusercontent.com/lkj314/xiaoswz-reader/main/lan-update/surf-reader-0.6.6.apk",
-  "notes": "0.6.6「流量平台基础」正式发布版（云端后端）。冲浪阅读专属独立后端（与主站物理隔离、书源仅主站单源）落地 P1/P2/P3 并上云：\n【P1 书库发现】书城新增「🔥 热榜」「🎫 月票榜」（popularity/monthly/rating/new 四类）；\n【P2 互动】详情页月票（每设备每日 5 票、纯免费无充值）、5 星评分（可改评、实时重算均分）、评论与楼中楼、评论点赞、评论举报（基础风控：敏感词脱敏 + 举报计数，先放后审）；\n【P3 商业化】详情页广告栏位（自有交叉推书 cross_promo 优先，无配置回退内置推书卡，第三方广告位预留），并打通曝光/点击上报与来源归因（均匿名、靠 deviceId）。\n全部后端调用 runCatching 降级，后端不可达不崩 UI。后端默认指向云端 https://xiaoswz-reader-backend.vercel.app。"
+  "versionCode": 46,
+  "versionName": "0.6.9",
+  "apkUrl": "https://raw.githubusercontent.com/lkj314/xiaoswz-reader/main/lan-update/surf-reader-0.6.9.apk",
+  "notes": "0.6.9「体验与后台入口」：评分互动卡新增「查看评论(N)」按钮一键滚动到评论区；管理员 youe@163.com 登录后设置页出现「管理后台」入口跳转 /admin。独立后端、主站单源、物理隔离不变。"
 }

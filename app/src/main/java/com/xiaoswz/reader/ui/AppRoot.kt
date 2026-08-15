@@ -61,10 +61,12 @@ import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.api.ApiClient
 import com.xiaoswz.reader.data.api.BackendClient
 import com.xiaoswz.reader.data.sync.SyncRepository
+import com.xiaoswz.reader.data.auth.AuthRepository
 import com.xiaoswz.reader.ui.bookstore.BookstoreScreen
 import com.xiaoswz.reader.ui.detail.BookDetailScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
+import com.xiaoswz.reader.ui.settings.AccountScreen
 import com.xiaoswz.reader.ui.bookshelf.BookshelfScreen
 import com.xiaoswz.reader.ui.theme.SurfReaderTheme
 import com.xiaoswz.reader.ui.components.WhaleBackground
@@ -79,6 +81,7 @@ object Routes {
     const val BOOKSTORE = "bookstore"
     const val BOOKSHELF = "bookshelf"
     const val SETTINGS = "settings"
+    const val ACCOUNT = "account"
     const val DETAIL = "detail/{slug}"
     const val READER = "reader/{bookSlug}/{chapterId}"
 
@@ -151,6 +154,10 @@ fun AppRoot() {
         // 与云同步解耦（同步可能被节流跳过，但互动调用不应等同步）。
         BackendClient.setDeviceId(appSettings.getDeviceId())
         BackendClient.setBaseUrl(appSettings.getBackendBaseUrl())
+        // 恢复登录态（Bearer 令牌注入）+ 刷新角色 / 禁言状态；
+        // 失败静默，绝不阻塞本地阅读。
+        AuthRepository.applyStoredToken()
+        AuthRepository.refreshSession()
         // 启动节流云同步（离线优先，不阻塞 UI；后端未启动也不影响本地使用）
         SyncRepository(context.applicationContext).syncIfNeeded()
     }
@@ -228,7 +235,14 @@ private fun AppShell() {
                 }
 
                 composable(Routes.SETTINGS) {
-                    SettingsScreen(onBack = { navController.popBackStack() })
+                    SettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        onAccountClick = { navController.navigate(Routes.ACCOUNT) },
+                    )
+                }
+
+                composable(Routes.ACCOUNT) {
+                    AccountScreen(onBack = { navController.popBackStack() })
                 }
 
                 composable(
@@ -247,6 +261,7 @@ private fun AppShell() {
                             navController.navigate(Routes.reader(slug, chapterId))
                         },
                         onBookClick = { s -> navController.navigate(Routes.detail(s)) },
+                        onAccountClick = { navController.navigate(Routes.ACCOUNT) },
                     )
                 }
 

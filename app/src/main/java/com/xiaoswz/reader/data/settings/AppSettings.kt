@@ -35,6 +35,12 @@ class AppSettingsRepository(private val context: Context) {
         val AUTO_SYNC = booleanPreferencesKey("auto_sync") // 启动时自动同步
         // 上次同步推送到云端的书架 slug 集合（用于检测本地删除并传播到云端）
         val SYNCED_SLUGS = stringPreferencesKey("synced_slugs")
+        // ── 登录账号（user / admin）── 游客（guest）不写这些键
+        val AUTH_TOKEN = stringPreferencesKey("auth_token")
+        val ACCOUNT_ID = stringPreferencesKey("account_id")
+        val ACCOUNT_EMAIL = stringPreferencesKey("account_email")
+        val ACCOUNT_ROLE = stringPreferencesKey("account_role") // guest / user / admin
+        val ACCOUNT_MUTED_UNTIL = longPreferencesKey("account_muted_until") // 禁言到期时间戳，0=未禁言
     }
 
     val themeModeFlow: Flow<Int> = context.appSettingsStore.data.map { prefs ->
@@ -114,5 +120,63 @@ class AppSettingsRepository(private val context: Context) {
 
     suspend fun setSyncedSlugs(set: Set<String>) {
         context.appSettingsStore.edit { it[Keys.SYNCED_SLUGS] = set.joinToString("\n") }
+    }
+
+    // ── 登录账号 ──
+    /** 当前登录令牌；游客为 null */
+    suspend fun getAuthToken(): String? =
+        context.appSettingsStore.data.first()[Keys.AUTH_TOKEN]
+
+    /** 当前账号角色；默认 guest */
+    suspend fun getAccountRole(): String =
+        context.appSettingsStore.data.first()[Keys.ACCOUNT_ROLE] ?: "guest"
+
+    /** 是否登录态（user / admin 视为已登录） */
+    suspend fun isLoggedIn(): Boolean = getAccountRole() != "guest"
+
+    /** 禁言到期时间戳（毫秒）；0 表示未禁言 */
+    suspend fun getAccountMutedUntil(): Long =
+        context.appSettingsStore.data.first()[Keys.ACCOUNT_MUTED_UNTIL] ?: 0L
+
+    suspend fun isMuted(): Boolean = getAccountMutedUntil() > System.currentTimeMillis()
+
+    /** 登录成功后持久化账号信息（token 注入到 BackendClient 由调用方负责） */
+    suspend fun saveAccount(
+        token: String,
+        id: String,
+        email: String,
+        role: String,
+        mutedUntil: Long = 0L,
+    ) {
+        context.appSettingsStore.edit {
+            it[Keys.AUTH_TOKEN] = token
+            it[Keys.ACCOUNT_ID] = id
+            it[Keys.ACCOUNT_EMAIL] = email
+            it[Keys.ACCOUNT_ROLE] = role
+            it[Keys.ACCOUNT_MUTED_UNTIL] = mutedUntil
+        }
+    }
+
+    /** 登出：清除全部账号键（令牌与身份回落匿名设备账号） */
+    suspend fun clearAccount() {
+        context.appSettingsStore.edit {
+            it.remove(Keys.AUTH_TOKEN)
+            it.remove(Keys.ACCOUNT_ID)
+            it.remove(Keys.ACCOUNT_EMAIL)
+            it.remove(Keys.ACCOUNT_ROLE)
+            it.remove(Keys.ACCOUNT_MUTED_UNTIL)
+        }
+    }
+
+    val isLoggedInFlow: Flow<Boolean> = context.appSettingsStore.data.map {
+        (it[Keys.ACCOUNT_ROLE] ?: "guest") != "guest"
+    }
+
+    val accountRoleFlow: Flow<String> = context.appSettingsStore.data.map {
+        it[Keys.ACCOUNT_ROLE] ?: "guest"
+    }
+
+    val accountEmailFlow: Flow<String?> = context.appSettingsStore.data.map {
+        it[Keys.ACCOUNT_EMAIL]
     }
 }

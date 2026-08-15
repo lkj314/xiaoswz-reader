@@ -3,18 +3,22 @@ package com.xiaoswz.reader.ui.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xiaoswz.reader.data.BookRepository
+import com.xiaoswz.reader.data.AppContext
 import com.xiaoswz.reader.data.backend.BackendRepository
 import com.xiaoswz.reader.data.model.BookDetailDto
+import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.api.AdCreativeDto
 import com.xiaoswz.reader.data.api.BookStatsResponse
 import com.xiaoswz.reader.data.api.CommentItem
 import com.xiaoswz.reader.data.api.RatingResponse
 import com.xiaoswz.reader.data.api.VoteBalance
+import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 data class DetailUiState(
     val detail: BookDetailDto? = null,
@@ -57,8 +61,12 @@ class BookDetailViewModel(
     /** 拉取后端互动数据 + 上报浏览（后端不可达时静默失败，不阻塞阅读） */
     private fun loadBackend(slug: String, detail: BookDetailDto) {
         viewModelScope.launch {
-            // 上报浏览（仅传 http(s) 封面，遵守封面不存 data: URI 铁律）
-            val cover = detail.coverUrl?.takeIf { it.startsWith("http") }
+            // 上报浏览：先用 resolveCoverUrl 把书源返回的相对/协议相对封面解析成绝对
+            // http 地址再上报，否则 book_stats.coverUrl 永远为 null → 排行榜看不到封面。
+            // 遵守"封面绝不存 data: URI"铁律：data: 经 resolveCoverUrl 会返回 ByteBuffer
+            // （非 String），这里 as? String 自动过滤掉，不会误存。
+            val resolvedCover = resolveCoverUrl(detail.coverUrl)
+            val cover = (resolvedCover as? String)?.takeIf { it.startsWith("http") }
             BackendRepository.reportBookView(slug, detail.name, detail.author, cover)
 
             // 并行拉取展示数据
@@ -122,6 +130,18 @@ class BookDetailViewModel(
         val text = content.trim()
         if (text.isEmpty()) return
         viewModelScope.launch {
+            // 登录门禁：评论仅对 user / admin 开放；游客引导登录，禁言用户拦截
+            val appSettings = AppSettingsRepository(AppContext.app)
+            when (appSettings.getAccountRole()) {
+                "guest" -> {
+                    _uiState.update { it.copy(toast = "请先登录后再评论") }
+                    return@launch
+                }
+            }
+            if (appSettings.isMuted()) {
+                _uiState.update { it.copy(toast = "您已被禁言，暂时无法评论") }
+                return@launch
+            }
             val res = BackendRepository.postComment(slug, text)
             if (res.isSuccess) {
                 val comments = BackendRepository.getComments(slug).getOrNull()
@@ -135,7 +155,16 @@ class BookDetailViewModel(
                     )
                 }
             } else {
-                _uiState.update { it.copy(toast = "评论失败，后端未连接") }
+                // 区分后端明确拒绝（403 禁言 / 登录失效）与网络不可达
+                val msg = when (val t = res.exceptionOrNull()) {
+                    is retrofit2.HttpException -> when (t.code()) {
+                        403 -> "您已被禁言，暂时无法评论"
+                        401 -> "登录已失效，请重新登录"
+                        else -> "评论失败，请稍后重试"
+                    }
+                    else -> "评论失败，后端未连接"
+                }
+                _uiState.update { it.copy(toast = msg) }
             }
         }
     }

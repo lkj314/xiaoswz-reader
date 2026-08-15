@@ -32,6 +32,18 @@ interface BackendApi {
     @POST("api/auth/anon")
     suspend fun anonLogin(@Body body: DeviceIdBody): AnonResponse
 
+    /** 邮箱注册 / 升级本机匿名账号（带 deviceId 时自动绑定书架与进度） */
+    @POST("api/auth/register")
+    suspend fun register(@Body body: AuthRegisterBody): AuthResponse
+
+    /** 邮箱 + 密码登录（用户 / 管理员共用入口） */
+    @POST("api/auth/login")
+    suspend fun login(@Body body: AuthLoginBody): AuthResponse
+
+    /** 当前登录身份（Bearer 鉴权；用于刷新角色 / 禁言状态） */
+    @GET("api/auth/me")
+    suspend fun me(): AuthMeResponse
+
     /** 云端拉取：一次取回该用户全部（或 since 以来变更的）书架与进度 */
     @GET("api/sync")
     suspend fun pullSync(@Query("since") since: Long? = null): SyncResponse
@@ -163,7 +175,36 @@ data class BookIdBody(val bookSourceId: String, val bookId: String)
 data class BackendUser(val id: String, val deviceId: String? = null)
 
 @Serializable
-data class AnonResponse(val user: BackendUser)
+data class AnonResponse(val token: String = "", val user: BackendUser)
+
+// ── 登录账号（user / admin）──
+@Serializable
+data class AuthRegisterBody(val email: String, val password: String, val deviceId: String? = null)
+
+@Serializable
+data class AuthLoginBody(val email: String, val password: String)
+
+@Serializable
+data class AuthResponse(val token: String, val user: AuthUser)
+
+@Serializable
+data class AuthUser(
+    val id: String,
+    val email: String? = null,
+    val role: String = "guest",
+    val displayName: String? = null,
+    val deviceId: String? = null,
+)
+
+@Serializable
+data class AuthMeResponse(
+    val id: String,
+    val email: String? = null,
+    val role: String = "guest",
+    val displayName: String? = null,
+    val deviceId: String? = null,
+    val mutedUntil: Long? = null,
+)
 
 @Serializable
 data class BookshelfDto(
@@ -212,8 +253,16 @@ object BackendClient {
     /** 设备 ID（来自 DataStore），注入到每个请求的 x-device-id 头 */
     private val deviceId = AtomicReference<String?>(null)
 
+    /** 登录后的 JWT；非空时注入 Authorization: Bearer 头（优先级高于 x-device-id） */
+    private val authToken = AtomicReference<String?>(null)
+
     fun setDeviceId(id: String) {
         deviceId.set(id)
+    }
+
+    /** 写入 / 清除登录令牌。传入 null 即登出态（后续请求回落到匿名设备身份） */
+    fun setAuthToken(token: String?) {
+        authToken.set(token)
     }
 
     fun setBaseUrl(url: String) {
@@ -231,11 +280,11 @@ object BackendClient {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .addInterceptor { chain ->
-                // 注入设备身份头；后端据此解析匿名用户
-                val req = chain.request().newBuilder()
+                // 注入设备身份头（匿名兜底）；已登录时额外带 Bearer，后端据此解析用户账号
+                val reqBuilder = chain.request().newBuilder()
                     .addHeader("x-device-id", deviceId.get() ?: "")
-                    .build()
-                chain.proceed(req)
+                authToken.get()?.let { reqBuilder.addHeader("Authorization", "Bearer $it") }
+                chain.proceed(reqBuilder.build())
             }
             .addInterceptor(
                 HttpLoggingInterceptor().apply {
@@ -300,7 +349,10 @@ data class LeaderboardEntry(
     val bookSourceId: String,
     val bookId: String,
     val title: String? = null,
+    /** 绝对 http(s) 封面，可缓存；主站 data: 在响应里会走 coverDataUri 而不是这个字段 */
     val coverUrl: String? = null,
+    /** 主站内嵌 data:image/...;base64 封面的临时回退（不入 book_stats，仅响应级） */
+    val coverDataUri: String? = null,
     val metric: Double = 0.0,
 )
 

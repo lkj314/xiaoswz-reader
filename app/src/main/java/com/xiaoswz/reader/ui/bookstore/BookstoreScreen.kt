@@ -709,7 +709,7 @@ private fun LeaderboardRow(
             key = { "${it.bookSourceId}:${it.bookId}" },
         ) { e ->
             BookCoverCard(
-                coverUrl = e.coverUrl,
+                coverUrl = e.coverUrl ?: e.coverDataUri,
                 title = e.title ?: "未知",
                 author = null,
                 wordCount = null,

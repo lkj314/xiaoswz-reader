@@ -1,6 +1,7 @@
 package com.xiaoswz.reader.ui.settings
 
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -78,17 +81,27 @@ import com.xiaoswz.reader.data.settings.AppThemeMode
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.data.sync.SyncRepository
+import com.xiaoswz.reader.data.auth.AuthRepository
 import com.xiaoswz.reader.ui.update.UpdateDialog
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onAccountClick: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repo = remember { ReaderSettingsRepository(context.applicationContext) }
     val appSettings = remember { AppSettingsRepository(context.applicationContext) }
+
+    val isLoggedIn by appSettings.isLoggedInFlow.collectAsState(initial = false)
+    val accountEmail by appSettings.accountEmailFlow.collectAsState(initial = null)
+    val accountRole by appSettings.accountRoleFlow.collectAsState(initial = "guest")
+    val roleLabel = when (accountRole) {
+        "admin" -> "管理员"
+        "user" -> "用户"
+        else -> "游客"
+    }
 
     var updateServerUrl by remember { mutableStateOf(BuildConfig.DEFAULT_UPDATE_SERVER) }
     var serverSaved by remember { mutableStateOf(false) }
@@ -96,6 +109,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     var showCrashDialog by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateAutoCheck by remember { mutableStateOf(false) }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
     val syncRepo = remember { SyncRepository(context.applicationContext) }
     var lastSyncAt by remember { mutableStateOf(0L) }
@@ -161,6 +175,27 @@ fun SettingsScreen(onBack: () -> Unit) {
         )
     }
 
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutConfirm = false
+                        scope.launch {
+                            AuthRepository.logout()
+                        }
+                    },
+                ) { Text("退出") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) { Text("取消") }
+            },
+            title = { Text("退出登录") },
+            text = { Text("退出后本机将回落为游客身份，书架与进度仍保留在本地；云同步需重新登录。") },
+        )
+    }
+
     Scaffold(
         topBar = {
             AppTopBar(
@@ -211,6 +246,54 @@ fun SettingsScreen(onBack: () -> Unit) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 2.dp),
                         )
+                    }
+                }
+            }
+
+            // ── 账号（guest / user / admin）──
+            val accountSubtitle = if (isLoggedIn) {
+                "已登录：${accountEmail ?: ""}（${roleLabel}）"
+            } else {
+                "登录后解锁评论与跨设备云同步（书架 / 进度备份）"
+            }
+            SettingsCard(
+                icon = Icons.Default.Person,
+                title = if (isLoggedIn) "账号" else "登录账号",
+                subtitle = accountSubtitle,
+            ) {
+                if (isLoggedIn) {
+                    Button(
+                        onClick = { showLogoutConfirm = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("退出登录")
+                    }
+                    // 管理员专属入口：登录为 admin 时显示，点击跳转 Web 管理后台
+                    if (accountRole == "admin") {
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val base = appSettings.getBackendBaseUrl().removeSuffix("/")
+                                    val intent = Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("$base/admin"),
+                                    )
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    context.startActivity(intent)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("管理后台")
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onAccountClick,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("登录 / 注册")
                     }
                 }
             }
@@ -314,11 +397,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
 
-            // ── 云同步（冲浪阅读专属后端）──
+            // ── 云同步（冲浪阅读专属后端，需登录）──
             SettingsCard(
                 icon = Icons.Default.Cloud,
                 title = "云同步",
-                subtitle = "书架与阅读进度备份到后端（当前局域网）。换机/重装需用同一设备才恢复，跨设备恢复需绑定账号（后续版本）。离线也能读，联网后自动同步。",
+                subtitle = "登录账号后备份书架与阅读进度到云端，支持跨设备恢复；离线也能读，联网后自动同步。游客暂不可用。",
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -326,55 +409,70 @@ fun SettingsScreen(onBack: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text(
-                        if (lastSyncAt == 0L) "上次同步：从未" else "上次同步：${formatSyncTime(lastSyncAt)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text("启动时自动同步", style = MaterialTheme.typography.bodyMedium)
-                        Switch(
-                            checked = autoSync,
-                            onCheckedChange = {
-                                autoSync = it
-                                scope.launch { appSettings.setAutoSync(it) }
-                            },
-                        )
-                    }
-                    Button(
-                        onClick = {
-                            syncing = true
-                            syncMsg = null
-                            scope.launch {
-                                val res = syncRepo.syncNow()
-                                syncing = false
-                                lastSyncAt = appSettings.lastSyncAtFlow.first()
-                                syncMsg = if (res.isSuccess) {
-                                    "同步成功 ✓（书架 ${res.getOrNull()?.bookshelfCount ?: 0}）"
-                                } else {
-                                    "同步失败：后端未启动或网络不可达"
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !syncing,
-                    ) {
-                        Text(if (syncing) "同步中…" else "立即同步")
-                    }
-                    syncMsg?.let {
+                    if (isLoggedIn) {
                         Text(
-                            it,
+                            if (lastSyncAt == 0L) "上次同步：从未" else "上次同步：${formatSyncTime(lastSyncAt)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (it.contains("成功")) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("启动时自动同步", style = MaterialTheme.typography.bodyMedium)
+                            Switch(
+                                checked = autoSync,
+                                onCheckedChange = {
+                                    autoSync = it
+                                    scope.launch { appSettings.setAutoSync(it) }
+                                },
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                syncing = true
+                                syncMsg = null
+                                scope.launch {
+                                    val res = syncRepo.syncNow()
+                                    syncing = false
+                                    lastSyncAt = appSettings.lastSyncAtFlow.first()
+                                    syncMsg = if (res.isSuccess) {
+                                        "同步成功 ✓（书架 ${res.getOrNull()?.bookshelfCount ?: 0}）"
+                                    } else {
+                                        res.exceptionOrNull()?.message
+                                            ?: "同步失败：后端未启动或网络不可达"
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !syncing,
+                        ) {
+                            Text(if (syncing) "同步中…" else "立即同步")
+                        }
+                        syncMsg?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (it.contains("成功")) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                },
+                            )
+                        }
+                    } else {
+                        Text(
+                            "登录账号后可开启云同步：书架与阅读进度跨设备备份，换机/重装后登录同一账号即可恢复。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Button(
+                            onClick = onAccountClick,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("去登录")
+                        }
                     }
                 }
             }
