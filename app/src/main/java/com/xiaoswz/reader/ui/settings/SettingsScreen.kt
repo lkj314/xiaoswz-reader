@@ -3,6 +3,7 @@ package com.xiaoswz.reader.ui.settings
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.collectAsState
+import com.xiaoswz.reader.data.api.BackendClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -268,24 +269,48 @@ fun SettingsScreen(onBack: () -> Unit, onAccountClick: () -> Unit = {}) {
                     ) {
                         Text("退出登录")
                     }
-                    // 管理员专属入口：登录为 admin 时显示，点击跳转 Web 管理后台
+                    // 管理员专属入口：登录为 admin 时显示，点击调用 SSO 兑换接口后打开浏览器直登管理台
                     if (accountRole == "admin") {
                         Spacer(Modifier.height(10.dp))
+                        var ssoBusy by remember { mutableStateOf(false) }
+                        var ssoError by remember { mutableStateOf<String?>(null) }
                         Button(
                             onClick = {
                                 scope.launch {
+                                    ssoBusy = true
+                                    ssoError = null
                                     val base = appSettings.getBackendBaseUrl().removeSuffix("/")
-                                    val intent = Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse("$base/admin"),
-                                    )
-                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    context.startActivity(intent)
+                                    try {
+                                        val resp = BackendClient.api.exchangeAdminSso()
+                                        if (!resp.ok || resp.sso.isEmpty()) {
+                                            ssoError = "管理台凭据无效，请重新登录"
+                                            ssoBusy = false
+                                            return@launch
+                                        }
+                                        // 用浏览器打开消费端：会自动 302 → /admin 并设置 surf_admin cookie
+                                        val intent = Intent(
+                                            Intent.ACTION_VIEW,
+                                            Uri.parse("$base/api/admin/sso/consume?token=${resp.sso}"),
+                                        )
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+                                    } catch (t: Throwable) {
+                                        ssoError = "进管理台失败：${t.message ?: t.javaClass.simpleName}"
+                                    }
+                                    ssoBusy = false
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
+                            enabled = !ssoBusy,
                         ) {
-                            Text("管理后台")
+                            Text(if (ssoBusy) "正在打开管理台…" else "管理后台")
+                        }
+                        ssoError?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
                         }
                     }
                 } else {

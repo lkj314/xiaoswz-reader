@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 46
-        versionName = "0.6.9" // 0.6.9「体验与后台入口」：修复评论区在几百章书籍底部难以触达——评分互动卡新增「查看评论(N)」按钮，一键平滑滚动到底部评论区；预注册管理员 youe@163.com，设置页账号卡片在登录为管理员时显示「管理后台」按钮，点击跳转 Web 管理台 /admin。独立后端、主站单源、物理隔离不变
+        versionCode = 47
+        versionName = "0.7.0" // 0.7.0「管理台一键直达」：修复 Web 管理台客户端异常（根路径改跳 /admin/login，登录页 useSearchParams 加 Suspense，全局 app/error.tsx 兜底，Date.now() hydration 修复，adminSession 异常不再穿透）；App 管理员一键登录管理台（POST /api/admin/sso/exchange 兑 60 秒短 token → 浏览器打开 /api/admin/sso/consume 自动写 cookie 并 302 /admin，免二次登录）。独立后端、主站单源、物理隔离不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

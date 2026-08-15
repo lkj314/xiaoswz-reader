@@ -44,6 +44,10 @@ interface BackendApi {
     @GET("api/auth/me")
     suspend fun me(): AuthMeResponse
 
+    /** 管理员 SSO 兑换：拿登录 JWT 换一个 60 秒单次票据（避免长期 JWT 进浏览器 URL） */
+    @POST("api/admin/sso/exchange")
+    suspend fun exchangeAdminSso(): SsoExchangeResponse
+
     /** 云端拉取：一次取回该用户全部（或 since 以来变更的）书架与进度 */
     @GET("api/sync")
     suspend fun pullSync(@Query("since") since: Long? = null): SyncResponse
@@ -205,6 +209,9 @@ data class AuthMeResponse(
     val deviceId: String? = null,
     val mutedUntil: Long? = null,
 )
+
+@Serializable
+data class SsoExchangeResponse(val ok: Boolean = false, val sso: String = "", val ttlSec: Int = 0)
 
 @Serializable
 data class BookshelfDto(
