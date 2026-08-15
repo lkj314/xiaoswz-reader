@@ -5,16 +5,16 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Settings
@@ -34,8 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
@@ -55,6 +55,8 @@ import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
 import com.xiaoswz.reader.ui.bookshelf.BookshelfScreen
 import com.xiaoswz.reader.ui.theme.SurfReaderTheme
+import com.xiaoswz.reader.ui.components.ArtImage
+import com.xiaoswz.reader.ui.components.WhaleBackground
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -131,11 +133,11 @@ fun AppRoot() {
         shelf.repairCovers { slug -> ApiClient.api.getBookDetail(bookId = slug).coverUrl }
     }
     val themeMode by appSettings.themeModeFlow.collectAsState(initial = AppThemeMode.SYSTEM)
-    val systemDark = isSystemInDarkTheme()
+    // 品牌默认沉浸式暗色：SYSTEM 跟随改为强制暗色；用户仍可在设置中选择「浅色」
     val darkTheme = when (themeMode) {
         AppThemeMode.LIGHT -> false
         AppThemeMode.DARK -> true
-        else -> systemDark
+        else -> true
     }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { delay(1100); showSplash = false }
@@ -158,131 +160,138 @@ private fun AppShell() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute in TopLevelRoutes
+    // 阅读器保留自身独立主题背景，不叠加全局深海图
+    val showGlobalBg = currentRoute != Routes.READER
 
-    Scaffold(
-        bottomBar = {
-            AnimatedVisibility(visible = showBottomBar) {
-                NavigationBar {
-                    BottomTabs.forEach { tab ->
-                        NavigationBarItem(
-                            selected = currentRoute == tab.route,
-                            onClick = { navController.navigateTopLevel(tab.route) },
-                            icon = { Icon(tab.icon, contentDescription = null) },
-                            label = { Text(tab.label) },
-                        )
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (showGlobalBg) {
+            WhaleBackground {}
+        }
+        Scaffold(
+            containerColor = Color.Transparent,
+            bottomBar = {
+                AnimatedVisibility(visible = showBottomBar) {
+                    NavigationBar {
+                        BottomTabs.forEach { tab ->
+                            NavigationBarItem(
+                                selected = currentRoute == tab.route,
+                                onClick = { navController.navigateTopLevel(tab.route) },
+                                icon = { Icon(tab.icon, contentDescription = null) },
+                                label = { Text(tab.label) },
+                            )
+                        }
                     }
                 }
-            }
-        },
-    ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = Routes.BOOKSTORE,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-            composable(Routes.BOOKSTORE) {
-                BookstoreScreen(
-                    onBookClick = { slug -> navController.navigate(Routes.detail(slug)) },
-                )
-            }
+            },
+        ) { padding ->
+            NavHost(
+                navController = navController,
+                startDestination = Routes.BOOKSTORE,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            ) {
+                composable(Routes.BOOKSTORE) {
+                    BookstoreScreen(
+                        onBookClick = { slug -> navController.navigate(Routes.detail(slug)) },
+                    )
+                }
 
-            composable(Routes.BOOKSHELF) {
-                BookshelfScreen(
-                    onBookClick = { slug, chapterId ->
-                        navController.navigate(Routes.reader(slug, chapterId))
-                    },
-                )
-            }
+                composable(Routes.BOOKSHELF) {
+                    BookshelfScreen(
+                        onBookClick = { slug, chapterId ->
+                            navController.navigate(Routes.reader(slug, chapterId))
+                        },
+                    )
+                }
 
-            composable(Routes.SETTINGS) {
-                SettingsScreen(onBack = { navController.popBackStack() })
-            }
+                composable(Routes.SETTINGS) {
+                    SettingsScreen(onBack = { navController.popBackStack() })
+                }
 
-            composable(
-                route = Routes.DETAIL,
-                arguments = listOf(navArgument("slug") { type = NavType.StringType }),
-                enterTransition = { EnterTransitionX },
-                exitTransition = { ExitTransitionX },
-                popEnterTransition = { PopEnterTransitionX },
-                popExitTransition = { PopExitTransitionX },
-            ) { entry ->
-                val slug = entry.arguments?.getString("slug").orEmpty()
-                BookDetailScreen(
-                    slug = slug,
-                    onBack = { navController.popBackStack() },
-                    onChapterClick = { chapterId ->
-                        navController.navigate(Routes.reader(slug, chapterId))
-                    },
-                )
-            }
+                composable(
+                    route = Routes.DETAIL,
+                    arguments = listOf(navArgument("slug") { type = NavType.StringType }),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val slug = entry.arguments?.getString("slug").orEmpty()
+                    BookDetailScreen(
+                        slug = slug,
+                        onBack = { navController.popBackStack() },
+                        onChapterClick = { chapterId ->
+                            navController.navigate(Routes.reader(slug, chapterId))
+                        },
+                    )
+                }
 
-            composable(
-                route = Routes.READER,
-                arguments = listOf(
-                    navArgument("bookSlug") { type = NavType.StringType },
-                    navArgument("chapterId") { type = NavType.StringType },
-                ),
-                enterTransition = { EnterTransitionX },
-                exitTransition = { ExitTransitionX },
-                popEnterTransition = { PopEnterTransitionX },
-                popExitTransition = { PopExitTransitionX },
-            ) { entry ->
-                val bookSlug = entry.arguments?.getString("bookSlug").orEmpty()
-                val chapterId = entry.arguments?.getString("chapterId").orEmpty()
-                ReaderScreen(
-                    bookSlug = bookSlug,
-                    chapterId = chapterId,
-                    onBack = { navController.popBackStack() },
-                )
+                composable(
+                    route = Routes.READER,
+                    arguments = listOf(
+                        navArgument("bookSlug") { type = NavType.StringType },
+                        navArgument("chapterId") { type = NavType.StringType },
+                    ),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val bookSlug = entry.arguments?.getString("bookSlug").orEmpty()
+                    val chapterId = entry.arguments?.getString("chapterId").orEmpty()
+                    ReaderScreen(
+                        bookSlug = bookSlug,
+                        chapterId = chapterId,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
             }
         }
     }
 }
 
-/** 品牌闪屏：渐变背景 + 图标 + 应用名，约 1.1s 后淡出 */
+/** 品牌闪屏：B站风格 — 全屏小鲸庆祝图 + 底部品牌字标叠层 */
 @Composable
 private fun SplashScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.primaryContainer,
-                    ),
-                ),
-            ),
-        contentAlignment = Alignment.Center,
+            .background(Color.White),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+        // 全屏竖长庆祝图：填满整个启动页，ContentScale.Fit 保持比例铺满
+        ArtImage(
+            path = "character/splash_celebrate.png",
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+        )
+        // 底部品牌字标 — 叠在图片下方区域
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 48.dp),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(animationSpec = tween(700, delayMillis = 400)),
             ) {
-                Icon(
-                    imageVector = Icons.Default.AutoStories,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(RoundedCornerShape(24.dp)),
-                tint = MaterialTheme.colorScheme.onPrimary,
-            )
-            Text(
-                text = "冲浪阅读",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-            Text(
-                text = "畅读每一页",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp),
-            )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "冲浪阅读",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1E4A8A),
+                    )
+                    Text(
+                        text = "畅读每一页",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color(0xFF5B9FDA).copy(alpha = 0.85f),
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
         }
     }
 }

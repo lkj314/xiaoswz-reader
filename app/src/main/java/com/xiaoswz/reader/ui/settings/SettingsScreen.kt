@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -36,7 +39,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,12 +51,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.xiaoswz.reader.ui.components.AppTopBar
+import com.xiaoswz.reader.ui.theme.WhaleColors
+import com.xiaoswz.reader.ui.components.WhaleGlassCard
+import com.xiaoswz.reader.ui.components.whaleGlassCard
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -147,43 +155,52 @@ fun SettingsScreen(onBack: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // ── 版本信息（渐变 Hero 卡）──
-            Surface(
-                shape = MaterialTheme.shapes.large,
-                tonalElevation = 0.dp,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.primaryContainer,
+            // ── 个人资料（品牌头像 + 版本）──
+            WhaleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 品牌头像：圆形渐变背景 + 首字（Phase B 换回 avatar_circle）
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        WhaleColors.WhaleNavy,
+                                        WhaleColors.WhaleBlue,
+                                    ),
                                 ),
                             ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "冲",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
                         )
-                        .padding(20.dp),
-                ) {
-                    Text(
-                        "冲浪阅读",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                    Text(
-                        "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                    Text(
-                        "数据源：冲浪中文网 (${BuildConfig.API_BASE_URL})",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text(
+                            "冲浪阅读",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                        Text(
+                            "数据源：冲浪中文网 (${BuildConfig.API_BASE_URL})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
                 }
             }
 
@@ -358,10 +375,10 @@ private fun SettingsCard(
     content: @Composable (() -> Unit)? = null,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .whaleGlassCard(),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

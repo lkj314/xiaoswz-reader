@@ -32,7 +32,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -72,6 +72,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.data.model.BookDto
+import com.xiaoswz.reader.ui.theme.WhaleColors
 import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import com.xiaoswz.reader.data.update.UpdateManager
@@ -80,6 +81,7 @@ import com.xiaoswz.reader.ui.components.BookCoverSkeleton
 import com.xiaoswz.reader.ui.components.EmptyState
 import com.xiaoswz.reader.ui.components.SectionHeader
 import com.xiaoswz.reader.ui.components.StatusPill
+import com.xiaoswz.reader.ui.components.WhaleGlassCard
 import com.xiaoswz.reader.ui.update.UpdateDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -173,6 +175,7 @@ fun BookstoreScreen(
                 },
             )
         },
+        containerColor = WhaleColors.OceanDeep,
     ) { padding ->
         val pullState = rememberPullRefreshState(
             refreshing = state.isLoading,
@@ -191,22 +194,53 @@ fun BookstoreScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // 搜索 + 筛选（常驻顶部）
+                // ══════════════════════════════════════
+                //  HERO 卡片：ANIBUZZ Welcome 风格
+                // ══════════════════════════════════════
+                item(span = { GridItemSpan(3) }) {
+                    AnibuzzHeroCard()
+                }
+
+                // ══════════════════════════════════════
+                //  搜索栏 + 筛选标签
+                // ══════════════════════════════════════
                 item(span = { GridItemSpan(3) }) {
                     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        // 玻璃态搜索框
                         OutlinedTextField(
                             value = state.query,
                             onValueChange = viewModel::onQueryChange,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 8.dp),
-                            placeholder = { Text("搜索书名 / 简介") },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "搜索") },
+                            placeholder = {
+                                Text(
+                                    "搜索书名 / 简介",
+                                    color = WhaleColors.TextDisabled,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "搜索",
+                                    tint = WhaleColors.TextDisabled,
+                                )
+                            },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { viewModel.refresh() }),
                             shape = RoundedCornerShape(14.dp),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = WhaleColors.OceanSurface.copy(alpha = 0.6f),
+                                unfocusedContainerColor = WhaleColors.OceanSurface.copy(alpha = 0.6f),
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                cursorColor = WhaleColors.WhaleBlue,
+                                focusedTextColor = WhaleColors.TextPrimary,
+                                unfocusedTextColor = WhaleColors.TextPrimary,
+                            ),
                         )
+                        // 筛选行
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.padding(bottom = 4.dp),
@@ -221,7 +255,6 @@ fun BookstoreScreen(
                                 statusFilter = STATUS_COMPLETED
                             }
                             Spacer(Modifier.weight(1f))
-                            // 排序切换
                             FilterChip(
                                 selected = state.sort == BookstoreUiState.SORT_LATEST,
                                 onClick = { viewModel.onSortChange(BookstoreUiState.SORT_LATEST) },
@@ -237,6 +270,9 @@ fun BookstoreScreen(
                     }
                 }
 
+                // ══════════════════════════════════════
+                //  内容区域
+                // ══════════════════════════════════════
                 when {
                     state.books.isEmpty() && state.isLoading -> {
                         items(6) {
@@ -246,30 +282,18 @@ fun BookstoreScreen(
 
                     state.books.isEmpty() && state.error != null -> {
                         item(span = { GridItemSpan(3) }) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                Text(
-                                    text = state.error ?: "加载失败",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(Modifier.height(12.dp))
-                                Button(onClick = { viewModel.refresh() }) { Text("重试") }
-                            }
+                            AnibuzzErrorState(
+                                error = state.error ?: "加载失败",
+                                onRetry = { viewModel.refresh() },
+                            )
                         }
                     }
 
                     state.books.isEmpty() -> {
                         item(span = { GridItemSpan(3) }) {
-                            EmptyState(
-                                icon = Icons.Default.AutoStories,
-                                title = if (state.query.isBlank()) "暂无书籍" else "没有找到相关书籍",
-                                subtitle = if (state.query.isBlank()) "去书城收藏喜欢的书籍吧" else "换个关键词试试",
-                                modifier = Modifier.fillMaxSize(),
+                            AnibuzzEmptyState(
+                                title = if (state.query.isBlank()) "书架还没上架书哦" else "没有找到相关书籍",
+                                subtitle = if (state.query.isBlank()) "快去探索精彩的新书吧～" else "换个关键词试试",
                             )
                         }
                     }
@@ -285,7 +309,7 @@ fun BookstoreScreen(
                             }
                         }
 
-                        // 热门推荐（横向）
+                        // 热门推荐（横向滚动）
                         if (popular.isNotEmpty()) {
                             item(span = { GridItemSpan(3) }) {
                                 SectionHeader(title = "热门推荐")
@@ -339,7 +363,10 @@ fun BookstoreScreen(
                                         .padding(16.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(28.dp),
+                                        color = WhaleColors.WhaleBlue,
+                                    )
                                 }
                             }
                         }
@@ -353,7 +380,7 @@ fun BookstoreScreen(
                                         .padding(16.dp),
                                     textAlign = TextAlign.Center,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = WhaleColors.TextDisabled,
                                 )
                             }
                         }
@@ -364,8 +391,156 @@ fun BookstoreScreen(
                 refreshing = state.isLoading,
                 state = pullState,
                 modifier = Modifier.align(Alignment.TopCenter),
+                contentColor = WhaleColors.WhaleBlue,
             )
         }
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+//  ANIBUZZ 风格组件（纯 UI 框架，无角色图）
+// ══════════════════════════════════════════════════════════
+
+/** ANIBUZZ 风格 Hero 卡片：渐变深蓝背景 + 品牌文字 + CTA 按钮 */
+@Composable
+private fun AnibuzzHeroCard() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF162D42), // 深海蓝
+                        Color(0xFF1E3F5F), // 浅海蓝
+                        Color(0xFF234B6D), // 底部微亮
+                    ),
+                ),
+            )
+            .padding(24.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 左侧：文字内容区（全宽，无角色图）
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // 标签
+                Text(
+                    text = "冲浪阅读",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = WhaleColors.WhaleBlue.copy(alpha = 0.8f),
+                    letterSpacing = 2.sp,
+                )
+                Spacer(Modifier.height(16.dp))
+                // 主标题
+                Text(
+                    text = "欢迎回来",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = WhaleColors.TextPrimary,
+                )
+                Spacer(Modifier.height(8.dp))
+                // 副标题
+                Text(
+                    text = "发现属于你的下一本好书",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = WhaleColors.TextSecondary,
+                )
+                Spacer(Modifier.height(20.dp))
+                // CTA 行
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(WhaleColors.GradientButton)
+                        .clickable { /* TODO */ }
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                ) {
+                    Text(
+                        text = "开始探索",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** ANIBUZZ 风格错误状态：图标 + 文字 + 重试按钮 */
+@Composable
+private fun AnibuzzErrorState(
+    error: String,
+    onRetry: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.SystemUpdate,
+            contentDescription = null,
+            modifier = Modifier.size(56.dp),
+            tint = WhaleColors.TextDisabled,
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodyLarge,
+            color = WhaleColors.TextSecondary,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onRetry,
+            shape = RoundedCornerShape(14.dp),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = WhaleColors.CtaPrimary,
+            ),
+        ) {
+            Text("重试")
+        }
+    }
+}
+
+/** ANIBUZZ 风格空状态：图标 + 引导文字 */
+@Composable
+private fun AnibuzzEmptyState(
+    title: String,
+    subtitle: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            modifier = Modifier.size(56.dp),
+            tint = WhaleColors.TextDisabled,
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = WhaleColors.TextPrimary,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = WhaleColors.TextDisabled,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -406,7 +581,7 @@ private fun FeaturedCarousel(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .height(220.dp)
+                .height(200.dp)
                 .clip(RoundedCornerShape(20.dp)),
             pageSpacing = 12.dp,
         ) { page ->
@@ -422,6 +597,7 @@ private fun FeaturedCarousel(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
+                // 渐变遮罩
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -429,7 +605,7 @@ private fun FeaturedCarousel(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    MaterialTheme.colorScheme.scrim.copy(alpha = 0.75f),
+                                    Color(0xFF0D1B2A).copy(alpha = 0.85f),
                                 ),
                             ),
                         ),
@@ -446,14 +622,14 @@ private fun FeaturedCarousel(
                     Text(
                         text = book.title.orEmpty(),
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = Color.White,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = book.displayAuthor,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                        color = Color.White.copy(alpha = 0.8f),
                     )
                 }
             }
@@ -474,15 +650,11 @@ private fun FeaturedCarousel(
                         .size(if (selected) 18.dp else 6.dp, 6.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(
-                            if (selected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                            },
+                            if (selected) WhaleColors.WhaleBlue
+                            else WhaleColors.TextDisabled.copy(alpha = 0.4f),
                         ),
                 )
             }
         }
     }
 }
-

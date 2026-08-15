@@ -11,53 +11,65 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
-// 品牌色：海洋青（呼应"冲浪"主题），M3 Expressive 更鲜艳、对比更强
-private val OceanPrimary = Color(0xFF0E7490)
-private val OceanPrimaryLight = Color(0xFF22D3EE)
-private val OceanSecondary = Color(0xFF0891B2)
-private val OceanTertiary = Color(0xFF0D9488)
-
-private val LightColors = lightColorScheme(
-    primary = OceanPrimary,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFCFFAFE),
-    onPrimaryContainer = Color(0xFF0B3A47),
-    secondary = OceanSecondary,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFC2ECF5),
-    onSecondaryContainer = Color(0xFF06455A),
-    tertiary = OceanTertiary,
-    background = Color(0xFFF6FAFB),
-    surface = Color(0xFFFDFDFD),
-    surfaceVariant = Color(0xFFE3EDF1),
-    onSurfaceVariant = Color(0xFF45586A),
-    outline = Color(0xFFC3D3DC),
-)
+// ─────────────────────────────────────────────
+// 冲浪阅读 v2.0 主题：深海陪伴（Ocean）
+// 视觉定义见 VISUAL-SPEC-v2.0.md
+//   DARK = 沉浸深海（品牌默认）
+//   LIGHT = 日间海洋变体（保持「浅色」主题切换可用）
+// ─────────────────────────────────────────────
 
 private val DarkColors = darkColorScheme(
-    primary = OceanPrimaryLight,
-    onPrimary = Color(0xFF003844),
-    primaryContainer = Color(0xFF0B5566),
-    onPrimaryContainer = Color(0xFFA8EEF8),
-    secondary = Color(0xFF5BD0E6),
-    onSecondary = Color(0xFF003542),
-    secondaryContainer = Color(0xFF044C5C),
-    onSecondaryContainer = Color(0xFFA7E6F3),
-    tertiary = Color(0xFF4FD1C5),
-    background = Color(0xFF0A1118),
-    surface = Color(0xFF121B24),
-    surfaceVariant = Color(0xFF22303D),
-    onSurfaceVariant = Color(0xFFB6C6D2),
-    outline = Color(0xFF34444F),
+    primary = Color(0xFF5B9FDA),          // whale-blue：CTA / 选中态 / 强调
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFF1E4A8A), // whale-navy
+    onPrimaryContainer = Color(0xFFCDE4F7),
+    secondary = Color(0xFF8BB8E8),
+    onSecondary = Color(0xFF0D1B2A),
+    secondaryContainer = Color(0xFF16344A),
+    onSecondaryContainer = Color(0xFFCDE4F7),
+    tertiary = Color(0xFF4FD1A5),         // success-mint（语义强调备用）
+    onTertiary = Color(0xFF06281D),
+    background = Color(0xFF142836),       // ocean-base
+    onBackground = Color(0xFFE8F0F4),
+    surface = Color(0xFF1E3848),          // ocean-surface
+    onSurface = Color(0xFFE8F0F4),
+    surfaceVariant = Color(0xFF2A4656),   // ocean-elevated（底栏 / 浮层）
+    onSurfaceVariant = Color(0xFF9AB8C8),
+    outline = Color(0xFF3A5670),
+    outlineVariant = Color(0xFF2A4656),
+    error = Color(0xFFE8636A),
+    onError = Color(0xFFFFFFFF),
 )
 
-// 圆角形状：M3 Expressive —— 大圆角，卡片更具包裹感
+// 日间海洋变体：浅蓝白底 + 深蓝字 + whale-blue 强调，保持切换有意义
+private val LightColors = lightColorScheme(
+    primary = Color(0xFF1E4A8A),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFD6E4F2),
+    onPrimaryContainer = Color(0xFF0B2A4A),
+    secondary = Color(0xFF5B9FDA),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFE2EEF9),
+    onSecondaryContainer = Color(0xFF0B3A5C),
+    tertiary = Color(0xFF2E9E78),
+    background = Color(0xFFEAF2F7),
+    onBackground = Color(0xFF142836),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF142836),
+    surfaceVariant = Color(0xFFD6E4EE),
+    onSurfaceVariant = Color(0xFF4A6A7A),
+    outline = Color(0xFFC3D3DC),
+    error = Color(0xFFC0392B),
+    onError = Color(0xFFFFFFFF),
+)
+
+// 圆角形状：统一接入 WhaleRadius（规范第五节），大圆角更具包裹感
 private val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(10.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp),
+    extraSmall = RoundedCornerShape(WhaleRadius.XS),
+    small = RoundedCornerShape(WhaleRadius.SM),
+    medium = RoundedCornerShape(WhaleRadius.MD),
+    large = RoundedCornerShape(WhaleRadius.LG),
+    extraLarge = RoundedCornerShape(WhaleRadius.XL),
 )
 
 @Composable
@@ -73,7 +85,7 @@ fun SurfReaderTheme(
 }
 
 // ─────────────────────────────────────────────
-// 阅读器专用配色（独立于应用主题，阅读器内自行控制）
+// 阅读器专用配色（独立于应用主题，阅读器内自行控制）—— 不动
 // ─────────────────────────────────────────────
 
 object ReaderColors {

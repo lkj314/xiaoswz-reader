@@ -13,14 +13,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.bookshelf.BookEntity
@@ -48,6 +49,7 @@ import com.xiaoswz.reader.ui.components.BookCoverCard
 import com.xiaoswz.reader.ui.components.EmptyState
 import com.xiaoswz.reader.ui.components.StatusPill
 import com.xiaoswz.reader.ui.components.AppTopBar
+import com.xiaoswz.reader.ui.theme.WhaleColors
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import com.xiaoswz.reader.data.api.ApiClient
@@ -83,6 +85,7 @@ fun BookshelfScreen(
                 showLogo = true,
             )
         },
+        containerColor = WhaleColors.OceanDeep,
     ) { padding ->
         if (books.isEmpty()) {
             Box(
@@ -91,7 +94,6 @@ fun BookshelfScreen(
                     .fillMaxSize(),
             ) {
                 EmptyState(
-                    icon = Icons.Default.MenuBook,
                     title = "书架还是空的",
                     subtitle = "去书城收藏喜欢的书籍吧",
                     modifier = Modifier.fillMaxSize(),
@@ -107,6 +109,25 @@ fun BookshelfScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                // 欢迎头：ANIBUZZ 风格小卡片
+                item(span = { GridItemSpan(3) }) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 4.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(WhaleColors.OceanSurface.copy(alpha = 0.5f))
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Text(
+                            text = "欢迎回来，继续你的阅读之旅",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = WhaleColors.TextPrimary,
+                        )
+                    }
+                }
+
                 // 最近阅读大卡
                 if (hero != null) {
                     item(span = { GridItemSpan(3) }) {

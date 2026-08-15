@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "0.4.3"
+        versionCode = 31
+        versionName = "0.6.0" // 清理内页美术素材，仅保留启动页与图标
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

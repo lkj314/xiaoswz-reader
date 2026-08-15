@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -49,6 +50,9 @@ import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookEntity
 import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
 import com.xiaoswz.reader.ui.components.StatusPill
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.Icon
 import com.xiaoswz.reader.ui.components.AppTopBar
 
 private fun statusText(s: String?): String = when (s) {
@@ -113,6 +117,13 @@ fun BookDetailScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.SystemUpdate,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    )
+                    Spacer(Modifier.height(12.dp))
                     Text(
                         text = state.error ?: "加载失败",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
