@@ -22,13 +22,13 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 37
-        versionName = "0.6.0" // 后端打通：设备匿名账号 + 书架/进度云端同步（离线优先）
+        versionCode = 38
+        versionName = "0.6.1" // 后端上线 Vercel 独立项目：设备匿名账号 + 书架/进度云端同步（离线优先）
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
-        // 冲浪阅读专属后端（独立 Neon 数据库，与主站隔离）。测试构建指向局域网后端。
-        buildConfigField("String", "BACKEND_BASE_URL", "\"http://192.168.2.4:3400\"")
+        // 冲浪阅读专属后端（独立 Vercel 项目 + 独立 Neon 数据库 chonglang，与主站 xiaoswz 物理隔离）
+        buildConfigField("String", "BACKEND_BASE_URL", "\"https://xiaoswz-reader-backend.vercel.app\"")
         // 局域网更新服务器默认地址（可在 APP 内修改）
         buildConfigField("String", "DEFAULT_UPDATE_SERVER", "\"http://192.168.2.4:8765\"")
     }
