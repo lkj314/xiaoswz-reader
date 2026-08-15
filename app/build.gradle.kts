@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 32
-        versionName = "0.5.4" // iOS 浅色玻璃风：内页统一玻璃材质
+        versionCode = 33
+        versionName = "0.5.5" // 设置页小鲸头像 + 全身启动页图
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

@@ -59,6 +59,7 @@ import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.theme.WhaleColors
 import com.xiaoswz.reader.ui.components.WhaleGlassCard
 import com.xiaoswz.reader.ui.components.whaleGlassCard
+import com.xiaoswz.reader.ui.components.ArtImage
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
@@ -159,28 +160,15 @@ fun SettingsScreen(onBack: () -> Unit) {
             // ── 个人资料（品牌头像 + 版本）──
             WhaleGlassCard(modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // 品牌头像：圆形渐变背景 + 首字（Phase B 换回 avatar_circle）
-                    Box(
+                    // 品牌头像：小鲸头像（与应用图标同步）
+                    ArtImage(
+                        path = "character/avatar_circle.png",
+                        contentDescription = "冲浪阅读",
                         modifier = Modifier
                             .size(64.dp)
-                            .clip(CircleShape)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        WhaleColors.WhaleNavy,
-                                        WhaleColors.WhaleBlue,
-                                    ),
-                                ),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "冲",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-                    }
+                            .clip(CircleShape),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    )
                     Spacer(Modifier.width(14.dp))
                     Column {
                         Text(
