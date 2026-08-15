@@ -262,11 +262,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
 
-            // ── 局域网更新服务器 ──
+            // ── 应用更新（云端优先，局域网可手填兜底）──
             SettingsCard(
                 icon = Icons.Default.Cloud,
-                title = "局域网更新服务器",
-                subtitle = "电脑端下载服务地址，格式 http://IP:端口",
+                title = "应用更新",
+                subtitle = "云端更新地址（默认），也可填局域网 http://IP:端口",
             ) {
                 OutlinedTextField(
                     value = updateServerUrl,

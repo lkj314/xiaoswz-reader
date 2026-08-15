@@ -1,6 +1,6 @@
 {
-  "versionCode": 38,
-  "versionName": "0.6.1",
-  "apkUrl": "surf-reader-0.6.1.apk",
-  "notes": "M3 推进：云端同步后端已上线 Vercel 独立项目（xiaoswz-reader-backend，独立 Neon 数据库 chonglang，与主站 xiaoswz 物理隔离）。本包 BACKEND_BASE_URL 已指向 https://xiaoswz-reader-backend.vercel.app，真机无需再开本机后端即可直接云同步。功能：设备匿名账号 + 书架/进度 LWW 冲突策略（离线优先、跨设备不丢数据）；设置页「云同步」卡片（后端地址、上次同步时间、自动同步开关、立即同步）。注意：测试包使用调试密钥库签名，正式发布需换正式密钥。"
+  "versionCode": 39,
+  "versionName": "0.6.2",
+  "apkUrl": "https://xiaoswz-reader-backend.vercel.app/surf-reader-0.6.2.apk",
+  "notes": "默认更新源切云端：App 内「应用更新」默认指向 Vercel 独立项目 xiaoswz-reader-backend（与主站 xiaoswz 物理隔离），APK 通过 public/ CDN 托管，4G/任意网络可直连。局域网本目录保留为兜底（仅当手机与 192.168.2.4 同网时可用）。0.6.2 功能未变动，仅更新通道升级。"
 }
