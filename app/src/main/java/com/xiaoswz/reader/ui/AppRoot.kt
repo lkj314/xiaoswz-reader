@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
@@ -64,7 +66,6 @@ import com.xiaoswz.reader.ui.settings.SettingsScreen
 import com.xiaoswz.reader.ui.bookshelf.BookshelfScreen
 import com.xiaoswz.reader.ui.theme.SurfReaderTheme
 import com.xiaoswz.reader.ui.components.WhaleBackground
-import com.xiaoswz.reader.ui.components.LiquidGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.R
 import kotlinx.coroutines.delay
@@ -262,81 +263,140 @@ private fun AppShell() {
     }
 }
 
-/** 品牌闪屏：纯 iOS 玻璃风 — 浅色渐变背景 + 悬浮玻璃卡（海浪 logo + 品牌字标），无任何角色图 */
+/** 品牌闪屏：全屏 iOS 玻璃风 — 可见渐变背景 + 纵向铺开的品牌内容（无卡片包裹） */
 @Composable
 private fun SplashScreen() {
     Box(modifier = Modifier.fillMaxSize()) {
-        // 与内页一致的浅色玻璃背景，保证启动→内页视觉连续
-        WhaleBackground {}
-        // 中央悬浮玻璃卡
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            var appeared by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { appeared = true }
-            AnimatedVisibility(
-                visible = appeared,
-                enter = fadeIn(animationSpec = tween(500)) +
-                    scaleIn(
-                        initialScale = 0.92f,
-                        animationSpec = tween(500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        // 渐变背景：比内页更饱和，确保启动页有明确的色彩存在感
+        Box(modifier = Modifier.fillMaxSize()) {
+            // 基础渐变：从浅蓝白到极浅紫灰
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFFE8F0FE), // 浅蓝（顶部）
+                                Color(0xFFF5F3FA), // 极浅紫灰（底部）
+                            ),
+                        ),
                     ),
+            )
+            // 左上光斑（蓝，更明显）
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset((-100).dp, (-120).dp)
+                    .size(420.dp)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                Color(0xFFA5C8FF).copy(alpha = 0.65f),
+                                Color(0xFFA5C8FF).copy(alpha = 0f),
+                            ),
+                        ),
+                    ),
+            )
+            // 右下光斑（薰衣草）
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset((80).dp, (100).dp)
+                    .size(460.dp)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                Color(0xFFC4B5FD).copy(alpha = 0.55f),
+                                Color(0xFFC4B5FD).copy(alpha = 0f),
+                            ),
+                        ),
+                    ),
+            )
+            // 中右光斑（薄荷）
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .offset((60).dp, (-80).dp)
+                    .size(360.dp)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                Color(0xFF9DD8C4).copy(alpha = 0.45f),
+                                Color(0xFF9DD8C4).copy(alpha = 0f),
+                            ),
+                        ),
+                    ),
+            )
+        }
+
+        // 内容区：纵向分布，撑满屏幕
+        var appeared by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { appeared = true }
+
+        AnimatedVisibility(
+            visible = appeared,
+            enter = fadeIn(animationSpec = tween(600)) +
+                scaleIn(
+                    initialScale = 0.92f,
+                    animationSpec = tween(600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                ),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
             ) {
-                LiquidGlassCard(
-                    modifier = Modifier.width(300.dp),
-                    radius = GlassTokens.RadiusXL,
-                    fillAlpha = 0.7f,
+                // 品牌徽标：大号圆形，系统蓝渐变底 + 白色海浪 logo
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .background(GlassTokens.GradientButton),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(vertical = 10.dp),
-                    ) {
-                        // 海浪 logo（系统蓝着色，置于圆形玻璃徽标内）
-                        Box(
-                            modifier = Modifier
-                                .size(84.dp)
-                                .clip(CircleShape)
-                                .background(GlassTokens.GradientButton),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.ic_surf_logo),
-                                contentDescription = null,
-                                modifier = Modifier.size(46.dp),
-                                colorFilter = ColorFilter.tint(Color.White, BlendMode.SrcIn),
-                            )
-                        }
-                        Spacer(Modifier.height(20.dp))
-                        Text(
-                            text = "冲浪阅读",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = GlassTokens.Label,
-                            letterSpacing = 2.sp,
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = "畅读每一页",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = GlassTokens.SecondaryLabel,
-                        )
-                    }
+                    Image(
+                        painter = painterResource(R.drawable.ic_surf_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        colorFilter = ColorFilter.tint(Color.White, BlendMode.SrcIn),
+                    )
                 }
+
+                Spacer(Modifier.height(32.dp))
+
+                Text(
+                    text = "冲浪阅读",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = GlassTokens.Label,
+                    letterSpacing = 3.sp,
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Text(
+                    text = "畅读每一页",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = GlassTokens.SecondaryLabel.copy(alpha = 0.75f),
+                    letterSpacing = 1.sp,
+                )
             }
         }
-        // 底部极简加载指示
+
+        // 底部加载指示条
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 64.dp),
             contentAlignment = Alignment.BottomCenter,
         ) {
             Box(
                 modifier = Modifier
-                    .padding(bottom = 56.dp)
-                    .size(width = 44.dp, height = 4.dp)
+                    .size(width = 52.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(GlassTokens.SystemBlue.copy(alpha = 0.3f)),
+                    .background(GlassTokens.SystemBlue.copy(alpha = 0.35f)),
             )
         }
     }
