@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 35
-        versionName = "0.5.7" // 启动页全屏填充修复 + 背景渐变增强
+        versionCode = 36
+        versionName = "0.5.8" // 健康治理：清理 13.9MB 死资源 + 调试日志收口 + ArtImage 命名统一
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

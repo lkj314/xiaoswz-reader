@@ -1,6 +1,6 @@
 {
-  "versionCode": 22,
-  "versionName": "0.4.3",
-  "apkUrl": "surf-reader-0.4.3.apk",
-  "notes": "0.4.3 修复书架崩溃：收藏多本书后点开书架闪退（SQLiteBlobTooBigException: Row too big to fit into CursorWindow）。根因是收藏时把主站原始 data: 封面整串（几百KB~几MB）存入 Room 的 cover_url 列，单行超出 SQLite 游标窗口上限导致查询整体崩溃。修复：① 收藏时把封面压缩成宽度<=320px 的缩略图 data URI（仅几KB~几十KB）再存；② 启动与打开书架时自动把过大的 data: 封面清空（UPDATE 不读游标窗口，书籍元信息保留不丢），并按 slug 重新拉取封面写回恢复显示。未改动 Room schema（version 1 + fallbackToDestructiveMigration，避免清空书架）。"
+  "versionCode": 36,
+  "versionName": "0.5.8",
+  "apkUrl": "surf-reader-0.5.8.apk",
+  "notes": "健康治理版：清理 13.9MB 未引用美术素材（APK 33MB→约20MB）；封面调试日志加 BuildConfig.DEBUG 守门（release 不再每封面写文件）；统一 ArtImage 命名。封面显示/书架崩溃两项关键修复完好。"
 }

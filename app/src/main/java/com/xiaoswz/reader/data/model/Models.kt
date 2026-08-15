@@ -229,6 +229,7 @@ fun shrinkCover(dataUri: String?): String? {
  * 故改用文件落地，再用 adb run-as 拉取）。仅调试，不影响正常逻辑。
  */
 private fun logCoverToFile(raw: String?, resolvedDesc: String?) {
+    if (!BuildConfig.DEBUG) return // release 包彻底关闭封面调试日志，避免每个封面都伴随一次文件 I/O
     try {
         val at = Class.forName("android.app.ActivityThread")
         val ctx = at.getMethod("currentApplication").invoke(null) as? android.content.Context
