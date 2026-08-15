@@ -8,6 +8,13 @@
 -keepclasseswithmembers class com.xiaoswz.reader.data.model.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
+# 后端 API DTO（同样用 kotlinx.serialization，release 混淆必须保留，否则 JSON 映射失败）
+-keepclassmembers class com.xiaoswz.reader.data.api.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.xiaoswz.reader.data.api.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
 
 # Retrofit / OkHttp
 -dontwarn retrofit2.**

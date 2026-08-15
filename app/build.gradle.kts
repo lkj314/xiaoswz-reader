@@ -22,15 +22,19 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 36
-        versionName = "0.5.8" // 健康治理：清理 13.9MB 死资源 + 调试日志收口 + ArtImage 命名统一
+        versionCode = 37
+        versionName = "0.6.0" // 后端打通：设备匿名账号 + 书架/进度云端同步（离线优先）
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
+        // 冲浪阅读专属后端（独立 Neon 数据库，与主站隔离）。测试构建指向局域网后端。
+        buildConfigField("String", "BACKEND_BASE_URL", "\"http://192.168.2.4:3400\"")
         // 局域网更新服务器默认地址（可在 APP 内修改）
         buildConfigField("String", "DEFAULT_UPDATE_SERVER", "\"http://192.168.2.4:8765\"")
     }
 
+    // 测试构建：release 复用 AGP 默认 debug 密钥库（~/.android/debug.keystore）签名，
+    // 确保局域网分发的 APK 可安装。⚠️ 正式发布前请替换为专属发布密钥库。
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -39,6 +43,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // 测试期用调试密钥库签名，保证可分发包可安装（生产需换正式密钥）
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

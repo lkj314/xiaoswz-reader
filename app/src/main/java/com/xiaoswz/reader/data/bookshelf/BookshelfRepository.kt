@@ -24,9 +24,20 @@ class BookshelfRepository(context: Context) {
 
     suspend fun remove(slug: String) = dao.deleteBySlug(slug)
 
+    /** 整体更新一本书（同步合并时覆盖元数据用） */
+    suspend fun update(book: BookEntity) = dao.update(book)
+
     /** 记录阅读进度：仅更新已收藏书籍，未收藏则不产生数据 */
     suspend fun updateProgress(slug: String, chapterId: String, chapterTitle: String? = null) =
         dao.updateProgress(slug, chapterId, chapterTitle, System.currentTimeMillis())
+
+    /** 带显式时间戳的阅读进度更新（云同步合并时保留远端时间，用于 LWW） */
+    suspend fun updateProgress(
+        slug: String,
+        chapterId: String,
+        chapterTitle: String? = null,
+        ts: Long,
+    ) = dao.updateProgress(slug, chapterId, chapterTitle, ts)
 
     /**
      * 一次性恢复：把过大的 data: 封面清空，避免 CursorWindow 溢出导致书架整体崩溃。

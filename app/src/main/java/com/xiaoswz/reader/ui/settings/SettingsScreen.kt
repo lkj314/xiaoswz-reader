@@ -39,6 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -76,6 +77,7 @@ import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.data.settings.AppThemeMode
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import com.xiaoswz.reader.data.settings.ReaderSettings
+import com.xiaoswz.reader.data.sync.SyncRepository
 import com.xiaoswz.reader.ui.update.UpdateDialog
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -95,6 +97,13 @@ fun SettingsScreen(onBack: () -> Unit) {
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateAutoCheck by remember { mutableStateOf(false) }
 
+    val syncRepo = remember { SyncRepository(context.applicationContext) }
+    var lastSyncAt by remember { mutableStateOf(0L) }
+    var autoSync by remember { mutableStateOf(true) }
+    var syncing by remember { mutableStateOf(false) }
+    var syncMsg by remember { mutableStateOf<String?>(null) }
+    var backendUrl by remember { mutableStateOf(BuildConfig.BACKEND_BASE_URL) }
+
     var cacheSizeText by remember { mutableStateOf(formatCacheSize(ChapterCacheManager.sizeBytes())) }
     var themeIndex by remember { mutableStateOf(ReaderSettings.THEME_DAY) }
     val themeNames = listOf("米纸日间", "护眼绿", "夜间模式", "纯黑 OLED")
@@ -105,6 +114,10 @@ fun SettingsScreen(onBack: () -> Unit) {
         updateServerUrl = s.updateServerUrl
         themeIndex = s.themeIndex
         crashLog = CrashLogger.getLog(context)
+        // 云同步状态
+        lastSyncAt = appSettings.lastSyncAtFlow.first()
+        autoSync = appSettings.autoSyncFlow.first()
+        backendUrl = appSettings.backendBaseUrlFlow.first()
     }
 
     if (showCrashDialog && crashLog != null) {
@@ -292,6 +305,71 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
 
+            // ── 云同步（冲浪阅读专属后端）──
+            SettingsCard(
+                icon = Icons.Default.Cloud,
+                title = "云同步",
+                subtitle = "书架与阅读进度备份到专属后端，换机可恢复。离线也能读，联网后自动同步。",
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "后端地址：$backendUrl",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        if (lastSyncAt == 0L) "上次同步：从未" else "上次同步：${formatSyncTime(lastSyncAt)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("启动时自动同步", style = MaterialTheme.typography.bodyMedium)
+                        Switch(
+                            checked = autoSync,
+                            onCheckedChange = {
+                                autoSync = it
+                                scope.launch { appSettings.setAutoSync(it) }
+                            },
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            syncing = true
+                            syncMsg = null
+                            scope.launch {
+                                val res = syncRepo.syncNow()
+                                syncing = false
+                                lastSyncAt = appSettings.lastSyncAtFlow.first()
+                                syncMsg = if (res.isSuccess) {
+                                    "同步成功 ✓（书架 ${res.getOrNull()?.bookshelfCount ?: 0}）"
+                                } else {
+                                    "同步失败：后端未启动或网络不可达"
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !syncing,
+                    ) {
+                        Text(if (syncing) "同步中…" else "立即同步")
+                    }
+                    syncMsg?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (it.contains("成功")) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
+                        )
+                    }
+                }
+            }
+
             // ── 离线缓存 ──
             SettingsCard(
                 icon = Icons.Default.Storage,
@@ -396,4 +474,10 @@ private fun formatCacheSize(bytes: Long): String {
     } else {
         "%.1f MB".format(bytes / 1024.0 / 1024.0)
     }
+}
+
+/** 同步时间格式化 */
+private fun formatSyncTime(ts: Long): String {
+    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.CHINA)
+    return sdf.format(java.util.Date(ts))
 }

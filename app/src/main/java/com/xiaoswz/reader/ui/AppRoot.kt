@@ -59,6 +59,7 @@ import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.data.settings.AppThemeMode
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.api.ApiClient
+import com.xiaoswz.reader.data.sync.SyncRepository
 import com.xiaoswz.reader.ui.bookstore.BookstoreScreen
 import com.xiaoswz.reader.ui.detail.BookDetailScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
@@ -143,6 +144,8 @@ fun AppRoot() {
     LaunchedEffect(Unit) {
         val shelf = BookshelfRepository(context.applicationContext)
         shelf.repairCovers { slug -> ApiClient.api.getBookDetail(bookId = slug).coverUrl }
+        // 启动节流云同步（离线优先，不阻塞 UI；后端未启动也不影响本地使用）
+        SyncRepository(context.applicationContext).syncIfNeeded()
     }
     val themeMode by appSettings.themeModeFlow.collectAsState(initial = AppThemeMode.SYSTEM)
     // v2.1 改为浅色玻璃默认：SYSTEM 跟随改为强制浅色；用户仍可在设置中选择「深色」
