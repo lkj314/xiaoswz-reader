@@ -35,7 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,6 +54,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Icon
 import com.xiaoswz.reader.ui.components.AppTopBar
+import com.xiaoswz.reader.ui.components.LiquidGlassCard
+import com.xiaoswz.reader.ui.theme.GlassTokens
 
 private fun statusText(s: String?): String = when (s) {
     "ONGOING" -> "连载中"
@@ -100,6 +102,7 @@ fun BookDetailScreen(
                 showLogo = false,
             )
         },
+        containerColor = Color.Transparent,
     ) { padding ->
         when {
             state.isLoading -> {
@@ -148,20 +151,13 @@ fun BookDetailScreen(
                 LazyColumn(
                     modifier = Modifier.padding(padding).fillMaxSize(),
                 ) {
-                    // 书籍信息头部（渐变背景）
+                    // 书籍信息头部（玻璃卡片）
                     item {
-                        Box(
+                        LiquidGlassCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            MaterialTheme.colorScheme.primaryContainer,
-                                            MaterialTheme.colorScheme.background,
-                                        ),
-                                    ),
-                                )
-                                .padding(16.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            radius = GlassTokens.RadiusLG,
                         ) {
                             Row {
                                 AsyncImage(

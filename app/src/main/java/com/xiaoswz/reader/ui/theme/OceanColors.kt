@@ -5,85 +5,76 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 /**
- * 冲浪阅读 v2.0 视觉令牌（Ocean / 深海陪伴）
+ * 冲浪阅读 v2.1 视觉令牌（iOS 原生玻璃 · 浅色）
  *
- * 来源：VISUAL-SPEC-v2.0.md
- *  - 第三节「色彩体系」精确提取的色值
- *  - 3.3「渐变配方」
- *  - 第五节「圆角与形状规范」
+ * 历史：本对象原名 WhaleColors（v2.0 深海陪伴暗色体系）。v2.1 转向 iOS 原生浅色玻璃风后，
+ * 为减少跨文件重构，保留对象名与旧属性名（OceanDeep / OceanSurface / WhaleBlue …），
+ * 但色值全部改为浅色 iOS 对应色。新代码建议直接用 [GlassTokens] 的语义命名。
  *
- * 这些令牌不在 Material ColorScheme 内，供 Glass Card / 按钮 / 渐变背景
- * 等自定义组件直接使用。Material 能映射的色（primary/background/surface…）
- * 见 Theme.kt 的 darkColorScheme / lightColorScheme。
+ * 这些令牌不在 Material ColorScheme 内，供玻璃卡片 / 按钮 / 渐变背景等自定义组件使用。
+ * Material 能映射的色（primary/background/surface…）见 Theme.kt。
  */
 object WhaleColors {
 
-    // ── 主色组（来自小鲸服装）──
-    val WhaleNavy = Color(0xFF1E4A8A)      // 服装主色
-    val WhaleBlue = Color(0xFF5B9FDA)      // 头发渐变梢色 / CTA
-    val WhaleLightBlue = Color(0xFF8BB8E8) // 中间过渡色
+    // ── 强调色（iOS systemBlue）──
+    val SystemBlue = Color(0xFF007AFF)
+    val SystemBlueDark = Color(0xFF0A5CCC)
+    val WhaleBlue = Color(0xFF007AFF)        // 兼容旧名 → systemBlue
+    val WhaleNavy = Color(0xFF0A5CCC)        // 兼容旧名 → systemBlueDark
+    val CtaPrimary = Color(0xFF007AFF)       // 兼容旧名 → systemBlue
 
-    // ── 中性色组（深海）──
-    val OceanDeep = Color(0xFF0D1B2A)      // 最深背景
-    val OceanBase = Color(0xFF142836)      // 默认页面背景
-    val OceanSurface = Color(0xFF1E3848)   // 玻璃卡片底色
-    val OceanElevated = Color(0xFF2A4656)  // 浮层 / 底栏
+    // ── 背景（浅色）──
+    val OceanDeep = Color(0xFFF2F2F7)        // 兼容旧名 → 分组背景
+    val OceanBase = Color(0xFFF2F2F7)        // 兼容旧名 → 分组背景
+    val OceanSurface = Color(0xFFFFFFFF)     // 兼容旧名 → 卡片/表单项浅底
 
-    // ── 文字色组 ──
-    val TextPrimary = Color(0xFFE8F0F4)
-    val TextSecondary = Color(0xFF9AB8C8)
-    val TextDisabled = Color(0xFF4A6A7A)
-    val TextAccent = Color(0xFF5B9FDA)
+    // ── 文字（浅色）──
+    val TextPrimary = Color(0xFF1C1C1E)
+    val TextSecondary = Color(0xFF8E8E93)
+    val TextDisabled = Color(0xFFC7C7CC)
+    val TextAccent = Color(0xFF007AFF)
 
-    // ── 强调 / 语义色组 ──
-    val CtaPrimary = Color(0xFF5B9FDA)
-    val CtaHover = Color(0xFF7DB8F5)
-    val LoveRose = Color(0xFFE8506A)       // 收藏 / 喜欢（唯一玫瑰色场景）
-    val SuccessMint = Color(0xFF4FD1A5)    // 已读完 / 更新已读
-    val WarningGold = Color(0xFFF0C256)    // 金币 / 成就（小鲸爱金币）
-    val ErrorCoral = Color(0xFFE8636A)     // 错误 / 删除
+    // ── 语义 / 强调色（iOS 标准）──
+    val LoveRose = Color(0xFFFF3B30)
+    val SuccessMint = Color(0xFF34C759)
+    val WarningGold = Color(0xFFFFCC00)
+    val ErrorCoral = Color(0xFFFF3B30)
 
-    // ── 玻璃拟态 ──
-    val GlassSurface = Color(0xFF1E3848).copy(alpha = 0.72f) // 半透明深色表面
-    val GlassBorder = Color(0xFFFFFFFF).copy(alpha = 0.10f)  // 细边框
+    // ── 玻璃材质（浅色磨砂）──
+    val GlassSurface = Color(0xFFFFFFFF).copy(alpha = 0.62f)
+    val GlassBorder = Color(0xFFFFFFFF).copy(alpha = 0.70f)
+    val GlassHighlight = Color(0xFFFFFFFF).copy(alpha = 0.55f)
 
     // ── 渐变配方（Brush）──
-    /** Splash 背景 / 首页顶部头图渐隐：#0D1B2A → #1E4A8A */
-    val GradientSplash: Brush
-        get() = Brush.verticalGradient(listOf(OceanDeep, WhaleNavy))
+    val GradientButton: Brush
+        get() = Brush.verticalGradient(listOf(SystemBlue, SystemBlueDark))
 
-    /** 玻璃卡片背景：上深下浅半透明 */
+    val GradientBackground: Brush
+        get() = Brush.verticalGradient(
+            listOf(Color(0xFFF4F6FA), Color(0xFFEAF0F8), Color(0xFFEEF1F9)),
+        )
+
     val GradientCard: Brush
         get() = Brush.verticalGradient(
-            listOf(
-                Color(0xFF1E3848).copy(alpha = 0.90f),
-                Color(0xFF1E3848).copy(alpha = 0.60f),
-            )
+            listOf(Color(0xFFFFFFFF).copy(alpha = 0.85f), Color(0xFFFFFFFF).copy(alpha = 0.55f)),
         )
 
-    /** CTA 主按钮：#5B9FDA → #4A8EDE */
-    val GradientButton: Brush
-        get() = Brush.verticalGradient(listOf(WhaleBlue, Color(0xFF4A8EDE)))
+    val GradientSplash: Brush
+        get() = GradientButton
 
-    /** 书架顶部渐隐遮罩：透明 → 深海底色 */
     val GradientShelf: Brush
-        get() = Brush.verticalGradient(
-            listOf(Color(0x000D1B2A), Color(0xFF0D1B2A).copy(alpha = 0.95f))
-        )
+        get() = GradientBackground
 
-    /** 阅读器上下渐隐边缘 */
     val GradientReaderEdge: Brush
-        get() = Brush.verticalGradient(
-            listOf(Color(0xFF0D1B2A).copy(alpha = 0.80f), Color(0x000D1B2A))
-        )
+        get() = GradientBackground
 }
 
-/** 圆角系统（VISUAL-SPEC 第五节） */
+/** 圆角系统（沿用 v2.0 命名，值对齐 iOS 偏大圆角） */
 object WhaleRadius {
     val XS = 4.dp
-    val SM = 8.dp
-    val MD = 12.dp
-    val LG = 16.dp
-    val XL = 24.dp
+    val SM = 12.dp
+    val MD = 16.dp
+    val LG = 20.dp
+    val XL = 28.dp
     val Full = 999.dp
 }

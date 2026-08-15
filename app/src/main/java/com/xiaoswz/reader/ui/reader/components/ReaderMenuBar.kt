@@ -1,5 +1,6 @@
 package com.xiaoswz.reader.ui.reader.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -47,6 +48,7 @@ fun ReaderTopBar(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(bottomStart = MenuCardRadius, bottomEnd = MenuCardRadius),
         color = OverlayBg,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
         tonalElevation = 3.dp,
     ) {
         Row(
@@ -99,6 +101,7 @@ fun ReaderBottomBar(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = MenuCardRadius, topEnd = MenuCardRadius),
         color = OverlayBg,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
         tonalElevation = 3.dp,
     ) {
         Row(

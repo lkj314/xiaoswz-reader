@@ -22,8 +22,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -36,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,8 +46,11 @@ import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
 import com.xiaoswz.reader.ui.components.BookCoverCard
 import com.xiaoswz.reader.ui.components.EmptyState
+import com.xiaoswz.reader.ui.components.LiquidGlassCard
 import com.xiaoswz.reader.ui.components.StatusPill
 import com.xiaoswz.reader.ui.components.AppTopBar
+import com.xiaoswz.reader.ui.components.liquidGlass
+import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.theme.WhaleColors
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
@@ -85,7 +87,7 @@ fun BookshelfScreen(
                 showLogo = true,
             )
         },
-        containerColor = WhaleColors.OceanDeep,
+        containerColor = Color.Transparent,
     ) { padding ->
         if (books.isEmpty()) {
             Box(
@@ -109,21 +111,19 @@ fun BookshelfScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // 欢迎头：ANIBUZZ 风格小卡片
+                // 欢迎头：iOS 玻璃风小卡片
                 item(span = { GridItemSpan(3) }) {
-                    Box(
+                    LiquidGlassCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp, vertical = 4.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(WhaleColors.OceanSurface.copy(alpha = 0.5f))
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        radius = GlassTokens.RadiusMD,
                     ) {
                         Text(
                             text = "欢迎回来，继续你的阅读之旅",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
-                            color = WhaleColors.TextPrimary,
+                            color = GlassTokens.Label,
                         )
                     }
                 }
@@ -167,12 +167,11 @@ private fun HeroBookCard(
     hasUpdate: Boolean,
     onClick: () -> Unit,
 ) {
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        shape = RoundedCornerShape(20.dp),
+            .clickable(onClick = onClick)
+            .liquidGlass(radius = GlassTokens.RadiusLG),
     ) {
         Row(modifier = Modifier.padding(16.dp)) {
             AsyncImage(

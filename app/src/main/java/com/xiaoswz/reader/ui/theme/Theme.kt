@@ -41,25 +41,25 @@ private val DarkColors = darkColorScheme(
     onError = Color(0xFFFFFFFF),
 )
 
-// 日间海洋变体：浅蓝白底 + 深蓝字 + whale-blue 强调，保持切换有意义
+// 日间玻璃风（iOS 原生浅色）：系统蓝强调 + 近白表面 + 浅灰分组背景
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF1E4A8A),
+    primary = Color(0xFF007AFF),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFD6E4F2),
-    onPrimaryContainer = Color(0xFF0B2A4A),
+    primaryContainer = Color(0xFFE5F1FF),
+    onPrimaryContainer = Color(0xFF0A3D91),
     secondary = Color(0xFF5B9FDA),
     onSecondary = Color(0xFFFFFFFF),
     secondaryContainer = Color(0xFFE2EEF9),
     onSecondaryContainer = Color(0xFF0B3A5C),
-    tertiary = Color(0xFF2E9E78),
-    background = Color(0xFFEAF2F7),
-    onBackground = Color(0xFF142836),
+    tertiary = Color(0xFF34C759),
+    background = Color(0xFFF2F2F7),
+    onBackground = Color(0xFF1C1C1E),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF142836),
-    surfaceVariant = Color(0xFFD6E4EE),
-    onSurfaceVariant = Color(0xFF4A6A7A),
-    outline = Color(0xFFC3D3DC),
-    error = Color(0xFFC0392B),
+    onSurface = Color(0xFF1C1C1E),
+    surfaceVariant = Color(0xFFE3E8EF),
+    onSurfaceVariant = Color(0xFF8E8E93),
+    outline = Color(0xFFC7C7CC),
+    error = Color(0xFFFF3B30),
     onError = Color(0xFFFFFFFF),
 )
 

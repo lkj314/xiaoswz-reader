@@ -72,6 +72,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.data.model.BookDto
+import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.theme.WhaleColors
 import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
@@ -79,9 +80,9 @@ import com.xiaoswz.reader.data.update.UpdateManager
 import com.xiaoswz.reader.ui.components.BookCoverCard
 import com.xiaoswz.reader.ui.components.BookCoverSkeleton
 import com.xiaoswz.reader.ui.components.EmptyState
+import com.xiaoswz.reader.ui.components.LiquidGlassCard
 import com.xiaoswz.reader.ui.components.SectionHeader
 import com.xiaoswz.reader.ui.components.StatusPill
-import com.xiaoswz.reader.ui.components.WhaleGlassCard
 import com.xiaoswz.reader.ui.update.UpdateDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -163,7 +164,7 @@ fun BookstoreScreen(
                     Icon(
                         imageVector = Icons.Default.SystemUpdate,
                         contentDescription = "检查更新",
-                        tint = MaterialTheme.colorScheme.onPrimary,
+                        tint = GlassTokens.Label,
                         modifier = Modifier
                             .clickable(onClick = {
                                 updateDialogAutoCheck = false
@@ -175,7 +176,7 @@ fun BookstoreScreen(
                 },
             )
         },
-        containerColor = WhaleColors.OceanDeep,
+        containerColor = Color.Transparent,
     ) { padding ->
         val pullState = rememberPullRefreshState(
             refreshing = state.isLoading,
@@ -206,7 +207,7 @@ fun BookstoreScreen(
                 // ══════════════════════════════════════
                 item(span = { GridItemSpan(3) }) {
                     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        // 玻璃态搜索框
+                        // 玻璃态搜索框（iOS 胶囊式）
                         OutlinedTextField(
                             value = state.query,
                             onValueChange = viewModel::onQueryChange,
@@ -216,28 +217,28 @@ fun BookstoreScreen(
                             placeholder = {
                                 Text(
                                     "搜索书名 / 简介",
-                                    color = WhaleColors.TextDisabled,
+                                    color = GlassTokens.SecondaryLabel,
                                 )
                             },
                             leadingIcon = {
                                 Icon(
                                     Icons.Default.Search,
                                     contentDescription = "搜索",
-                                    tint = WhaleColors.TextDisabled,
+                                    tint = GlassTokens.SecondaryLabel,
                                 )
                             },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { viewModel.refresh() }),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(GlassTokens.RadiusPill),
                             colors = TextFieldDefaults.colors(
-                                focusedContainerColor = WhaleColors.OceanSurface.copy(alpha = 0.6f),
-                                unfocusedContainerColor = WhaleColors.OceanSurface.copy(alpha = 0.6f),
+                                focusedContainerColor = GlassTokens.GlassFillStrong,
+                                unfocusedContainerColor = GlassTokens.GlassFillStrong,
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent,
-                                cursorColor = WhaleColors.WhaleBlue,
-                                focusedTextColor = WhaleColors.TextPrimary,
-                                unfocusedTextColor = WhaleColors.TextPrimary,
+                                cursorColor = GlassTokens.SystemBlue,
+                                focusedTextColor = GlassTokens.Label,
+                                unfocusedTextColor = GlassTokens.Label,
                             ),
                         )
                         // 筛选行
@@ -401,69 +402,53 @@ fun BookstoreScreen(
 //  ANIBUZZ 风格组件（纯 UI 框架，无角色图）
 // ══════════════════════════════════════════════════════════
 
-/** ANIBUZZ 风格 Hero 卡片：渐变深蓝背景 + 品牌文字 + CTA 按钮 */
+/** iOS 玻璃风 Hero 卡片：磨砂玻璃容器 + 品牌文字 + CTA 按钮 */
 @Composable
 private fun AnibuzzHeroCard() {
-    Box(
+    LiquidGlassCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF162D42), // 深海蓝
-                        Color(0xFF1E3F5F), // 浅海蓝
-                        Color(0xFF234B6D), // 底部微亮
-                    ),
-                ),
-            )
-            .padding(24.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        radius = GlassTokens.RadiusXL,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // 左侧：文字内容区（全宽，无角色图）
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // 标签
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // 标签
+            Text(
+                text = "冲浪阅读",
+                style = MaterialTheme.typography.labelMedium,
+                color = GlassTokens.SystemBlue,
+                letterSpacing = 2.sp,
+            )
+            Spacer(Modifier.height(16.dp))
+            // 主标题
+            Text(
+                text = "欢迎回来",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = GlassTokens.Label,
+            )
+            Spacer(Modifier.height(8.dp))
+            // 副标题
+            Text(
+                text = "发现属于你的下一本好书",
+                style = MaterialTheme.typography.bodyLarge,
+                color = GlassTokens.SecondaryLabel,
+            )
+            Spacer(Modifier.height(20.dp))
+            // CTA 行
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(GlassTokens.RadiusPill))
+                    .background(GlassTokens.GradientButton)
+                    .clickable { /* TODO */ }
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+            ) {
                 Text(
-                    text = "冲浪阅读",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = WhaleColors.WhaleBlue.copy(alpha = 0.8f),
-                    letterSpacing = 2.sp,
+                    text = "开始探索",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
                 )
-                Spacer(Modifier.height(16.dp))
-                // 主标题
-                Text(
-                    text = "欢迎回来",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = WhaleColors.TextPrimary,
-                )
-                Spacer(Modifier.height(8.dp))
-                // 副标题
-                Text(
-                    text = "发现属于你的下一本好书",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = WhaleColors.TextSecondary,
-                )
-                Spacer(Modifier.height(20.dp))
-                // CTA 行
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(WhaleColors.GradientButton)
-                        .clickable { /* TODO */ }
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
-                ) {
-                    Text(
-                        text = "开始探索",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White,
-                    )
-                }
             }
         }
     }
@@ -486,7 +471,7 @@ private fun AnibuzzErrorState(
             imageVector = Icons.Default.SystemUpdate,
             contentDescription = null,
             modifier = Modifier.size(56.dp),
-            tint = WhaleColors.TextDisabled,
+            tint = GlassTokens.SecondaryLabel,
         )
         Spacer(Modifier.height(20.dp))
         Text(
@@ -525,7 +510,7 @@ private fun AnibuzzEmptyState(
             imageVector = Icons.Default.Search,
             contentDescription = null,
             modifier = Modifier.size(56.dp),
-            tint = WhaleColors.TextDisabled,
+            tint = GlassTokens.SecondaryLabel,
         )
         Spacer(Modifier.height(20.dp))
         Text(

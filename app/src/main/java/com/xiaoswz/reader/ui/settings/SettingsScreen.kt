@@ -146,6 +146,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 showLogo = false,
             )
         },
+        containerColor = Color.Transparent,
     ) { padding ->
         Column(
             modifier = Modifier

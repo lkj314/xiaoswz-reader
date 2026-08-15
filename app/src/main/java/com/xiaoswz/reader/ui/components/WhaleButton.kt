@@ -32,7 +32,7 @@ fun WhaleButton(
     val brush = if (enabled) {
         WhaleColors.GradientButton
     } else {
-        Brush.verticalGradient(listOf(Color(0xFF3A5670), Color(0xFF3A5670)))
+        Brush.verticalGradient(listOf(Color(0xFFD1D1D6), Color(0xFFD1D1D6)))
     }
     Box(
         modifier = modifier
@@ -44,7 +44,7 @@ fun WhaleButton(
     ) {
         Text(
             text = text,
-            color = if (enabled) Color.White else Color(0xFF7A98A8),
+            color = if (enabled) Color.White else Color(0xFFFFFFFF),
             fontWeight = FontWeight.Medium,
             fontSize = 15.sp,
         )

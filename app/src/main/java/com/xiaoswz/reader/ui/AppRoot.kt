@@ -133,11 +133,11 @@ fun AppRoot() {
         shelf.repairCovers { slug -> ApiClient.api.getBookDetail(bookId = slug).coverUrl }
     }
     val themeMode by appSettings.themeModeFlow.collectAsState(initial = AppThemeMode.SYSTEM)
-    // 品牌默认沉浸式暗色：SYSTEM 跟随改为强制暗色；用户仍可在设置中选择「浅色」
+    // v2.1 改为浅色玻璃默认：SYSTEM 跟随改为强制浅色；用户仍可在设置中选择「深色」
     val darkTheme = when (themeMode) {
         AppThemeMode.LIGHT -> false
         AppThemeMode.DARK -> true
-        else -> true
+        else -> false
     }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { delay(1100); showSplash = false }
