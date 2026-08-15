@@ -47,6 +47,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.data.settings.AppThemeMode
+import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
+import com.xiaoswz.reader.data.api.ApiClient
 import com.xiaoswz.reader.ui.bookstore.BookstoreScreen
 import com.xiaoswz.reader.ui.detail.BookDetailScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
@@ -123,6 +125,11 @@ private fun NavHostController.navigateTopLevel(route: String) {
 fun AppRoot() {
     val context = LocalContext.current
     val appSettings = remember { AppSettingsRepository(context.applicationContext) }
+    // 启动即恢复书架：清空过大的 data: 封面（防 CursorWindow 溢出崩溃），并联网按 slug 重新拉取封面写回
+    LaunchedEffect(Unit) {
+        val shelf = BookshelfRepository(context.applicationContext)
+        shelf.repairCovers { slug -> ApiClient.api.getBookDetail(bookId = slug).coverUrl }
+    }
     val themeMode by appSettings.themeModeFlow.collectAsState(initial = AppThemeMode.SYSTEM)
     val systemDark = isSystemInDarkTheme()
     val darkTheme = when (themeMode) {

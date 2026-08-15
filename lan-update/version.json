@@ -1,6 +1,6 @@
 {
-  "versionCode": 21,
-  "versionName": "0.4.2",
-  "apkUrl": "surf-reader-0.4.2.apk",
-  "notes": "0.4.2 封面根因修复：真机文件日志确认主站封面返回的是 data:image/jpeg;base64,... 绝对 data URI，Coil 的 AsyncImage 对 String 类型的 data URI 无 fetcher 会静默失败。改为 base64 解码成 ByteBuffer 交给 Coil 的 ByteBufferFetcher，封面正常显示。之前 0.4.0/0.4.1 的 URL 拼接修复对 data URI 无效，已保留但非主因。"
+  "versionCode": 22,
+  "versionName": "0.4.3",
+  "apkUrl": "surf-reader-0.4.3.apk",
+  "notes": "0.4.3 修复书架崩溃：收藏多本书后点开书架闪退（SQLiteBlobTooBigException: Row too big to fit into CursorWindow）。根因是收藏时把主站原始 data: 封面整串（几百KB~几MB）存入 Room 的 cover_url 列，单行超出 SQLite 游标窗口上限导致查询整体崩溃。修复：① 收藏时把封面压缩成宽度<=320px 的缩略图 data URI（仅几KB~几十KB）再存；② 启动与打开书架时自动把过大的 data: 封面清空（UPDATE 不读游标窗口，书籍元信息保留不丢），并按 slug 重新拉取封面写回恢复显示。未改动 Room schema（version 1 + fallbackToDestructiveMigration，避免清空书架）。"
 }

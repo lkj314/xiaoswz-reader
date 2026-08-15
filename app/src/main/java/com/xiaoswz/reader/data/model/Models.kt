@@ -1,7 +1,10 @@
 package com.xiaoswz.reader.data.model
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Base64
 import com.xiaoswz.reader.BuildConfig
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlinx.serialization.Serializable
 
@@ -182,6 +185,42 @@ private fun decodeDataUri(uri: String): Any? {
         }
     } catch (_: Throwable) {
         uri
+    }
+}
+
+/**
+ * 把封面 data URI 压缩成小缩略图 data URI（宽度 <= 320px，JPEG q80）。
+ *
+ * 用途：书架把封面存进 Room 的 cover_url 列。若直接存主站原始 data URI（几百 KB~几 MB），
+ * 单行会超过 SQLite CursorWindow 上限（约 1~2MB），导致书架查询抛
+ * SQLiteBlobTooBigException 整体崩溃。压缩成缩略图后单行仅几 KB~几十 KB，远离上限，
+ * 离线也能显示（resolveCoverUrl 已支持 data: -> ByteBuffer）。
+ *
+ * 非 data: 的远程 URL 原样返回（本身就小）。解码/压缩失败返回 null（显示占位，不崩）。
+ */
+fun shrinkCover(dataUri: String?): String? {
+    if (dataUri.isNullOrBlank()) return null
+    if (!dataUri.startsWith("data:", ignoreCase = true)) return dataUri
+    return try {
+        val comma = dataUri.indexOf(',')
+        if (comma < 0) return dataUri
+        val meta = dataUri.substring(5, comma) // 去掉 "data:" 前缀
+        if (!meta.contains(";base64", ignoreCase = true)) return dataUri
+        val payload = dataUri.substring(comma + 1)
+        val bytes = Base64.decode(payload, Base64.DEFAULT)
+        val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+        val maxW = 320
+        val scale = (maxW.toFloat() / bmp.width.coerceAtLeast(1)).coerceAtMost(1f)
+        val w = (bmp.width * scale).toInt().coerceAtLeast(1)
+        val h = (bmp.height * scale).toInt().coerceAtLeast(1)
+        val thumb = Bitmap.createScaledBitmap(bmp, w, h, true)
+        bmp.recycle()
+        val out = ByteArrayOutputStream()
+        thumb.compress(Bitmap.CompressFormat.JPEG, 80, out)
+        thumb.recycle()
+        "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+    } catch (_: Throwable) {
+        null
     }
 }
 

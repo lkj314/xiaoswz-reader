@@ -49,6 +49,8 @@ import com.xiaoswz.reader.ui.components.EmptyState
 import com.xiaoswz.reader.ui.components.StatusPill
 import com.xiaoswz.reader.ui.components.AppTopBar
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.LaunchedEffect
+import com.xiaoswz.reader.data.api.ApiClient
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +61,10 @@ fun BookshelfScreen(
     val scope = rememberCoroutineScope()
     val repo = remember { BookshelfRepository(context.applicationContext) }
     val books by repo.observeAll().collectAsState(initial = emptyList())
+    // 打开书架时再修复一次：联网按 slug 重新拉取封面写回（首页启动已先 blank 防崩）
+    LaunchedEffect(Unit) {
+        repo.repairCovers { slug -> ApiClient.api.getBookDetail(bookId = slug).coverUrl }
+    }
 
     val sorted = books.sortedByDescending { it.lastReadAt }
     val hero = sorted.firstOrNull()

@@ -44,6 +44,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import com.xiaoswz.reader.data.model.formatWordCount
 import com.xiaoswz.reader.data.model.resolveCoverUrl
+import com.xiaoswz.reader.data.model.shrinkCover
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookEntity
 import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
@@ -228,7 +229,7 @@ fun BookDetailScreen(
                                                                 slug = slug,
                                                                 title = detail.name ?: "",
                                                                 author = detail.author,
-                                                                coverUrl = detail.coverUrl,
+                                                                coverUrl = shrinkCover(detail.coverUrl),
                                                                 firstChapterId = firstChapter?.id,
                                                                 lastChapterId = firstChapter?.id,
                                                                 lastChapterTitle = firstChapter?.name,
