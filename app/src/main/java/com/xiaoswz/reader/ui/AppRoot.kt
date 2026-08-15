@@ -59,6 +59,7 @@ import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.data.settings.AppThemeMode
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.api.ApiClient
+import com.xiaoswz.reader.data.api.BackendClient
 import com.xiaoswz.reader.data.sync.SyncRepository
 import com.xiaoswz.reader.ui.bookstore.BookstoreScreen
 import com.xiaoswz.reader.ui.detail.BookDetailScreen
@@ -144,6 +145,12 @@ fun AppRoot() {
     LaunchedEffect(Unit) {
         val shelf = BookshelfRepository(context.applicationContext)
         shelf.repairCovers { slug -> ApiClient.api.getBookDetail(bookId = slug).coverUrl }
+        // 先把 DataStore 里残留的 vercel.app 旧后端地址迁移到默认局域网地址（0.6.5）
+        appSettings.migrateBackendUrlIfNeeded()
+        // 无条件注入后端身份（设备头 + 地址），保证投票/评分/评论等互动调用有身份，
+        // 与云同步解耦（同步可能被节流跳过，但互动调用不应等同步）。
+        BackendClient.setDeviceId(appSettings.getDeviceId())
+        BackendClient.setBaseUrl(appSettings.getBackendBaseUrl())
         // 启动节流云同步（离线优先，不阻塞 UI；后端未启动也不影响本地使用）
         SyncRepository(context.applicationContext).syncIfNeeded()
     }
@@ -239,6 +246,7 @@ private fun AppShell() {
                         onChapterClick = { chapterId ->
                             navController.navigate(Routes.reader(slug, chapterId))
                         },
+                        onBookClick = { s -> navController.navigate(Routes.detail(s)) },
                     )
                 }
 

@@ -3,7 +3,13 @@ package com.xiaoswz.reader.ui.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xiaoswz.reader.data.BookRepository
+import com.xiaoswz.reader.data.backend.BackendRepository
 import com.xiaoswz.reader.data.model.BookDetailDto
+import com.xiaoswz.reader.data.api.AdCreativeDto
+import com.xiaoswz.reader.data.api.BookStatsResponse
+import com.xiaoswz.reader.data.api.CommentItem
+import com.xiaoswz.reader.data.api.RatingResponse
+import com.xiaoswz.reader.data.api.VoteBalance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,6 +20,14 @@ data class DetailUiState(
     val detail: BookDetailDto? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
+    // ── 冲浪阅读独立后端互动数据（P1–P3）──
+    val stats: BookStatsResponse? = null,
+    val voteBalance: VoteBalance? = null,
+    val rating: RatingResponse? = null,
+    val comments: List<CommentItem> = emptyList(),
+    val commentTotal: Int = 0,
+    val ad: AdCreativeDto? = null,
+    val toast: String? = null,
 )
 
 class BookDetailViewModel(
@@ -24,13 +38,13 @@ class BookDetailViewModel(
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
     fun load(slug: String) {
-        // 同一本书不重复加载
         if (_uiState.value.detail?.id == slug) return
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             repository.getBookDetail(slug)
                 .onSuccess { detail ->
                     _uiState.update { it.copy(detail = detail, isLoading = false) }
+                    loadBackend(slug, detail)
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -38,6 +52,113 @@ class BookDetailViewModel(
                     }
                 }
         }
+    }
+
+    /** 拉取后端互动数据 + 上报浏览（后端不可达时静默失败，不阻塞阅读） */
+    private fun loadBackend(slug: String, detail: BookDetailDto) {
+        viewModelScope.launch {
+            // 上报浏览（仅传 http(s) 封面，遵守封面不存 data: URI 铁律）
+            val cover = detail.coverUrl?.takeIf { it.startsWith("http") }
+            BackendRepository.reportBookView(slug, detail.name, detail.author, cover)
+
+            // 并行拉取展示数据
+            val stats = BackendRepository.getBookStats(slug).getOrNull()
+            val balance = BackendRepository.getVoteBalance().getOrNull()
+            val rating = BackendRepository.getRating(slug).getOrNull()
+            val comments = BackendRepository.getComments(slug).getOrNull()
+            val ad = BackendRepository.getAds("detail").getOrNull()?.creatives?.firstOrNull()
+
+            _uiState.update {
+                it.copy(
+                    stats = stats,
+                    voteBalance = balance,
+                    rating = rating,
+                    comments = comments?.comments ?: emptyList(),
+                    commentTotal = comments?.total ?: 0,
+                    ad = ad,
+                )
+            }
+            // 广告曝光上报（fire-and-forget）
+            ad?.id?.let { id -> BackendRepository.reportImpression(id, "detail") }
+        }
+    }
+
+    fun vote() {
+        val slug = _uiState.value.detail?.id ?: return
+        viewModelScope.launch {
+            val res = BackendRepository.castVote(slug, "monthly")
+            if (res.isSuccess && res.getOrNull()?.ok == true) {
+                _uiState.update { s ->
+                    s.copy(
+                        toast = "月票 +1（今日剩余 ${res.getOrNull()?.remaining ?: 0}）",
+                        voteBalance = res.getOrNull()?.remaining?.let { r ->
+                            (s.voteBalance ?: VoteBalance()).copy(used = (s.voteBalance?.used ?: 0) + 1, remaining = r)
+                        } ?: s.voteBalance,
+                        stats = s.stats?.copy(voteMonth = s.stats.voteMonth + 1, voteCount = s.stats.voteCount + 1),
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(toast = "投票失败：今日票数已用完或后端未连接") }
+            }
+        }
+    }
+
+    fun submitRating(score: Int) {
+        val slug = _uiState.value.detail?.id ?: return
+        viewModelScope.launch {
+            val res = BackendRepository.submitRating(slug, score)
+            if (res.isSuccess) {
+                val rating = BackendRepository.getRating(slug).getOrNull()
+                val stats = BackendRepository.getBookStats(slug).getOrNull()
+                _uiState.update { it.copy(rating = rating, stats = stats, toast = "评分成功：$score 星") }
+            } else {
+                _uiState.update { it.copy(toast = "评分失败，后端未连接") }
+            }
+        }
+    }
+
+    fun postComment(content: String) {
+        val slug = _uiState.value.detail?.id ?: return
+        val text = content.trim()
+        if (text.isEmpty()) return
+        viewModelScope.launch {
+            val res = BackendRepository.postComment(slug, text)
+            if (res.isSuccess) {
+                val comments = BackendRepository.getComments(slug).getOrNull()
+                val stats = BackendRepository.getBookStats(slug).getOrNull()
+                _uiState.update {
+                    it.copy(
+                        comments = comments?.comments ?: emptyList(),
+                        commentTotal = comments?.total ?: 0,
+                        stats = stats,
+                        toast = "评论已发布",
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(toast = "评论失败，后端未连接") }
+            }
+        }
+    }
+
+    fun likeComment(id: String) {
+        viewModelScope.launch {
+            BackendRepository.likeComment(id)
+            // 本地 +1 即时反馈
+            _uiState.update { s ->
+                s.copy(comments = s.comments.map { if (it.id == id) it.copy(likeCount = it.likeCount + 1) else it })
+            }
+        }
+    }
+
+    fun reportComment(id: String) {
+        viewModelScope.launch {
+            BackendRepository.reportComment(id)
+            _uiState.update { it.copy(toast = "已举报，感谢反馈") }
+        }
+    }
+
+    fun clearToast() {
+        _uiState.update { it.copy(toast = null) }
     }
 
     fun retry(slug: String) {

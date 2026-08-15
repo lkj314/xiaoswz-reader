@@ -77,6 +77,8 @@ import com.xiaoswz.reader.ui.theme.WhaleColors
 import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import com.xiaoswz.reader.data.update.UpdateManager
+import com.xiaoswz.reader.data.backend.BackendRepository
+import com.xiaoswz.reader.data.api.LeaderboardEntry
 import com.xiaoswz.reader.ui.components.BookCoverCard
 import com.xiaoswz.reader.ui.components.BookCoverSkeleton
 import com.xiaoswz.reader.ui.components.EmptyState
@@ -269,6 +271,22 @@ fun BookstoreScreen(
                         }
                         Spacer(Modifier.height(4.dp))
                     }
+                }
+
+                // ══════════════════════════════════════
+                //  排行榜（P1：冲浪阅读自己的热榜/月票榜，绝不汇总主站）
+                // ══════════════════════════════════════
+                item(span = { GridItemSpan(3) }) {
+                    SectionHeader(title = "🔥 热榜")
+                }
+                item(span = { GridItemSpan(3) }) {
+                    LeaderboardRow(board = "popularity", onBookClick = onBookClick)
+                }
+                item(span = { GridItemSpan(3) }) {
+                    SectionHeader(title = "🎫 月票榜")
+                }
+                item(span = { GridItemSpan(3) }) {
+                    LeaderboardRow(board = "monthly", onBookClick = onBookClick)
                 }
 
                 // ══════════════════════════════════════
@@ -640,6 +658,64 @@ private fun FeaturedCarousel(
                         ),
                 )
             }
+        }
+    }
+}
+
+/**
+ * 榜单横滑行（P1）：从冲浪阅读独立后端拉取，绝不汇总主站。
+ * 后端未连接 / 书库为空时显示占位，不崩溃。
+ */
+@Composable
+private fun LeaderboardRow(
+    board: String,
+    onBookClick: (String) -> Unit,
+) {
+    var entries by remember { mutableStateOf<List<LeaderboardEntry>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(board) {
+        loading = true
+        entries = BackendRepository.getLeaderboard(board).getOrNull()?.entries ?: emptyList()
+        loading = false
+    }
+
+    if (loading) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(5) { BookCoverSkeleton(Modifier.padding(horizontal = 4.dp)) }
+        }
+        return
+    }
+
+    if (entries.isEmpty()) {
+        Text(
+            text = "暂无数据（后端未连接或书库为空）",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = GlassTokens.SecondaryLabel,
+        )
+        return
+    }
+
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        lazyItems(
+            items = entries,
+            key = { "${it.bookSourceId}:${it.bookId}" },
+        ) { e ->
+            BookCoverCard(
+                coverUrl = e.coverUrl,
+                title = e.title ?: "未知",
+                author = null,
+                wordCount = null,
+                onClick = { onBookClick(e.bookId) },
+                modifier = Modifier.width(120.dp),
+            )
         }
     }
 }

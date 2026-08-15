@@ -111,7 +111,16 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         val s = repo.settingsFlow.first()
-        updateServerUrl = s.updateServerUrl
+        var url = s.updateServerUrl
+        // 一次性数据迁移：旧版（0.6.2 之前）的 vercel.app 更新地址在国内被 DNS 污染、
+        // 0.6.3 已把 BuildConfig.DEFAULT_UPDATE_SERVER 切到 GitHub raw，
+        // 但 DataStore 里持久化的旧值会覆盖默认值，导致升级后输入框仍显示旧 URL。
+        // 启动检测到含 vercel.app 时自动改写到当前默认地址并回写。
+        if (url.contains("vercel.app", ignoreCase = true)) {
+            url = BuildConfig.DEFAULT_UPDATE_SERVER
+            repo.update { it.copy(updateServerUrl = url) }
+        }
+        updateServerUrl = url
         themeIndex = s.themeIndex
         crashLog = CrashLogger.getLog(context)
         // 云同步状态
@@ -309,7 +318,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             SettingsCard(
                 icon = Icons.Default.Cloud,
                 title = "云同步",
-                subtitle = "书架与阅读进度备份到专属后端，换机可恢复。离线也能读，联网后自动同步。",
+                subtitle = "书架与阅读进度备份到后端（当前局域网）。换机/重装需用同一设备才恢复，跨设备恢复需绑定账号（后续版本）。离线也能读，联网后自动同步。",
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(

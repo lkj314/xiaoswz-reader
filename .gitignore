@@ -25,6 +25,7 @@ Thumbs.db
 # Kotlin/编译
 *.class
 kotlin-compiler/
+.kotlin/
 
 # 构建日志 / WorkBuddy 记忆
 build.log

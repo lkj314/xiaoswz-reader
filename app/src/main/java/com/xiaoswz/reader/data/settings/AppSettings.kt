@@ -78,6 +78,19 @@ class AppSettingsRepository(private val context: Context) {
         context.appSettingsStore.edit { it[Keys.BACKEND_BASE_URL] = url }
     }
 
+    // ── 后端地址一次性迁移（0.6.5）──
+    /**
+     * 旧版（0.6.4 及之前）BACKEND_BASE_URL 指向 *.vercel.app，国内被 DNS 污染，
+     * 且该值曾被持久化进 DataStore，会覆盖 BuildConfig 默认局域网地址。
+     * 启动检测到含 vercel.app 时自动改写到 BuildConfig.BACKEND_BASE_URL（局域网后端）并回写。
+     */
+    suspend fun migrateBackendUrlIfNeeded() {
+        val current = context.appSettingsStore.data.first()[Keys.BACKEND_BASE_URL]
+        if (!current.isNullOrBlank() && current.contains("vercel.app", ignoreCase = true)) {
+            context.appSettingsStore.edit { it[Keys.BACKEND_BASE_URL] = BuildConfig.BACKEND_BASE_URL }
+        }
+    }
+
     val backendBaseUrlFlow: Flow<String> = context.appSettingsStore.data.map {
         it[Keys.BACKEND_BASE_URL] ?: BuildConfig.BACKEND_BASE_URL
     }

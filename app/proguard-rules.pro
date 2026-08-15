@@ -15,6 +15,10 @@
 -keepclasseswithmembers class com.xiaoswz.reader.data.api.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
+# 保留整个 API 包（Retrofit 接口 + DTO）：@Path/@GET/@POST 等运行时注解与序列化器
+# 绝不能剥掉，否则 release 包首个网络请求即崩。
+-keep class com.xiaoswz.reader.data.api.** { *; }
+-keep interface com.xiaoswz.reader.data.api.** { *; }
 
 # Retrofit / OkHttp
 -dontwarn retrofit2.**

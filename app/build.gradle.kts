@@ -22,12 +22,13 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 40
-        versionName = "0.6.3" // 0.6.3 更新通道迁 GitHub raw + releases/latest，绕开 *.vercel.app 域名污染
+        versionCode = 43
+        versionName = "0.6.6" // 0.6.6「流量平台基础」：P1 书库发现/热榜/月票榜 + P2 月票/评分/评论 + P3 详情页广告栏位/来源归因。冲浪阅读独立后端（与主站物理隔离），书源仅主站单源。后端默认仍指向局域网 http://192.168.2.4:3400（开发期）；发布给读者时替换为可达云托管域名
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
-        // 冲浪阅读专属后端（独立 Vercel 项目 + 独立 Neon 数据库 chonglang，与主站 xiaoswz 物理隔离）
+        // 冲浪阅读专属后端（独立项目 + 独立 Neon 数据库 chonglang，与主站 xiaoswz 物理隔离）。
+        // 0.6.6 起：发布版默认指向云端 Vercel 独立后端（读者可达，与局域网开发后端解耦）。
         buildConfigField("String", "BACKEND_BASE_URL", "\"https://xiaoswz-reader-backend.vercel.app\"")
         // 应用更新服务器：云端走 GitHub raw（绕开 Vercel 域名污染）；局域网地址仍可手填兜底
         buildConfigField("String", "DEFAULT_UPDATE_SERVER", "\"https://raw.githubusercontent.com/lkj314/xiaoswz-reader/main/lan-update\"")
