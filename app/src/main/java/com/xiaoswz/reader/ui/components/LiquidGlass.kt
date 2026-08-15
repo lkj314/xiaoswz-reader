@@ -80,6 +80,16 @@ fun LiquidGlassCard(
                     ),
                 ),
         )
+        // 底部折射高光：从底边向内渐隐的白色（光线穿过玻璃底部，iOS 液体玻璃招牌）
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, GlassTokens.GlassHighlight.copy(alpha = 0.35f)),
+                    ),
+                ),
+        )
         Box(
             modifier = Modifier
                 .fillMaxSize()

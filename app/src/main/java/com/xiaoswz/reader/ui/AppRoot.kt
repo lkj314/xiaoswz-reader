@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
@@ -35,8 +38,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -55,11 +63,14 @@ import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
 import com.xiaoswz.reader.ui.bookshelf.BookshelfScreen
 import com.xiaoswz.reader.ui.theme.SurfReaderTheme
-import com.xiaoswz.reader.ui.components.ArtImage
 import com.xiaoswz.reader.ui.components.WhaleBackground
+import com.xiaoswz.reader.ui.components.LiquidGlassCard
+import com.xiaoswz.reader.ui.theme.GlassTokens
+import com.xiaoswz.reader.R
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 
 object Routes {
     const val BOOKSTORE = "bookstore"
@@ -251,47 +262,82 @@ private fun AppShell() {
     }
 }
 
-/** 品牌闪屏：B站风格 — 全屏小鲸庆祝图 + 底部品牌字标叠层 */
+/** 品牌闪屏：纯 iOS 玻璃风 — 浅色渐变背景 + 悬浮玻璃卡（海浪 logo + 品牌字标），无任何角色图 */
 @Composable
 private fun SplashScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White),
-    ) {
-        // 全屏竖长庆祝图：填满整个启动页，ContentScale.Fit 保持比例铺满
-        ArtImage(
-            path = "character/splash_celebrate.png",
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-        )
-        // 底部品牌字标 — 叠在图片下方区域
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 与内页一致的浅色玻璃背景，保证启动→内页视觉连续
+        WhaleBackground {}
+        // 中央悬浮玻璃卡
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 48.dp),
-            contentAlignment = Alignment.BottomCenter,
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
         ) {
+            var appeared by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { appeared = true }
             AnimatedVisibility(
-                visible = true,
-                enter = fadeIn(animationSpec = tween(700, delayMillis = 400)),
+                visible = appeared,
+                enter = fadeIn(animationSpec = tween(500)) +
+                    scaleIn(
+                        initialScale = 0.92f,
+                        animationSpec = tween(500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                    ),
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "冲浪阅读",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E4A8A),
-                    )
-                    Text(
-                        text = "畅读每一页",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF5B9FDA).copy(alpha = 0.85f),
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
+                LiquidGlassCard(
+                    modifier = Modifier.width(300.dp),
+                    radius = GlassTokens.RadiusXL,
+                    fillAlpha = 0.7f,
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(vertical = 10.dp),
+                    ) {
+                        // 海浪 logo（系统蓝着色，置于圆形玻璃徽标内）
+                        Box(
+                            modifier = Modifier
+                                .size(84.dp)
+                                .clip(CircleShape)
+                                .background(GlassTokens.GradientButton),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.ic_surf_logo),
+                                contentDescription = null,
+                                modifier = Modifier.size(46.dp),
+                                colorFilter = ColorFilter.tint(Color.White, BlendMode.SrcIn),
+                            )
+                        }
+                        Spacer(Modifier.height(20.dp))
+                        Text(
+                            text = "冲浪阅读",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = GlassTokens.Label,
+                            letterSpacing = 2.sp,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "畅读每一页",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = GlassTokens.SecondaryLabel,
+                        )
+                    }
                 }
             }
+        }
+        // 底部极简加载指示
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(bottom = 56.dp)
+                    .size(width = 44.dp, height = 4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(GlassTokens.SystemBlue.copy(alpha = 0.3f)),
+            )
         }
     }
 }
