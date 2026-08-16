@@ -1,6 +1,6 @@
 {
-  "versionCode": 47,
-  "versionName": "0.7.0",
-  "apkUrl": "http://192.168.2.4:8765/surf-reader-0.7.0.apk",
-  "notes": "0.7.0「管理台一键直达」：修复 Web 管理台客户端异常（根路径 404、登录页 hydration 崩、useSearchParams 未包 Suspense 触发「Application error」），加全局 app/error.tsx 兜底；App 管理员一键登录管理台（兑 60 秒短 token 写 surf_admin cookie，免二次登录）。已预注册管理员 youe@163.com / Lkj11223344。独立后端、主站单源、物理隔离不变。"
+  "versionCode": 54,
+  "versionName": "0.7.9",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.7.9/surf-reader-0.7.9.apk",
+  "notes": "0.7.9（0.7.4–0.7.9 合集·真机实测）：书单详情/收藏/分享到社区/新建/书籍详情加入书单/书单举报；社区热门流🔥/帖子举报/书单引用与作者主页跳转；用户主页关注·取关·拉黑（自己页隐藏）+ 帖子/书单/书架 Tab + 阅读成就卡；阅读成就等级·连续打卡·勋章墙；运营位首页 Banner+公告+精选书单横滑。后端书单举报路由修复已上线 Vercel。APK 托管于 GitHub Releases（兜底可改回局域网地址）。"
 }

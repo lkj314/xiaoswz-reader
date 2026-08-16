@@ -131,6 +131,10 @@ class AppSettingsRepository(private val context: Context) {
     suspend fun getAccountRole(): String =
         context.appSettingsStore.data.first()[Keys.ACCOUNT_ROLE] ?: "guest"
 
+    /** 当前登录账号 ID；游客为 null（用于判断是否为自己主页） */
+    suspend fun getAccountId(): String? =
+        context.appSettingsStore.data.first()[Keys.ACCOUNT_ID]
+
     /** 是否登录态（user / admin 视为已登录） */
     suspend fun isLoggedIn(): Boolean = getAccountRole() != "guest"
 

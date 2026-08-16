@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Settings
@@ -63,11 +64,16 @@ import com.xiaoswz.reader.data.api.BackendClient
 import com.xiaoswz.reader.data.sync.SyncRepository
 import com.xiaoswz.reader.data.auth.AuthRepository
 import com.xiaoswz.reader.ui.bookstore.BookstoreScreen
+import com.xiaoswz.reader.ui.community.CommunityScreen
+import com.xiaoswz.reader.ui.booklist.BooklistsScreen
+import com.xiaoswz.reader.ui.booklist.BooklistDetailScreen
 import com.xiaoswz.reader.ui.detail.BookDetailScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
 import com.xiaoswz.reader.ui.settings.AccountScreen
 import com.xiaoswz.reader.ui.bookshelf.BookshelfScreen
+import com.xiaoswz.reader.ui.profile.UserProfileScreen
+import com.xiaoswz.reader.ui.profile.ReadingStatsScreen
 import com.xiaoswz.reader.ui.theme.SurfReaderTheme
 import com.xiaoswz.reader.ui.components.WhaleBackground
 import com.xiaoswz.reader.ui.theme.GlassTokens
@@ -80,19 +86,32 @@ import androidx.compose.foundation.shape.CircleShape
 object Routes {
     const val BOOKSTORE = "bookstore"
     const val BOOKSHELF = "bookshelf"
+    const val COMMUNITY = "community"
+    const val BOOKLISTS = "booklists"
     const val SETTINGS = "settings"
     const val ACCOUNT = "account"
     const val DETAIL = "detail/{slug}"
     const val READER = "reader/{bookSlug}/{chapterId}"
+    const val BOOKLIST_DETAIL = "booklist/{id}"
+    const val USER_PROFILE = "user/{id}"
+    const val READING_STATS = "reading-stats"
 
     // slug 可能含中文，必须 URL 编码后再拼路由
     fun detail(slug: String) = "detail/${Uri.encode(slug)}"
     fun reader(bookSlug: String, chapterId: String) =
         "reader/${Uri.encode(bookSlug)}/${Uri.encode(chapterId)}"
+    fun booklist(id: String) = "booklist/$id"
+    fun user(id: String) = "user/$id"
 }
 
-/** 三个顶层目标（显示底部导航栏），详情/阅读器为覆盖式全屏，不显示底栏 */
-private val TopLevelRoutes = setOf(Routes.BOOKSTORE, Routes.BOOKSHELF, Routes.SETTINGS)
+/** 顶层目标（显示底部导航栏），详情/阅读器为覆盖式全屏，不显示底栏 */
+private val TopLevelRoutes = setOf(
+    Routes.BOOKSTORE,
+    Routes.BOOKSHELF,
+    Routes.COMMUNITY,
+    Routes.BOOKLISTS,
+    Routes.SETTINGS,
+)
 
 private data class BottomTab(
     val route: String,
@@ -103,6 +122,8 @@ private data class BottomTab(
 private val BottomTabs = listOf(
     BottomTab(Routes.BOOKSTORE, "书城", Icons.Default.Home),
     BottomTab(Routes.BOOKSHELF, "书架", Icons.Default.MenuBook),
+    BottomTab(Routes.COMMUNITY, "书友圈", Icons.Default.Forum),
+    BottomTab(Routes.BOOKLISTS, "书单", Icons.Default.MenuBook),
     BottomTab(Routes.SETTINGS, "设置", Icons.Default.Settings),
 )
 
@@ -231,6 +252,70 @@ private fun AppShell() {
                         onBookClick = { slug, chapterId ->
                             navController.navigate(Routes.reader(slug, chapterId))
                         },
+                    )
+                }
+
+                composable(Routes.COMMUNITY) {
+                    CommunityScreen(
+                        onAccountClick = { navController.navigate(Routes.ACCOUNT) },
+                        onUserClick = { id -> navController.navigate(Routes.user(id)) },
+                        onBooklistClick = { id -> navController.navigate(Routes.booklist(id)) },
+                        onReadingStats = { navController.navigate(Routes.READING_STATS) },
+                    )
+                }
+
+                composable(Routes.BOOKLISTS) {
+                    BooklistsScreen(
+                        onBack = { navController.popBackStack() },
+                        onBooklistClick = { id -> navController.navigate(Routes.booklist(id)) },
+                        onAccountClick = { navController.navigate(Routes.ACCOUNT) },
+                    )
+                }
+
+                composable(
+                    route = Routes.BOOKLIST_DETAIL,
+                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val id = entry.arguments?.getString("id").orEmpty()
+                    BooklistDetailScreen(
+                        booklistId = id,
+                        onBack = { navController.popBackStack() },
+                        onUserClick = { uid -> navController.navigate(Routes.user(uid)) },
+                        onBookClick = { slug -> navController.navigate(Routes.detail(slug)) },
+                    )
+                }
+
+                composable(
+                    route = Routes.USER_PROFILE,
+                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val id = entry.arguments?.getString("id").orEmpty()
+                    UserProfileScreen(
+                        userId = id,
+                        onBack = { navController.popBackStack() },
+                        onBooklistClick = { bid -> navController.navigate(Routes.booklist(bid)) },
+                        onBookClick = { slug -> navController.navigate(Routes.detail(slug)) },
+                    )
+                }
+
+                composable(
+                    route = Routes.READING_STATS,
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) {
+                    ReadingStatsScreen(
+                        onBack = { navController.popBackStack() },
+                        onAccountClick = { navController.navigate(Routes.ACCOUNT) },
                     )
                 }
 

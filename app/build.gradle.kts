@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 47
-        versionName = "0.7.0" // 0.7.0「管理台一键直达」：修复 Web 管理台客户端异常（根路径改跳 /admin/login，登录页 useSearchParams 加 Suspense，全局 app/error.tsx 兜底，Date.now() hydration 修复，adminSession 异常不再穿透）；App 管理员一键登录管理台（POST /api/admin/sso/exchange 兑 60 秒短 token → 浏览器打开 /api/admin/sso/consume 自动写 cookie 并 302 /admin，免二次登录）。独立后端、主站单源、物理隔离不变
+        versionCode = 54
+        versionName = "0.7.9" // 0.7.4–0.7.9 一次性合集（真机统一实测前最后一版）：书单体系（书单广场+Mine/官方/热门、书单详情+收藏/分享到书友圈/举报/删除条目、书籍详情「加入书单」弹层选书单/新建并加入）；用户主页（关注/取关/拉黑、POSTS/BOOKLISTS/BOOKSHELF 三 Tab、阅读成就入口）；阅读成就页（等级/连续天数/总分钟数+徽章）；首页运营位（banner/公告/精选书单）；书友圈「热门」流；帖子/书单举报；头像/书单引用跳转。后端 0.7.4–0.7.9 已随 0.7.3 后端上线或本次补丁（report/route.ts 语法修复）部署。独立后端、主站单源、物理隔离不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

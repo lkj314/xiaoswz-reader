@@ -144,6 +144,135 @@ interface BackendApi {
     /** 来源归因 */
     @POST("api/attribution")
     suspend fun reportAttribution(@Body body: AttributionBody): OkAck
+
+    // ── P4 书友圈（社区）──
+    /** 动态流：广场 / 关注（page 分页）。匿名可浏览广场 */
+    @GET("api/community/posts")
+    suspend fun getPosts(
+        @Query("feed") feed: String = "square",
+        @Query("page") page: Int = 1,
+    ): PostListResponse
+
+    /** 发帖（需登录；content 必填，imageUrls 仅存 http(s) URL，最多 9 张） */
+    @POST("api/community/posts")
+    suspend fun createPost(@Body body: PostCreateBody): PostCreateResponse
+
+    /** 单帖详情（含评论）。作者/管理员可删 */
+    @GET("api/community/posts/{id}")
+    suspend fun getPostDetail(@Path("id") id: String): PostDetail
+
+    /** 动态点赞 / 取消（去重切换，需登录） */
+    @POST("api/community/posts/{id}/like")
+    suspend fun likePost(@Path("id") id: String): LikeResponse
+
+    /** 动态评论列表（page 分页） */
+    @GET("api/community/posts/{id}/comments")
+    suspend fun getPostComments(
+        @Path("id") id: String,
+        @Query("page") page: Int = 1,
+    ): PostCommentListResponse
+
+    /** 发评论 / 楼中楼（需登录） */
+    @POST("api/community/posts/{id}/comments")
+    suspend fun commentPost(
+        @Path("id") id: String,
+        @Body body: PostCommentBody,
+    ): OkAck
+
+    // ── P4 书单推书（0.7.4）──
+    @GET("api/booklists")
+    suspend fun getBooklists(
+        @Query("scope") scope: String = "all",
+        @Query("page") page: Int = 1,
+    ): BooklistListResponse
+
+    @POST("api/booklists")
+    suspend fun createBooklist(@Body body: BooklistCreateBody): BooklistCreateResponse
+
+    @GET("api/booklists/{id}")
+    suspend fun getBooklistDetail(@Path("id") id: String): BooklistDetail
+
+    @POST("api/booklists/{id}/items")
+    suspend fun addBooklistItem(
+        @Path("id") id: String,
+        @Body body: BooklistItemBody,
+    ): OkAck
+
+    @DELETE("api/booklists/{id}/items/{itemId}")
+    suspend fun deleteBooklistItem(
+        @Path("id") id: String,
+        @Path("itemId") itemId: String,
+    ): OkAck
+
+    @POST("api/booklists/{id}/collect")
+    suspend fun collectBooklist(@Path("id") id: String): CollectResponse
+
+    // ── 0.7.5 用户主页 & 互动 ──
+    @GET("api/users/{id}")
+    suspend fun getUserProfile(@Path("id") id: String): UserProfile
+
+    @GET("api/users/{id}/posts")
+    suspend fun getUserPosts(
+        @Path("id") id: String,
+        @Query("page") page: Int = 1,
+    ): PostListResponse
+
+    @GET("api/users/{id}/booklists")
+    suspend fun getUserBooklists(
+        @Path("id") id: String,
+        @Query("page") page: Int = 1,
+    ): BooklistListResponse
+
+    @GET("api/users/{id}/bookshelf")
+    suspend fun getUserBookshelf(@Path("id") id: String): UserBookshelfResponse
+
+    @GET("api/users/{id}/followers")
+    suspend fun getFollowers(
+        @Path("id") id: String,
+        @Query("page") page: Int = 1,
+    ): UserListResponse
+
+    @GET("api/users/{id}/following")
+    suspend fun getFollowing(
+        @Path("id") id: String,
+        @Query("page") page: Int = 1,
+    ): UserListResponse
+
+    @POST("api/users/{id}/follow")
+    suspend fun followUser(@Path("id") id: String): FollowResponse
+
+    @POST("api/users/{id}/block")
+    suspend fun blockUser(@Path("id") id: String): BlockResponse
+
+    // ── 0.7.7 激励 & 热门榜 ──
+    @GET("api/community/hot-posts")
+    suspend fun getHotPosts(): HotPostsResponse
+
+    @GET("api/community/hot-booklists")
+    suspend fun getHotBooklists(): HotBooklistsResponse
+
+    @POST("api/reading/session")
+    suspend fun postReadingSession(@Body body: ReadingSessionBody): ReadingStats
+
+    @GET("api/reading/stats")
+    suspend fun getReadingStats(): ReadingStats
+
+    // ── 0.7.8 内容治理 ──
+    @POST("api/community/posts/{id}/report")
+    suspend fun reportPost(
+        @Path("id") id: String,
+        @Body body: ReportBody,
+    ): OkAck
+
+    @POST("api/booklists/{id}/report")
+    suspend fun reportBooklist(
+        @Path("id") id: String,
+        @Body body: ReportBody,
+    ): OkAck
+
+    // ── 0.7.6 运营位 ──
+    @GET("api/home")
+    suspend fun getHome(): HomeResponse
 }
 
 // ── 请求体 ──
@@ -456,4 +585,307 @@ data class AttributionBody(
     val installChannel: String? = null,
     val referrer: String? = null,
     val campaign: String? = null,
+)
+
+// ════════════════════════════════════════════════════════════════
+//  P4 书友圈（社区）DTO —— 后端 0.7.2 落地
+// ════════════════════════════════════════════════════════════════
+
+@Serializable
+data class PostAuthor(
+    val id: String,
+    val displayName: String? = null,
+    val avatarUrl: String? = null,
+    val role: String? = null, // 仅详情/评论接口返回；列表接口不含 role
+)
+
+@Serializable
+data class PostTopic(val id: String, val name: String)
+
+@Serializable
+data class PostBooklistRef(val id: String, val title: String? = null, val coverUrl: String? = null)
+
+@Serializable
+data class PostItem(
+    val id: String,
+    val content: String,
+    val imageUrls: List<String> = emptyList(),
+    val bookSourceId: String? = null,
+    val bookId: String? = null,
+    val topic: PostTopic? = null,
+    val booklist: PostBooklistRef? = null,
+    val likeCount: Int = 0,
+    val commentCount: Int = 0,
+    val createdAt: Long = 0,
+    val author: PostAuthor,
+    val liked: Boolean = false,
+)
+
+@Serializable
+data class PostListResponse(
+    val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 20,
+    val posts: List<PostItem> = emptyList(),
+    val nextCursor: Long? = null,
+)
+
+@Serializable
+data class PostCreateBody(
+    val content: String,
+    val imageUrls: List<String> = emptyList(),
+    val bookSourceId: String? = null,
+    val bookId: String? = null,
+    val topicId: String? = null,
+    val booklistId: String? = null,
+)
+
+@Serializable
+data class PostCreateResponse(val ok: Boolean = true, val id: String = "")
+
+@Serializable
+data class PostDetail(
+    val id: String,
+    val content: String,
+    val imageUrls: List<String> = emptyList(),
+    val bookSourceId: String? = null,
+    val bookId: String? = null,
+    val topic: PostTopic? = null,
+    val booklist: PostBooklistRef? = null,
+    val likeCount: Int = 0,
+    val commentCount: Int = 0,
+    val createdAt: Long = 0,
+    val author: PostAuthor,
+    val liked: Boolean = false,
+    val comments: List<PostCommentItem> = emptyList(),
+)
+
+@Serializable
+data class PostCommentItem(
+    val id: String,
+    val parentId: String? = null,
+    val content: String,
+    val likeCount: Int = 0,
+    val createdAt: Long = 0,
+    val author: PostAuthor,
+)
+
+@Serializable
+data class PostCommentListResponse(
+    val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 30,
+    val comments: List<PostCommentItem> = emptyList(),
+)
+
+@Serializable
+data class PostCommentBody(
+    val content: String,
+    val parentId: String? = null,
+)
+
+@Serializable
+data class LikeResponse(
+    val ok: Boolean = true,
+    val liked: Boolean = false,
+    val likeCount: Int = 0,
+)
+
+// ════════════════════════════════════════════════════════════════
+//  P4 书单推书（0.7.4）/ 用户主页（0.7.5）/ 激励（0.7.7）/ 治理（0.7.8）/ 运营（0.7.6）DTO
+// ════════════════════════════════════════════════════════════════
+
+@Serializable
+data class BooklistAuthor(val id: String, val displayName: String? = null, val avatarUrl: String? = null)
+
+@Serializable
+data class BooklistItemDto(
+    val id: String,
+    val bookSourceId: String,
+    val bookId: String,
+    val title: String? = null,
+    val author: String? = null,
+    val coverUrl: String? = null,
+    val note: String? = null,
+    val position: Int = 0,
+)
+
+@Serializable
+data class BooklistSummary(
+    val id: String,
+    val title: String,
+    val description: String? = null,
+    val coverUrl: String? = null,
+    val isOfficial: Boolean = false,
+    val likeCount: Int = 0,
+    val collectCount: Int = 0,
+    val itemCount: Int = 0,
+    val createdAt: Long = 0,
+    val owner: BooklistAuthor,
+    val collected: Boolean = false,
+)
+
+@Serializable
+data class BooklistListResponse(
+    val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 20,
+    val booklists: List<BooklistSummary> = emptyList(),
+)
+
+@Serializable
+data class BooklistCreateBody(
+    val title: String,
+    val description: String? = null,
+    val coverUrl: String? = null,
+    val isOfficial: Boolean = false,
+)
+
+@Serializable
+data class BooklistCreateResponse(val ok: Boolean = true, val id: String = "")
+
+@Serializable
+data class BooklistDetail(
+    val id: String,
+    val title: String,
+    val description: String? = null,
+    val coverUrl: String? = null,
+    val isOfficial: Boolean = false,
+    val likeCount: Int = 0,
+    val collectCount: Int = 0,
+    val collected: Boolean = false,
+    val createdAt: Long = 0,
+    val owner: BooklistAuthor,
+    val items: List<BooklistItemDto> = emptyList(),
+)
+
+@Serializable
+data class BooklistItemBody(
+    val bookSourceId: String = BOOK_SOURCE_MAIN,
+    val bookId: String,
+    val title: String? = null,
+    val author: String? = null,
+    val coverUrl: String? = null,
+    val note: String? = null,
+)
+
+@Serializable
+data class CollectResponse(
+    val ok: Boolean = true,
+    val collected: Boolean = false,
+    val collectCount: Int = 0,
+)
+
+@Serializable
+data class UserProfile(
+    val id: String,
+    val displayName: String? = null,
+    val avatarUrl: String? = null,
+    val role: String? = null,
+    val createdAt: Long = 0,
+    val followerCount: Int = 0,
+    val followingCount: Int = 0,
+    val postCount: Int = 0,
+    val booklistCount: Int = 0,
+    val isFollowing: Boolean = false,
+    val stats: UserStats? = null,
+)
+
+@Serializable
+data class UserStats(
+    val totalMin: Int = 0,
+    val days: Int = 0,
+    val level: Int = 1,
+    val streakDays: Int = 0,
+)
+
+@Serializable
+data class UserBookshelfItem(
+    val bookSourceId: String,
+    val bookId: String,
+    val title: String? = null,
+    val author: String? = null,
+    val coverUrl: String? = null,
+    val status: String? = null,
+    val updatedAt: Long = 0,
+)
+
+@Serializable
+data class UserBookshelfResponse(val items: List<UserBookshelfItem> = emptyList())
+
+@Serializable
+data class UserSummary(
+    val id: String,
+    val displayName: String? = null,
+    val avatarUrl: String? = null,
+    val role: String? = null,
+)
+
+@Serializable
+data class UserListResponse(val users: List<UserSummary> = emptyList())
+
+@Serializable
+data class FollowResponse(
+    val ok: Boolean = true,
+    val following: Boolean = false,
+    val followerCount: Int = 0,
+)
+
+@Serializable
+data class BlockResponse(val ok: Boolean = true, val blocked: Boolean = false)
+
+@Serializable
+data class HotPostsResponse(val posts: List<PostItem> = emptyList())
+
+@Serializable
+data class HotBooklistsResponse(val booklists: List<BooklistSummary> = emptyList())
+
+@Serializable
+data class ReadingSessionBody(
+    val bookSourceId: String = BOOK_SOURCE_MAIN,
+    val bookId: String,
+    val durationSec: Int = 0,
+)
+
+@Serializable
+data class BadgeDto(
+    val key: String,
+    val name: String,
+    val desc: String? = null,
+    val unlocked: Boolean = false,
+)
+
+@Serializable
+data class ReadingStats(
+    val totalMin: Int = 0,
+    val days: Int = 0,
+    val level: Int = 1,
+    val streakDays: Int = 0,
+    val badges: List<BadgeDto> = emptyList(),
+)
+
+@Serializable
+data class ReportBody(val reason: String? = null)
+
+@Serializable
+data class HomeBannerItem(
+    val imageUrl: String? = null,
+    val targetUrl: String? = null,
+    val title: String? = null,
+)
+
+@Serializable
+data class HomeAnnouncement(
+    val id: String,
+    val title: String,
+    val body: String? = null,
+    val level: String? = null,
+    val publishedAt: Long = 0,
+)
+
+@Serializable
+data class HomeResponse(
+    val banner: List<HomeBannerItem>? = null,
+    val featuredBooklists: List<BooklistSummary> = emptyList(),
+    val announcements: List<HomeAnnouncement> = emptyList(),
 )

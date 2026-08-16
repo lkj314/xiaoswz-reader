@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -68,6 +69,12 @@ import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.LiquidGlassCard
 import com.xiaoswz.reader.ui.components.SectionHeader
 import com.xiaoswz.reader.ui.theme.GlassTokens
+import com.xiaoswz.reader.data.booklist.BooklistRepository
+import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
+import com.xiaoswz.reader.data.api.BooklistSummary
+import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 
 private fun statusText(s: String?): String = when (s) {
     "ONGOING" -> "连载中"
@@ -96,6 +103,42 @@ fun BookDetailScreen(
     var collected by remember { mutableStateOf(false) }
     var hasUpdate by remember { mutableStateOf(false) }
     var commentText by remember { mutableStateOf("") }
+    // 加入书单（0.7.4）：底部弹层选书单 / 新建书单并加入
+    var showAddToBooklist by remember { mutableStateOf(false) }
+    var myBooklists by remember { mutableStateOf<List<BooklistSummary>>(emptyList()) }
+    var newBooklistTitle by remember { mutableStateOf("") }
+    var addingToBooklist by remember { mutableStateOf(false) }
+    val addSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    fun doAddToBooklist(booklistId: String) {
+        val d = viewModel.uiState.value.detail ?: return
+        scope.launch {
+            addingToBooklist = true
+            BooklistRepository.addItem(
+                id = booklistId,
+                bookSourceId = BOOK_SOURCE_MAIN,
+                bookId = slug,
+                title = d.name,
+                author = d.author,
+                coverUrl = d.coverUrl,
+                note = null,
+            ).onSuccess {
+                Toast.makeText(context, "已加入书单", Toast.LENGTH_SHORT).show()
+                showAddToBooklist = false
+            }.onFailure { e ->
+                Toast.makeText(context, e.message ?: "加入失败", Toast.LENGTH_SHORT).show()
+            }
+            addingToBooklist = false
+        }
+    }
+
+    LaunchedEffect(showAddToBooklist) {
+        if (showAddToBooklist) {
+            BooklistRepository.getBooklists("mine", 1).onSuccess { resp ->
+                myBooklists = resp.booklists
+            }
+        }
+    }
 
     LaunchedEffect(slug) {
         viewModel.load(slug)
@@ -248,47 +291,63 @@ fun BookDetailScreen(
                                     }
                                 }
                                 Spacer(Modifier.height(14.dp))
-                                // 操作按钮：卡片内整宽等分，避免挤在窄信息列里变形
+                                // 操作按钮：开始阅读整宽；加入书架 + 加入书单 等分
                                 val firstChapter = chapters.firstOrNull()
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
                                     Button(
                                         onClick = { openChapter(firstChapter?.id) },
                                         enabled = firstChapter != null,
-                                        modifier = Modifier.weight(1f),
+                                        modifier = Modifier.fillMaxWidth(),
                                     ) {
                                         Text("开始阅读", maxLines = 1)
                                     }
-                                    OutlinedButton(
-                                        onClick = {
-                                            scope.launch {
-                                                if (collected) {
-                                                    bookshelfRepo.remove(slug)
-                                                    collected = false
-                                                } else {
-                                                    bookshelfRepo.add(
-                                                        BookEntity(
-                                                            slug = slug,
-                                                            title = detail.name ?: "",
-                                                            author = detail.author,
-                                                            coverUrl = shrinkCover(detail.coverUrl),
-                                                            firstChapterId = firstChapter?.id,
-                                                            lastChapterId = firstChapter?.id,
-                                                            lastChapterTitle = firstChapter?.name,
-                                                            addedAt = System.currentTimeMillis(),
-                                                            lastReadAt = System.currentTimeMillis(),
-                                                        )
-                                                    )
-                                                    collected = true
-                                                    BookUpdateStore.setKnown(slug, currentCount)
-                                                }
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     ) {
-                                        Text(if (collected) "移出书架" else "加入书架", maxLines = 1)
+                                        OutlinedButton(
+                                            onClick = {
+                                                scope.launch {
+                                                    if (collected) {
+                                                        bookshelfRepo.remove(slug)
+                                                        collected = false
+                                                    } else {
+                                                        bookshelfRepo.add(
+                                                            BookEntity(
+                                                                slug = slug,
+                                                                title = detail.name ?: "",
+                                                                author = detail.author,
+                                                                coverUrl = shrinkCover(detail.coverUrl),
+                                                                firstChapterId = firstChapter?.id,
+                                                                lastChapterId = firstChapter?.id,
+                                                                lastChapterTitle = firstChapter?.name,
+                                                                addedAt = System.currentTimeMillis(),
+                                                                lastReadAt = System.currentTimeMillis(),
+                                                            )
+                                                        )
+                                                        collected = true
+                                                        BookUpdateStore.setKnown(slug, currentCount)
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Text(if (collected) "移出书架" else "加入书架", maxLines = 1)
+                                        }
+                                        OutlinedButton(
+                                            onClick = { showAddToBooklist = true },
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.PlaylistAdd,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("加入书单", maxLines = 1)
+                                        }
                                     }
                                 }
                             }
@@ -432,6 +491,124 @@ fun BookDetailScreen(
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    // 加入书单底部弹层（0.7.4）
+    if (showAddToBooklist) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddToBooklist = false },
+            sheetState = addSheetState,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            ) {
+                Text(
+                    text = "加入书单",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                if (myBooklists.isEmpty()) {
+                    Text(
+                        text = "你还没有书单，先在下方创建一个吧",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = GlassTokens.SecondaryLabel,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 320.dp),
+                    ) {
+                        items(myBooklists) { bl ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = !addingToBooklist) { doAddToBooklist(bl.id) }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                AsyncImage(
+                                    model = resolveCoverUrl(bl.coverUrl),
+                                    contentDescription = bl.title,
+                                    modifier = Modifier
+                                        .size(44.dp, 60.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentScale = ContentScale.Crop,
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = bl.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        text = "${bl.itemCount} 本",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = GlassTokens.SecondaryLabel,
+                                    )
+                                }
+                                if (addingToBooklist) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                                }
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+                // 新建书单并加入
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = newBooklistTitle,
+                        onValueChange = { newBooklistTitle = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("新建书单名称", color = GlassTokens.SecondaryLabel) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(GlassTokens.RadiusPill),
+                        colors = androidx.compose.material3.TextFieldDefaults.colors(
+                            focusedContainerColor = GlassTokens.GlassFillStrong,
+                            unfocusedContainerColor = GlassTokens.GlassFillStrong,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            cursorColor = GlassTokens.SystemBlue,
+                            focusedTextColor = GlassTokens.Label,
+                            unfocusedTextColor = GlassTokens.Label,
+                        ),
+                    )
+                    Button(
+                        onClick = {
+                            val title = newBooklistTitle.trim()
+                            if (title.isEmpty()) return@Button
+                            scope.launch {
+                                addingToBooklist = true
+                                BooklistRepository.createBooklist(title, null, null)
+                                    .onSuccess { id ->
+                                        newBooklistTitle = ""
+                                        doAddToBooklist(id)
+                                    }
+                                    .onFailure { e ->
+                                        Toast.makeText(context, e.message ?: "创建失败", Toast.LENGTH_SHORT).show()
+                                        addingToBooklist = false
+                                    }
+                            }
+                        },
+                        enabled = newBooklistTitle.trim().isNotEmpty() && !addingToBooklist,
+                    ) {
+                        Text("创建并加入")
                     }
                 }
             }
