@@ -98,16 +98,34 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                             settingsVisible = false,
                         )
                     }
-                    // 预读下一章，翻章零等待（命中会落文件缓存，支持离线）
-                    _uiState.value.nextChapterId?.let { nextId ->
-                        launch { repository.prefetchChapter(nextId) }
-                    }
+                    // 双向多章预读（下 N + 上 1），翻章几乎零等待
+                    prefetchAround(result.data.id ?: chapterId)
                 }
                 .onFailure { e ->
                     _uiState.update {
                         it.copy(isLoading = false, error = e.message ?: "章节加载失败")
                     }
                 }
+        }
+    }
+
+    /** 读章后后台预取周围的章节（下 N + 上 1），命中文件缓存则跳过 */
+    private fun prefetchAround(currentChapterId: String) {
+        val state = _uiState.value
+        val toc = state.toc
+        if (toc.isEmpty()) return
+        val idx = toc.indexOfFirst { it.id == currentChapterId }.takeIf { it >= 0 } ?: return
+        val ids = mutableListOf<String>()
+        for (i in 1..state.settings.prefetchNext) {
+            toc.getOrNull(idx + i)?.id?.let { ids.add(it) }
+        }
+        for (i in 1..state.settings.prefetchPrev) {
+            toc.getOrNull(idx - i)?.id?.let { ids.add(it) }
+        }
+        ids.forEach { id ->
+            viewModelScope.launch {
+                repository.prefetchChapter(id)
+            }
         }
     }
 

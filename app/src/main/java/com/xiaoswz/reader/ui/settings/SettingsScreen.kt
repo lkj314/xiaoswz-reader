@@ -46,6 +46,8 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -116,6 +118,10 @@ fun SettingsScreen(
     var cacheSizeText by remember { mutableStateOf(formatCacheSize(ChapterCacheManager.sizeBytes())) }
     var themeIndex by remember { mutableStateOf(ReaderSettings.THEME_DAY) }
     val themeNames = listOf("米纸日间", "护眼绿", "夜间模式", "纯黑 OLED")
+    // 预读 / 连续阅读开关（0.9.2 / 0.9.3）
+    var prefetchNext by remember { mutableStateOf(3) }
+    var prefetchPrev by remember { mutableStateOf(1) }
+    var continuousScroll by remember { mutableStateOf(true) }
     val appThemeMode by appSettings.themeModeFlow.collectAsState(initial = AppThemeMode.SYSTEM)
 
     LaunchedEffect(Unit) {
@@ -131,6 +137,9 @@ fun SettingsScreen(
         }
         updateServerUrl = url
         themeIndex = s.themeIndex
+        prefetchNext = s.prefetchNext
+        prefetchPrev = s.prefetchPrev
+        continuousScroll = s.continuousScroll
         crashLog = CrashLogger.getLog(context)
     }
 
@@ -369,6 +378,60 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("清空离线缓存")
+                }
+                Spacer(Modifier.height(12.dp))
+                // 向后预读深度（0=关闭）
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("向后预读", style = MaterialTheme.typography.bodyMedium)
+                    Text("${prefetchNext} 章", style = MaterialTheme.typography.labelMedium)
+                }
+                Slider(
+                    value = prefetchNext.toFloat(),
+                    onValueChange = {
+                        prefetchNext = it.toInt().coerceIn(0, 8)
+                        scope.launch { repo.update { s -> s.copy(prefetchNext = prefetchNext) } }
+                    },
+                    valueRange = 0f..8f,
+                    steps = 7,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // 向前预读深度（0=关闭）
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("向前预读", style = MaterialTheme.typography.bodyMedium)
+                    Text("${prefetchPrev} 章", style = MaterialTheme.typography.labelMedium)
+                }
+                Slider(
+                    value = prefetchPrev.toFloat(),
+                    onValueChange = {
+                        prefetchPrev = it.toInt().coerceIn(0, 4)
+                        scope.launch { repo.update { s -> s.copy(prefetchPrev = prefetchPrev) } }
+                    },
+                    valueRange = 0f..4f,
+                    steps = 4,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // 滚动触底自动续读下一章
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("滚动触底自动续读", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = continuousScroll,
+                        onCheckedChange = {
+                            continuousScroll = it
+                            scope.launch { repo.update { s -> s.copy(continuousScroll = it) } }
+                        },
+                    )
                 }
             }
 

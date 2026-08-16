@@ -13,6 +13,11 @@ import com.xiaoswz.reader.data.model.BookDto
 import com.xiaoswz.reader.data.model.BookListResponse
 import com.xiaoswz.reader.data.model.CategoryDto
 import com.xiaoswz.reader.data.model.ChapterContentDto
+import com.xiaoswz.reader.data.model.ChapterDto
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * 章节加载结果：data 为章节正文，fromOfflineCache=true 表示内容来自磁盘文件（断网可读）
@@ -163,10 +168,38 @@ class BookRepository(
         }.map { ChapterResult(it, false) }
     }
 
-    /** 预取章节正文（不阻塞，失败静默）；命中会落文件缓存，支持离线 */
+    /** 预取章节正文（不阻塞，失败静默）；已缓存且新鲜则跳过，减少主站只读接口 hits */
     suspend fun prefetchChapter(chapterId: String) {
         if (contentCache.containsKey(chapterId)) return
+        if (ChapterCacheManager.isFresh(chapterId)) return
         runCatching { getChapterContent(chapterId) }
+    }
+
+    /**
+     * 整本离线下载：并发拉取全部章节正文落本地文件缓存。
+     * 并发上限 3，温柔对待主站只读接口；已缓存且新鲜的章节直接跳过。
+     * onProgress(done, total) 在主线程外回调，调用方自行切线程更新 UI。
+     */
+    suspend fun downloadWholeBook(
+        chapters: List<ChapterDto>,
+        onProgress: (done: Int, total: Int) -> Unit,
+    ) {
+        if (chapters.isEmpty()) return
+        val total = chapters.size
+        val done = AtomicInteger(0)
+        // 分批并发（每批 3），温柔对待主站只读接口；已缓存且新鲜的章节直接跳过
+        coroutineScope {
+            chapters.chunked(3).forEach { batch ->
+                batch.mapNotNull { ch -> ch.id }.map { id ->
+                    async {
+                        if (!ChapterCacheManager.isFresh(id)) {
+                            runCatching { getChapterContent(id) }
+                        }
+                        onProgress(done.incrementAndGet(), total)
+                    }
+                }.awaitAll()
+            }
+        }
     }
 
     fun clearCache() {

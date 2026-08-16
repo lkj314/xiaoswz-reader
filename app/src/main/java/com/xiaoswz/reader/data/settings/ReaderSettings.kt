@@ -35,6 +35,12 @@ data class ReaderSettings(
     val keepScreenOn: Boolean = true,
     /** 局域网更新服务器地址 */
     val updateServerUrl: String = BuildConfig.DEFAULT_UPDATE_SERVER,
+    /** 后台预读：向后预取章数（0=关闭），默认 3 → 翻章几乎零等待 */
+    val prefetchNext: Int = 3,
+    /** 后台预读：向前预取章数（0=关闭），默认 1 */
+    val prefetchPrev: Int = 1,
+    /** 滚动模式触底自动续读下一章（下一章已预读，切换无感） */
+    val continuousScroll: Boolean = true,
 ) {
     companion object {
         const val THEME_DAY = 0
@@ -66,6 +72,9 @@ class ReaderSettingsRepository(private val context: Context) {
         val VOLUME_KEYS = booleanPreferencesKey("volume_key_paging")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val UPDATE_SERVER = stringPreferencesKey("update_server_url")
+        val PREFETCH_NEXT = intPreferencesKey("prefetch_next")
+        val PREFETCH_PREV = intPreferencesKey("prefetch_prev")
+        val CONTINUOUS = booleanPreferencesKey("continuous_scroll")
     }
 
     val settingsFlow: Flow<ReaderSettings> =
@@ -82,6 +91,9 @@ class ReaderSettingsRepository(private val context: Context) {
                 volumeKeyPaging = prefs[Keys.VOLUME_KEYS] ?: defaults.volumeKeyPaging,
                 keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: defaults.keepScreenOn,
                 updateServerUrl = prefs[Keys.UPDATE_SERVER] ?: defaults.updateServerUrl,
+                prefetchNext = prefs[Keys.PREFETCH_NEXT] ?: defaults.prefetchNext,
+                prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: defaults.prefetchPrev,
+                continuousScroll = prefs[Keys.CONTINUOUS] ?: defaults.continuousScroll,
             )
         }
 
@@ -98,6 +110,9 @@ class ReaderSettingsRepository(private val context: Context) {
                 volumeKeyPaging = prefs[Keys.VOLUME_KEYS] ?: true,
                 keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: true,
                 updateServerUrl = prefs[Keys.UPDATE_SERVER] ?: BuildConfig.DEFAULT_UPDATE_SERVER,
+                prefetchNext = prefs[Keys.PREFETCH_NEXT] ?: 3,
+                prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: 1,
+                continuousScroll = prefs[Keys.CONTINUOUS] ?: true,
             )
             val next = transform(current)
             prefs[Keys.FONT_SIZE] = next.fontSize.coerceIn(
@@ -114,6 +129,9 @@ class ReaderSettingsRepository(private val context: Context) {
             prefs[Keys.VOLUME_KEYS] = next.volumeKeyPaging
             prefs[Keys.KEEP_SCREEN_ON] = next.keepScreenOn
             prefs[Keys.UPDATE_SERVER] = next.updateServerUrl
+            prefs[Keys.PREFETCH_NEXT] = next.prefetchNext.coerceIn(0, 8)
+            prefs[Keys.PREFETCH_PREV] = next.prefetchPrev.coerceIn(0, 4)
+            prefs[Keys.CONTINUOUS] = next.continuousScroll
         }
     }
 }

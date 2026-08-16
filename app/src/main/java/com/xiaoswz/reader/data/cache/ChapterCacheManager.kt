@@ -15,6 +15,12 @@ import java.util.concurrent.atomic.AtomicBoolean
  * 刻意不进入 Room —— AppDatabase 使用 fallbackToDestructiveMigration()，
  * 一旦改动 schema 会清空整个 bookshelf.db（书架与阅读进度全丢）。
  * 用独立文件目录规避该风险，随应用卸载自动清除。
+ *
+ * 0.9.1 增强：
+ *  - TTL（默认 7 天）：过期章节视为未命中，下次读取自动回源刷新，不再永久陈旧。
+ *  - LRU 容量上限（默认 300MB）：写入时若超出上限，按最后修改时间淘汰最旧章节，
+ *    避免缓存无限膨胀挤占磁盘。
+ *  - isFresh(id)：供预取判断「是否已缓存且新鲜」，命中则跳过网络请求（护主站）。
  */
 object ChapterCacheManager {
     private const val DIR_NAME = "chapter_cache"
@@ -22,6 +28,12 @@ object ChapterCacheManager {
     private val json = Json { ignoreUnknownKeys = true }
     private val ready = AtomicBoolean(false)
     private lateinit var dir: File
+
+    /** 章节正文保鲜期：超过则下次读取回源刷新 */
+    private const val TTL_MS = 7L * 24 * 60 * 60 * 1000 // 7 天
+
+    /** 缓存总容量上限，超出触发 LRU 淘汰 */
+    private const val CAP_BYTES = 300L * 1024 * 1024 // 300 MB
 
     private fun ensureDir() {
         if (ready.get()) return
@@ -42,10 +54,26 @@ object ChapterCacheManager {
         return File(dir, "$safe.json")
     }
 
+    private fun isFreshFile(f: File): Boolean {
+        if (!f.exists()) return false
+        return System.currentTimeMillis() - f.lastModified() <= TTL_MS
+    }
+
+    /** 是否已缓存且新鲜（供预取跳过判断，不删除任何文件） */
+    fun isFresh(chapterId: String): Boolean {
+        ensureDir()
+        return isFreshFile(fileFor(chapterId))
+    }
+
     fun get(chapterId: String): ChapterContentDto? {
         ensureDir()
         val f = fileFor(chapterId)
         if (!f.exists()) return null
+        // 过期：删除旧文件并视为未命中，触发回源刷新
+        if (!isFreshFile(f)) {
+            f.delete()
+            return null
+        }
         return try {
             json.decodeFromString(ChapterContentDto.serializer(), f.readText())
         } catch (e: Exception) {
@@ -58,15 +86,44 @@ object ChapterCacheManager {
         val id = dto.id ?: return
         ensureDir()
         try {
-            fileFor(id).writeText(json.encodeToString(ChapterContentDto.serializer(), dto))
+            val f = fileFor(id)
+            f.writeText(json.encodeToString(ChapterContentDto.serializer(), dto))
+            // 以最后修改时间记录写入时刻，供 TTL / LRU 使用
+            f.setLastModified(System.currentTimeMillis())
+            evictIfNeeded()
         } catch (e: Exception) {
             Log.w(TAG, "write failed: $id", e)
         }
     }
 
-    fun contains(chapterId: String): Boolean {
+    /** 超过容量上限时，按最后修改时间淘汰最旧章节，直到回到上限内 */
+    private fun evictIfNeeded() {
         ensureDir()
-        return fileFor(chapterId).exists()
+        val files = dir.listFiles() ?: return
+        var total = files.sumOf { it.length() }
+        if (total <= CAP_BYTES) return
+        // 最旧在前
+        val sorted = files.sortedBy { it.lastModified() }
+        for (f in sorted) {
+            if (total <= CAP_BYTES) break
+            total -= f.length()
+            f.delete()
+        }
+    }
+
+    /** 清理所有过期章节（可在设置页或冷启动时调用，保持缓存整洁） */
+    fun pruneStale() {
+        ensureDir()
+        dir.listFiles()?.forEach { f ->
+            if (!isFreshFile(f)) f.delete()
+        }
+    }
+
+    fun contains(chapterId: String): Boolean = isFresh(chapterId)
+
+    fun entryCount(): Int {
+        ensureDir()
+        return dir.listFiles()?.size ?: 0
     }
 
     fun sizeBytes(): Long {

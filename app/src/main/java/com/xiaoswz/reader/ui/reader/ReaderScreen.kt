@@ -49,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +69,7 @@ import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.ui.theme.ReaderThemes
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /** 左右边距档位对应的 dp */
@@ -318,6 +320,25 @@ fun ReaderScreen(
                 if (pendingJumpToEnd && pages.value.isNotEmpty()) {
                     pagerState.scrollToPage(pages.value.lastIndex)
                     pendingJumpToEnd = false
+                }
+            }
+
+            // ── 滚动模式触底自动续读下一章（下一章已预读，切换无感）──
+            LaunchedEffect(Unit) {
+                if (state.settings.continuousScroll &&
+                    state.settings.pageMode == ReaderSettings.MODE_SCROLL
+                ) {
+                    snapshotFlow { scrollState.value to scrollState.maxValue }
+                        .collect { (pos, max) ->
+                            val s = viewModel.uiState.value
+                            if (s.settings.continuousScroll &&
+                                s.settings.pageMode == ReaderSettings.MODE_SCROLL &&
+                                s.nextChapterId != null && !s.isLoading &&
+                                max > 100 && pos >= max - 60
+                            ) {
+                                viewModel.nextChapter()
+                            }
+                        }
                 }
             }
 

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -303,6 +304,31 @@ fun BookDetailScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
                                         Text("开始阅读", maxLines = 1)
+                                    }
+                                    // 整本离线下载（0.9.5）：下载后断网可读
+                                    if (state.isDownloading) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            LinearProgressIndicator(
+                                                progress = {
+                                                    if (state.downloadTotal > 0)
+                                                        state.downloadDone.toFloat() / state.downloadTotal
+                                                    else 0f
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
+                                            Text(
+                                                "离线下载中 ${state.downloadDone}/${state.downloadTotal}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    } else {
+                                        OutlinedButton(
+                                            onClick = { viewModel.downloadWholeBook() },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text("下载整本（离线可读）", maxLines = 1)
+                                        }
                                     }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),

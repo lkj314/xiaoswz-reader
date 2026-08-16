@@ -1,6 +1,6 @@
 {
-  "versionCode": 58,
-  "versionName": "0.9.0",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.9.0/surf-reader-0.9.0.apk",
-  "notes": "0.9.0·0.8 适配线收官（合并 0.8.3~0.8.9）：① 后端 Vercel Cron 每日保活预热 + 空库自动播种；② 封面代理加轻量限流保护主站；③ 新增 LeaderboardCache 榜单离线缓存，热榜/月票榜打开即显示上一次快照再后台刷新；④ 首页/书库离线兜底（网络失败回退本地缓存列表）；⑤ 首页新增「继续阅读」纯本地书架进度入口；⑥ BackendClient 传输层单次重试改善冷启动抖动。独立后端、主站单源、物理隔离不变。"
+  "versionCode": 59,
+  "versionName": "0.10.0",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.10.0/surf-reader-0.10.0.apk",
+  "notes": "0.10.0·0.9.x 缓存/预读线收官（合并 0.9.1~0.9.5）：① 章节缓存治理——7 天 TTL + 300MB LRU 容量上限，过期自动刷新、不再无限膨胀；② 双向多章预读——读章后后台预取「下3+上1」章，翻章几乎零等待；③ 翻章无缝——命中缓存瞬时换章、滚动触底自动续读下一章（无感切换）；④ 进书即热——详情页后台预热前 2 章，点开阅读第一眼即零等待；⑤ 整本离线下载——书籍详情页「下载整本」按钮，带进度、断网可读；设置页新增预读深度与触底续读开关。独立后端、主站单源、物理隔离不变。"
 }

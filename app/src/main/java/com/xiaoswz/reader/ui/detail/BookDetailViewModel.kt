@@ -32,6 +32,10 @@ data class DetailUiState(
     val commentTotal: Int = 0,
     val ad: AdCreativeDto? = null,
     val toast: String? = null,
+    // ── 整本离线下载（0.9.5）──
+    val isDownloading: Boolean = false,
+    val downloadDone: Int = 0,
+    val downloadTotal: Int = 0,
 )
 
 class BookDetailViewModel(
@@ -49,6 +53,11 @@ class BookDetailViewModel(
                 .onSuccess { detail ->
                     _uiState.update { it.copy(detail = detail, isLoading = false) }
                     loadBackend(slug, detail)
+                    // 进书即热：后台预热前 2 章，点开阅读第一眼即零等待
+                    detail.chapters?.take(2)?.forEach { ch ->
+                        val cid = ch.id ?: return@forEach
+                        viewModelScope.launch { runCatching { repository.prefetchChapter(cid) } }
+                    }
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -188,6 +197,27 @@ class BookDetailViewModel(
 
     fun clearToast() {
         _uiState.update { it.copy(toast = null) }
+    }
+
+    /** 整本离线下载：并发拉取全部章节正文落本地文件缓存，带进度回调（0.9.5） */
+    fun downloadWholeBook() {
+        val detail = _uiState.value.detail ?: return
+        val chapters = detail.chapters.orEmpty()
+        if (chapters.isEmpty() || _uiState.value.isDownloading) return
+        _uiState.update {
+            it.copy(isDownloading = true, downloadDone = 0, downloadTotal = chapters.size)
+        }
+        viewModelScope.launch {
+            repository.downloadWholeBook(chapters) { done, total ->
+                _uiState.update { it.copy(downloadDone = done, downloadTotal = total) }
+            }
+            _uiState.update {
+                it.copy(
+                    isDownloading = false,
+                    toast = "已离线缓存 ${chapters.size} 章，断网可读",
+                )
+            }
+        }
     }
 
     fun retry(slug: String) {
