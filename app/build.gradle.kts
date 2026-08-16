@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 61
-        versionName = "0.11.0" // 0.11.0·模块A大更新（原0.11~0.14合并，0.15废除）：标注与书签（多色划线+笔记+书签列表+跨设备云端LWW同步，后端独立annotations表）+书内全文搜索。物理隔离、主站只读不变把"一章一屏+点击翻章"彻底改为原生阅读器模型——滚动模式下所有章节拼成一条连续长文（LazyColumn 连续窗口），第 N 章末段紧接第 N+1 章标题与首段；滚到底不翻章，后台把已预加载的下一章 append 进同一条流（瞬时接续、无整屏替换、无滚动归零）；向上滚同理 prepend 上一章并保位；TOC 跳转/上一章下一章按钮改为平滑滚动到目标章块而非换屏；默认阅读模式改为滚动（连续无缝滚动默认开启）。翻页模式与单章滚动仍保留可切换。物理隔离、主站只读不变
+        versionCode = 62
+        versionName = "0.11.1" // 0.11.1·热修：修复 0.11.0 引入的"无法滚动"回归（选区手势 detectDragGestures 吞掉滚动，改为 detectDragGesturesAfterLongPress，长按才选词、正常滑动/翻页恢复）；按用户要求删除书签功能（工具栏书签入口、面板书签分页、导出、ViewModel/Repository 书签代码全移除），保留多色划线/笔记/复制/书内搜索与跨设备云端同步。物理隔离、主站只读不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

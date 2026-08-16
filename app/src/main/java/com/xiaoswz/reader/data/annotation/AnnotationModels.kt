@@ -4,7 +4,6 @@ import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
 import kotlinx.serialization.Serializable
 
 const val ANNOTATION_TYPE_HIGHLIGHT = "highlight"
-const val ANNOTATION_TYPE_BOOKMARK = "bookmark"
 
 /**
  * 本地持久化的标注实体（高亮 + 书签统一存储）。

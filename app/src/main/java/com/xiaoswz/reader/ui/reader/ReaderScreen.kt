@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.rememberScrollState
@@ -95,7 +95,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.CrashLogger
-import com.xiaoswz.reader.data.annotation.ANNOTATION_TYPE_BOOKMARK
 import com.xiaoswz.reader.data.annotation.ANNOTATION_TYPE_HIGHLIGHT
 import com.xiaoswz.reader.data.annotation.AnnotationEntity
 import com.xiaoswz.reader.data.model.ChapterDto
@@ -289,12 +288,6 @@ fun ReaderScreen(
                     sb.appendLine("【划线】$ch")
                     sb.appendLine(a.quotedText ?: "")
                     if (!a.note.isNullOrBlank()) sb.appendLine("笔记：${a.note}")
-                    sb.appendLine()
-                }
-                items.filter { it.type == ANNOTATION_TYPE_BOOKMARK }.forEach { a ->
-                    val ch = state.toc.firstOrNull { it.id == a.chapterId }?.name ?: a.chapterId
-                    sb.appendLine("【书签】$ch")
-                    if (!a.note.isNullOrBlank()) sb.appendLine(a.note) else sb.appendLine(a.quotedText ?: "")
                     sb.appendLine()
                 }
                 val intent = Intent(Intent.ACTION_SEND).apply {
@@ -840,10 +833,6 @@ fun ReaderScreen(
                             showNoteDialog = true
                             pendingSel = null
                         },
-                        onBookmark = {
-                            viewModel.addBookmark(selChId, start, selectedText, null)
-                            pendingSel = null
-                        },
                         onCopy = {
                             clipboard.setText(AnnotatedString(selectedText))
                             pendingSel = null
@@ -1029,15 +1018,15 @@ private fun SelectionText(
         modifier = Modifier
             .fillMaxWidth()
             .pointerInput(Unit) {
-                detectDragGestures(
+                detectDragGesturesAfterLongPress(
                     onDragStart = { offset ->
-                        val l = layoutResult ?: return@detectDragGestures
+                        val l = layoutResult ?: return@detectDragGesturesAfterLongPress
                         val o = l.getOffsetForPosition(offset)
                         dragStart = o
                         onSelectionChange(TextRange(o, o))
                     },
                     onDrag = { change, _ ->
-                        val l = layoutResult ?: return@detectDragGestures
+                        val l = layoutResult ?: return@detectDragGesturesAfterLongPress
                         val o = l.getOffsetForPosition(change.position)
                         onSelectionChange(TextRange(dragStart, o))
                     },
@@ -1062,7 +1051,6 @@ private fun SelectionText(
 private fun SelectionToolbar(
     onColor: (Color) -> Unit,
     onNote: () -> Unit,
-    onBookmark: () -> Unit,
     onCopy: () -> Unit,
     onSearch: () -> Unit,
     onCancel: () -> Unit,
@@ -1092,9 +1080,6 @@ private fun SelectionToolbar(
             IconButton(onClick = onNote) {
                 Icon(Icons.Filled.Edit, contentDescription = "笔记", tint = OverlayText)
             }
-            IconButton(onClick = onBookmark) {
-                Icon(Icons.Filled.Bookmark, contentDescription = "书签", tint = OverlayText)
-            }
             IconButton(onClick = onCopy) {
                 Icon(Icons.Filled.ContentCopy, contentDescription = "复制", tint = OverlayText)
             }
@@ -1120,15 +1105,13 @@ private fun AnnotationsSheet(
     onDismiss: () -> Unit,
 ) {
     val chapterTitle = { id: String -> toc.firstOrNull { it.id == id }?.name ?: id }
-    var tab by remember { mutableStateOf(0) }
     val highlights = annotations.filter { it.type == ANNOTATION_TYPE_HIGHLIGHT }
-    val bookmarks = annotations.filter { it.type == ANNOTATION_TYPE_BOOKMARK }
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("标注与书签", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text("标注", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.weight(1f))
             TextButton(onClick = onExport) {
                 Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
@@ -1137,13 +1120,12 @@ private fun AnnotationsSheet(
             IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = "关闭") }
         }
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            TextButton(onClick = { tab = 0 }) { Text("划线 (${highlights.size})", color = if (tab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
-            TextButton(onClick = { tab = 1 }) { Text("书签 (${bookmarks.size})", color = if (tab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text("划线 (${highlights.size})", color = MaterialTheme.colorScheme.primary)
         }
-        val list = if (tab == 0) highlights else bookmarks
+        val list = highlights
         if (list.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                Text("暂无${if (tab == 0) "划线" else "书签"}，长按正文即可添加", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("暂无划线，长按正文即可添加", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 460.dp)) {
@@ -1159,23 +1141,13 @@ private fun AnnotationsSheet(
                             color = MaterialTheme.colorScheme.primary,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        if (a.type == ANNOTATION_TYPE_HIGHLIGHT) {
-                            Text(
-                                a.quotedText ?: "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 4,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        } else {
-                            Text(
-                                a.note ?: a.quotedText ?: "（书签）",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 4,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        Text(
+                            a.quotedText ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                         if (!a.note.isNullOrBlank()) {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text("笔记：${a.note}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

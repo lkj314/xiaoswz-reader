@@ -36,26 +36,6 @@ object AnnotationRepository {
         updatedAt = System.currentTimeMillis(),
     )
 
-    fun createBookmark(
-        bookId: String,
-        chapterId: String,
-        offset: Int,
-        quoted: String?,
-        note: String?,
-    ): AnnotationEntity = AnnotationEntity(
-        clientId = newClientId(),
-        bookSourceId = BOOK_SOURCE_MAIN,
-        bookId = bookId,
-        chapterId = chapterId,
-        type = ANNOTATION_TYPE_BOOKMARK,
-        startOffset = offset,
-        endOffset = offset,
-        quotedText = quoted,
-        color = null,
-        note = note,
-        updatedAt = System.currentTimeMillis(),
-    )
-
     fun loadLocal(ctx: Context, bookId: String): List<AnnotationEntity> =
         AnnotationStore.load(ctx, bookId)
 

@@ -136,7 +136,7 @@ fun ReaderBottomBar(
                 )
             }
             IconButton(onClick = onAnnotations) {
-                Icon(Icons.Filled.Bookmark, contentDescription = "标注与书签", tint = OverlayText)
+                Icon(Icons.Filled.Bookmark, contentDescription = "标注", tint = OverlayText)
             }
             IconButton(onClick = onSearch) {
                 Icon(Icons.Filled.Search, contentDescription = "书内搜索", tint = OverlayText)

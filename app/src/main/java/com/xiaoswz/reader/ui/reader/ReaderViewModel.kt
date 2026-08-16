@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xiaoswz.reader.data.BookRepository
-import com.xiaoswz.reader.data.annotation.ANNOTATION_TYPE_BOOKMARK
 import com.xiaoswz.reader.data.annotation.ANNOTATION_TYPE_HIGHLIGHT
 import com.xiaoswz.reader.data.annotation.AnnotationEntity
 import com.xiaoswz.reader.data.annotation.AnnotationRepository
@@ -414,22 +413,10 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             it.type == ANNOTATION_TYPE_HIGHLIGHT && it.chapterId == chapterId
         }
 
-    /** 某章的书签。 */
-    fun bookmarksForChapter(chapterId: String): List<AnnotationEntity> =
-        _uiState.value.annotations.filter {
-            it.type == ANNOTATION_TYPE_BOOKMARK && it.chapterId == chapterId
-        }
-
     fun addHighlight(chapterId: String, start: Int, end: Int, quoted: String?, color: Int): AnnotationEntity {
         val ann = AnnotationRepository.createHighlight(bookSlug, chapterId, start, end, quoted, color)
         commitAnnotation(ann)
         return ann
-    }
-
-    fun addBookmark(chapterId: String, offset: Int, quoted: String?, note: String?) {
-        commitAnnotation(
-            AnnotationRepository.createBookmark(bookSlug, chapterId, offset, quoted, note),
-        )
     }
 
     fun updateAnnotationNote(clientId: String, note: String) {

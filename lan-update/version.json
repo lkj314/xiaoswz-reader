@@ -1,6 +1,6 @@
 {
-  "versionCode": 61,
-  "versionName": "0.11.0",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.0/surf-reader-0.11.0.apk",
-  "notes": "0.11.0·阅读痕迹大更新（模块A）：标注/书签/书内搜索上线且跨设备云端同步。选区工具栏支持4色划线高亮、写笔记、加书签、复制、直接书内搜索；标注面板列出本书全部高亮与书签，可点击跳转到对应位置、删除、一键导出为文本；书内全文搜索遍历目录逐章匹配，命中结果秒跳。登录后标注与书签自动上云（冲浪阅读独立后端 annotations 表，与主站物理隔离），换设备登录即同步。本地标注以文件存储（不碰Room），未登录也能正常使用。物理隔离、主站只读不变。"
+  "versionCode": 62,
+  "versionName": "0.11.1",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.1/surf-reader-0.11.1.apk",
+  "notes": "0.11.1·热修：修复0.11.0引入的「无法滚动」回归（选区手势吞掉滚动，改为长按才选词、正常滑动/翻页恢复）；按用户要求删除书签功能（工具栏书签入口、面板书签分页、导出、ViewModel/Repository 书签代码全移除），保留多色划线/笔记/复制/书内搜索与跨设备云端同步。物理隔离、主站只读不变。"
 }
