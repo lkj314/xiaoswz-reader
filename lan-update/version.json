@@ -1,6 +1,6 @@
 {
-  "versionCode": 55,
-  "versionName": "0.8.0",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.8.0/surf-reader-0.8.0.apk",
-  "notes": "0.8.0（书单内加书组件 + UID 书号识别 + 本地预加载缓存 + 独立用户中心）：书架内书单可从书城搜索直接添加并按书号精准收录；书籍详情与书城首屏本地文件缓存，重开不重拉书源；设置页抽出独立用户中心（账号/云同步/阅读成就）。后端 bookUid 列已上线 Vercel。APK 托管于 GitHub Releases（兜底可改回局域网地址）。"
+  "versionCode": 56,
+  "versionName": "0.8.1",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.8.1/surf-reader-0.8.1.apk",
+  "notes": "0.8.1（后端客户端适配第一期·自有书库）：后端新增 BookCatalog 轻量书库表（仅存元数据，封面只存 http(s)，经主站公开只读 API 抓取持久化，与主站零共享表/连接/凭据，物理隔离不变）；新增 GET /api/catalog（自有库快速返回，支持分页/排序/搜索/分类）、POST /api/catalog/sync、GET /api/catalog/seed 批量播种、GET /api/cover/[bookId] 封面代理（把主站 data: 内嵌封面解码为图片并边缘缓存，DB 与响应均绝不出现 data: URI）。客户端发现类操作（书城列表/搜索/书单加书）从直连主站改为读后端自有书库，主站仅作空库/不可达兜底，首屏不再实时爬主站、消除主站冷启动延迟。延续 0.8.0 四项改进。APK 托管于 GitHub Releases（兜底可改回局域网地址）。"
 }

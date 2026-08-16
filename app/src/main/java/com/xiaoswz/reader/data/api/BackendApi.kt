@@ -273,6 +273,16 @@ interface BackendApi {
     // ── 0.7.6 运营位 ──
     @GET("api/home")
     suspend fun getHome(): HomeResponse
+
+    // ── 0.8.1 自有书库（catalog）：读冲浪阅读自有库，不实时爬主站 ──
+    @GET("api/catalog")
+    suspend fun getCatalog(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 24,
+        @Query("sort") sort: String = "latest",
+        @Query("search") search: String? = null,
+        @Query("category") category: String? = null,
+    ): CatalogListResponse
 }
 
 // ── 请求体 ──
@@ -890,4 +900,28 @@ data class HomeResponse(
     val banner: List<HomeBannerItem>? = null,
     val featuredBooklists: List<BooklistSummary> = emptyList(),
     val announcements: List<HomeAnnouncement> = emptyList(),
+)
+
+// ── 0.8.1 自有书库（catalog）DTO ──
+@Serializable
+data class CatalogBookDto(
+    val sourceId: String = BOOK_SOURCE_MAIN,
+    val bookId: String,
+    val uid: String? = null,
+    val title: String? = null,
+    val author: String? = null,
+    val coverUrl: String? = null, // 仅 http(s)，绝不 data: URI
+    val category: String? = null,
+    val status: String? = null,
+    val wordCount: Int? = null,
+    val chapterCount: Int? = null,
+    val viewCount: Int? = null,
+)
+
+@Serializable
+data class CatalogListResponse(
+    val books: List<CatalogBookDto> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val totalPages: Int = 1,
 )

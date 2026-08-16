@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 55
-        versionName = "0.8.0" // 0.8.0：① 书单内部「添加书籍」组件（书城搜索选书，底部弹层 BookPickerSheet）；② UID 书号识别（书单条目新增 bookUid，来自书城列表 B000001，跨源稳定引用）；③ 本地预加载缓存（BookMetaCache 24h + CatalogCache 30min，文件缓存规避 Room 破坏性迁移，登录不必重拉书源）；④ 独立用户中心（设置页顶部账户卡点击进入，整合账户/退出/管理台 SSO/云同步/阅读成就，精简设置页）。后端新增 BooklistItem.bookUid 可空列（prisma db push 安全迁移）。独立后端、主站单源、物理隔离不变
+        versionCode = 56
+        versionName = "0.8.1" // 0.8.1（后端客户端适配第一期·自有书库）：后端新增 BookCatalog 轻量书库表（仅元数据，封面只存 http(s)，经主站公开 API 抓取持久化，与主站零共享表/连接/凭据，物理隔离不变）；新增 GET /api/catalog（自有库快速返回）+ POST /api/catalog/sync（从主站播种）。客户端发现类操作（书城列表/搜索/书单加书）从直连主站改为读后端自有书库，主站仅作空库/不可达兜底，首屏不再实时爬主站、消除主站冷启动。延续 0.8.0 四项改进。独立后端、主站单源、物理隔离不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

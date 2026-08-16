@@ -1,12 +1,17 @@
 package com.xiaoswz.reader.data
 
 import com.xiaoswz.reader.data.api.ApiClient
+import com.xiaoswz.reader.data.api.BackendClient
+import com.xiaoswz.reader.data.api.CatalogListResponse
 import com.xiaoswz.reader.data.api.XiaoswzApi
 import com.xiaoswz.reader.data.cache.BookMetaCache
 import com.xiaoswz.reader.data.cache.CatalogCache
 import com.xiaoswz.reader.data.cache.ChapterCacheManager
+import com.xiaoswz.reader.data.model.AuthorDto
 import com.xiaoswz.reader.data.model.BookDetailDto
+import com.xiaoswz.reader.data.model.BookDto
 import com.xiaoswz.reader.data.model.BookListResponse
+import com.xiaoswz.reader.data.model.CategoryDto
 import com.xiaoswz.reader.data.model.ChapterContentDto
 
 /**
@@ -42,13 +47,70 @@ class BookRepository(
         search: String? = null,
     ): Result<BookListResponse> {
         val q = search?.trim()?.takeIf { it.isNotEmpty() }
-        // 书城首屏（无搜索）做文件缓存：开书城秒开，30min 内视为新鲜
-        if (page == 1 && q == null) {
-            if (CatalogCache.isFresh(sort)) {
-                val cached = CatalogCache.get(sort)
-                if (cached != null) return Result.success(cached)
-            }
+        // 书城首屏（无搜索）优先用文件缓存：开书城秒开，30min 内视为新鲜
+        if (page == 1 && q == null && CatalogCache.isFresh(sort)) {
+            CatalogCache.get(sort)?.let { return Result.success(it) }
         }
+        // 主路径：读后端自有书库（快，不实时爬主站）
+        val backend = runCatching {
+            BackendClient.api.getCatalog(
+                page = page,
+                limit = 24,
+                sort = mapCatalogSort(sort),
+                search = q,
+            ).let { mapCatalogToBookList(it) }
+        }
+        if (backend.isSuccess) {
+            val resp = backend.getOrThrow()
+            if (page == 1 && q == null) CatalogCache.put(sort, resp)
+            // 后端书库尚未播种（空）时兜底主站，保证可用
+            if (resp.books.isNullOrEmpty()) {
+                return fetchMainSiteBooks(page, sort, q)
+            }
+            return Result.success(resp)
+        }
+        // 后端不可达 → 兜底主站
+        return fetchMainSiteBooks(page, sort, q)
+    }
+
+    /** 后端书库排序字段映射到主站排序（保持兜底一致） */
+    private fun mapCatalogSort(sort: String): String = when (sort) {
+        "popularity", "hot" -> "popular"
+        "newest", "updated" -> "updated"
+        "words" -> "words"
+        else -> "latest"
+    }
+
+    /** 把后端 CatalogListResponse 映射成客户端统一的 BookListResponse（BookDto） */
+    private fun mapCatalogToBookList(resp: CatalogListResponse): BookListResponse {
+        return BookListResponse(
+            books = resp.books.map { c ->
+                BookDto(
+                    id = c.bookId,
+                    uid = c.uid,
+                    title = c.title,
+                    slug = c.bookId,
+                    coverImage = c.coverUrl, // 已是 http(s)，Coil 直接加载
+                    status = c.status,
+                    wordCount = c.wordCount,
+                    chapterCount = c.chapterCount,
+                    viewCount = c.viewCount,
+                    author = AuthorDto(name = c.author),
+                    category = CategoryDto(name = c.category),
+                )
+            },
+            total = resp.total,
+            page = resp.page,
+            totalPages = resp.totalPages,
+        )
+    }
+
+    /** 主站兜底：直连公开只读 API（仅在后端书库空或不可达时触发） */
+    private suspend fun fetchMainSiteBooks(
+        page: Int,
+        sort: String,
+        q: String?,
+    ): Result<BookListResponse> {
         return runCatching {
             api.getBooks(page = page, sort = sort, search = q).also { resp ->
                 if (page == 1 && q == null) CatalogCache.put(sort, resp)
