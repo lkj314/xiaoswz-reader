@@ -41,6 +41,8 @@ data class ReaderSettings(
     val prefetchPrev: Int = 1,
     /** 滚动模式触底自动续读下一章（下一章已预读，切换无感） */
     val continuousScroll: Boolean = true,
+    /** 听书语音语速 0.5~2.0，默认 1.0 */
+    val ttsRate: Float = 1.0f,
 ) {
     companion object {
         const val THEME_DAY = 0
@@ -56,6 +58,9 @@ data class ReaderSettings(
 
         const val MIN_LINE_SPACING = 1.3f
         const val MAX_LINE_SPACING = 2.2f
+
+        const val MIN_TTS_RATE = 0.5f
+        const val MAX_TTS_RATE = 2.0f
     }
 }
 
@@ -75,6 +80,7 @@ class ReaderSettingsRepository(private val context: Context) {
         val PREFETCH_NEXT = intPreferencesKey("prefetch_next")
         val PREFETCH_PREV = intPreferencesKey("prefetch_prev")
         val CONTINUOUS = booleanPreferencesKey("continuous_scroll")
+        val TTS_RATE = floatPreferencesKey("tts_rate")
     }
 
     val settingsFlow: Flow<ReaderSettings> =
@@ -94,6 +100,7 @@ class ReaderSettingsRepository(private val context: Context) {
                 prefetchNext = prefs[Keys.PREFETCH_NEXT] ?: defaults.prefetchNext,
                 prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: defaults.prefetchPrev,
                 continuousScroll = prefs[Keys.CONTINUOUS] ?: defaults.continuousScroll,
+                ttsRate = prefs[Keys.TTS_RATE] ?: defaults.ttsRate,
             )
         }
 
@@ -113,6 +120,7 @@ class ReaderSettingsRepository(private val context: Context) {
                 prefetchNext = prefs[Keys.PREFETCH_NEXT] ?: 3,
                 prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: 1,
                 continuousScroll = prefs[Keys.CONTINUOUS] ?: true,
+                ttsRate = prefs[Keys.TTS_RATE] ?: 1.0f,
             )
             val next = transform(current)
             prefs[Keys.FONT_SIZE] = next.fontSize.coerceIn(
@@ -132,6 +140,9 @@ class ReaderSettingsRepository(private val context: Context) {
             prefs[Keys.PREFETCH_NEXT] = next.prefetchNext.coerceIn(0, 8)
             prefs[Keys.PREFETCH_PREV] = next.prefetchPrev.coerceIn(0, 4)
             prefs[Keys.CONTINUOUS] = next.continuousScroll
+            prefs[Keys.TTS_RATE] = next.ttsRate.coerceIn(
+                ReaderSettings.MIN_TTS_RATE, ReaderSettings.MAX_TTS_RATE,
+            )
         }
     }
 }

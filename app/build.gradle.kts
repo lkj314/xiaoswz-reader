@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 63
-        versionName = "0.11.2" // 0.11.2·核心去脆弱化：彻底移除核心里的「选区/划线/标注面板」UI（SelectionText 手势即便改为长按仍会干扰滚动，且长按划词已失效）。划线/书签/复制等增强能力未来以「创意工坊插件」形式开放给用户自选安装，不进入核心，永不牺牲滚动阅读体验。数据层（AnnotationModels/Store/Repository）与后端 annotations 表/API 保留作插件地基。保留书内搜索。物理隔离、主站只读不变
+        versionCode = 64
+        versionName = "0.11.3" // 0.11.3·模块B（听书 TTS）：正文听书（Android TextToSpeech 逐句朗读 + 章末自动续读下一章）、DataStore 存储语速（0.5x~2.0x 滑块调节）、底部栏播放/停止。前置 0.11.2 核心去脆弱化（移除核心选区/划线/标注面板 UI，永保滚动体验），划线/书签/复制等增强未来以「创意工坊插件」形式开放，不进核心。物理隔离、主站只读不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

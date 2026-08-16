@@ -2,8 +2,13 @@ package com.xiaoswz.reader.ui.reader
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.view.KeyEvent
 import android.view.WindowManager
+import java.util.Locale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -116,6 +121,13 @@ fun ReaderScreen(
     var searchResults by remember { mutableStateOf<List<SearchMatch>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
 
+    // ── 听书 TTS 状态 ──
+    val ttsEngine = remember { mutableStateOf<TextToSpeech?>(null) }
+    var ttsSpeaking by remember { mutableStateOf(false) }
+    val ttsIndex = remember { mutableStateOf(0) }
+    val ttsSentences = remember { mutableStateOf<List<String>>(emptyList()) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
     LaunchedEffect(bookSlug, chapterId) {
         viewModel.load(bookSlug, chapterId)
     }
@@ -227,6 +239,48 @@ fun ReaderScreen(
             // 跳转到某章（搜索结果命中）
             fun jumpToChapter(chapterId: String) {
                 viewModel.requestScrollToChapter(chapterId)
+            }
+
+            // ── 听书 TTS：逐句朗读当前章，读完自动续下一章 ──
+            fun splitToSentences(text: String): List<String> =
+                text.split(Regex("(?<=[。！？!?；;\\n])")).map { it.trim() }
+                    .filter { it.isNotBlank() }
+
+            fun speakCurrentSentence() {
+                val engine = ttsEngine.value ?: return
+                val list = ttsSentences.value
+                val idx = ttsIndex.value
+                if (idx >= list.size) {
+                    // 本章读完：自动续读下一章（currentChapterId 变化会触发下方 LaunchedEffect 重新朗读）
+                    if (viewModel.uiState.value.hasNextChapter) {
+                        ttsIndex.value = 0
+                        viewModel.nextChapter()
+                    } else {
+                        ttsSpeaking = false
+                        engine.stop()
+                    }
+                    return
+                }
+                engine.setSpeechRate(state.settings.ttsRate)
+                engine.speak(list[idx], TextToSpeech.QUEUE_FLUSH, null, "utt_$idx")
+            }
+
+            fun advanceTts() {
+                ttsIndex.value += 1
+                speakCurrentSentence()
+            }
+
+            fun startTts() {
+                val text = viewModel.currentChapterProcessedText()
+                if (text.isBlank()) { ttsSpeaking = false; return }
+                ttsSentences.value = splitToSentences(text)
+                ttsIndex.value = 0
+                ttsSpeaking = true // 由下方 LaunchedEffect 实际触发朗读（引擎就绪时）
+            }
+
+            fun stopTts() {
+                ttsEngine.value?.stop()
+                ttsSpeaking = false
             }
 
             // 覆盖模式分页（在协程中计算，避免组合阶段同步测量整章卡顿/崩溃）
@@ -446,6 +500,35 @@ fun ReaderScreen(
                 delay(250)
                 searchResults = viewModel.searchBook(q)
                 searching = false
+            }
+
+            // 听书 TTS 引擎初始化 / 退出销毁
+            DisposableEffect(Unit) {
+                val engine = TextToSpeech(context.applicationContext, null)
+                engine.language = Locale.SIMPLIFIED_CHINESE
+                engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {}
+                    override fun onDone(utteranceId: String?) {
+                        mainHandler.post { advanceTts() }
+                    }
+                    override fun onError(utteranceId: String?) {}
+                })
+                ttsEngine.value = engine
+                onDispose {
+                    engine.stop()
+                    engine.shutdown()
+                    ttsEngine.value = null
+                }
+            }
+
+            // 听书：开始 / 切章时重新朗读当前章（引擎就绪才真正发声）
+            LaunchedEffect(ttsSpeaking, state.currentChapterId, ttsEngine.value != null) {
+                if (!ttsSpeaking) return@LaunchedEffect
+                val text = viewModel.currentChapterProcessedText()
+                if (text.isBlank()) return@LaunchedEffect
+                ttsSentences.value = splitToSentences(text)
+                ttsIndex.value = 0
+                if (ttsEngine.value != null) speakCurrentSentence()
             }
 
             // ── 内容区 ──
@@ -702,6 +785,8 @@ fun ReaderScreen(
                         onPrev = { viewModel.prevChapter() },
                         onSettings = { viewModel.showSettings() },
                         onNext = { viewModel.nextChapter() },
+                        onTtsToggle = { if (ttsSpeaking) stopTts() else startTts() },
+                        ttsActive = ttsSpeaking,
                         onSearch = {
                             searchQuery = ""
                             searchResults = emptyList()

@@ -451,6 +451,20 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { AnnotationRepository.pushOne(ctx, ann) }
     }
 
+    /** 当前章预处理后的正文（供听书 TTS 朗读）。连续模式取当前章块；单章模式预处理 rawContent。 */
+    fun currentChapterProcessedText(): String {
+        val s = _uiState.value
+        return if (s.isContinuous) {
+            s.chapterBlocks.firstOrNull { it.id == s.currentChapterId }?.content ?: ""
+        } else {
+            preprocessContent(
+                s.rawContent,
+                s.settings.indentFirstLine,
+                s.settings.paraSpacing,
+            )
+        }
+    }
+
     /** 书内全文搜索：遍历目录逐章抓取（命中缓存则瞬时），返回章内偏移匹配。 */
     suspend fun searchBook(query: String): List<SearchMatch> {
         val q = query.trim()

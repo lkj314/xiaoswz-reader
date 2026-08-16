@@ -13,7 +13,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.NavigateBefore
 import androidx.compose.material.icons.filled.NavigateNext
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -86,7 +88,7 @@ fun ReaderTopBar(
 }
 
 /**
- * 阅读器底部菜单卡片：目录 / 上一章 / 设置 / 下一章 / 书内搜索（图标按钮，禁用态半透明）
+ * 阅读器底部菜单卡片：目录 / 上一章 / 设置 / 下一章 / 听书 / 书内搜索（图标按钮，禁用态半透明）
  */
 @Composable
 fun ReaderBottomBar(
@@ -96,6 +98,8 @@ fun ReaderBottomBar(
     onPrev: () -> Unit,
     onSettings: () -> Unit,
     onNext: () -> Unit,
+    onTtsToggle: () -> Unit,
+    ttsActive: Boolean,
     onSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -131,6 +135,13 @@ fun ReaderBottomBar(
                     Icons.Filled.NavigateNext,
                     contentDescription = "下一章",
                     tint = if (hasNext) OverlayText else OverlayTextDim,
+                )
+            }
+            IconButton(onClick = onTtsToggle) {
+                Icon(
+                    if (ttsActive) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                    contentDescription = if (ttsActive) "停止听书" else "听书",
+                    tint = if (ttsActive) MaterialTheme.colorScheme.primary else OverlayText,
                 )
             }
             IconButton(onClick = onSearch) {

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.BorderOuter
 import androidx.compose.material.icons.filled.FormatIndentIncrease
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Subject
 import androidx.compose.material.icons.filled.VerticalAlignCenter
@@ -172,6 +173,28 @@ fun ReaderSettingsSheet(
                         label = { Text(label) },
                     )
                 }
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // ── 听书 ──
+        SectionTitle("听书")
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingRow(icon = Icons.Filled.GraphicEq, label = "语音语速") {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Slider(
+                    value = settings.ttsRate,
+                    onValueChange = { v -> onChange { it.copy(ttsRate = v) } },
+                    valueRange = ReaderSettings.MIN_TTS_RATE..ReaderSettings.MAX_TTS_RATE,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    "%.1fx".format(settings.ttsRate),
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.width(40.dp),
+                )
             }
         }
 
