@@ -3,6 +3,7 @@ package com.xiaoswz.reader.ui.bookstore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xiaoswz.reader.data.BookRepository
+import com.xiaoswz.reader.data.cache.CatalogCache
 import com.xiaoswz.reader.data.model.BookDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,8 +45,16 @@ class HomeViewModel(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update {
-                        it.copy(isLoading = false, error = e.message ?: "网络错误，请稍后重试")
+                    // 离线兜底：网络失败时若本地有缓存的「热度」列表，仍展示上一次数据
+                    val cached = CatalogCache.get("popular")
+                    if (cached != null) {
+                        _uiState.update {
+                            it.copy(books = cached.books.orEmpty(), isLoading = false)
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(isLoading = false, error = e.message ?: "网络错误，请稍后重试")
+                        }
                     }
                 }
         }

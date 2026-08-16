@@ -66,6 +66,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.data.BookRepository
 import com.xiaoswz.reader.data.backend.BackendRepository
 import com.xiaoswz.reader.data.api.LeaderboardEntry
+import com.xiaoswz.reader.data.cache.LeaderboardCache
 import com.xiaoswz.reader.data.model.BookDto
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.theme.WhaleColors
@@ -432,9 +433,23 @@ private fun LeaderboardRow(
     var loading by remember { mutableStateOf(true) }
 
     LaunchedEffect(board) {
-        loading = true
-        entries = BackendRepository.getLeaderboard(board).getOrNull()?.entries ?: emptyList()
-        loading = false
+        // 缓存优先：先把上一次的榜单立刻渲染出来（打开即显示，秒开），再后台静默刷新
+        val cached = LeaderboardCache.get(board)
+        if (cached != null) {
+            entries = cached.entries
+            loading = false
+        } else {
+            loading = true
+        }
+        val fresh = BackendRepository.getLeaderboard(board).getOrNull()?.entries
+        if (fresh != null) {
+            entries = fresh
+            LeaderboardCache.put(board, com.xiaoswz.reader.data.api.LeaderboardResponse(board, fresh))
+            loading = false
+        } else if (cached == null) {
+            // 既无缓存又拉取失败：结束 loading 显示空态（不崩溃）
+            loading = false
+        }
     }
 
     if (loading) {

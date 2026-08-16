@@ -436,6 +436,9 @@ object BackendClient {
                 authToken.get()?.let { reqBuilder.addHeader("Authorization", "Bearer $it") }
                 chain.proceed(reqBuilder.build())
             }
+            // 轻量重试（0.9.0）：serverless 冷启动偶发连接抖动，单次 IOException 重试一次，
+            // 显著改善「首次打开偶发空白/转圈」；不影响鉴权/业务状态码（只重试传输层异常）。
+            .addInterceptor(RetryInterceptor())
             .addInterceptor(
                 HttpLoggingInterceptor().apply {
                     level = if (BuildConfig.DEBUG) {
@@ -453,6 +456,29 @@ object BackendClient {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BackendApi::class.java)
+    }
+}
+
+/** 传输层重试：仅对 IOException（连接/超时抖动，常见于 serverless 冷启动）重试一次 */
+private class RetryInterceptor : okhttp3.Interceptor {
+    override fun intercept(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
+        var attempt = 0
+        var last: java.io.IOException? = null
+        while (attempt < 2) {
+            attempt++
+            try {
+                return chain.proceed(chain.request())
+            } catch (e: java.io.IOException) {
+                last = e
+                if (attempt >= 2) throw e
+                try {
+                    Thread.sleep(800)
+                } catch (_: InterruptedException) {
+                    // 被打断直接退出等待
+                }
+            }
+        }
+        throw last ?: java.io.IOException("retry exhausted")
     }
 }
 

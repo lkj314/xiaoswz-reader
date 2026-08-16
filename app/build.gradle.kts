@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 57
-        versionName = "0.8.2" // 0.8.2·书城拆首页+书库：书城拆为「首页」（Hero+热度轮播+浏览书库入口，简洁）与「书库」（搜索+分区浏览+状态/排序+热榜+月票榜+最新上架网格）；底部导航不新增书库 tab，书库仅由首页入口进入。后端新增 GET /api/catalog/categories 支撑分区浏览。独立后端、主站单源、物理隔离不变
+        versionCode = 58
+        versionName = "0.9.0" // 0.9.0·0.8 适配线收官（合并 0.8.3~0.8.9）：① 后端 Vercel Cron 每 10min 保活预热 + 空库自动播种，根除 serverless 冷启动导致的首屏十几秒延迟；② 封面代理加轻量限流保护主站（物理隔离）；③ 客户端新增 LeaderboardCache 榜单离线缓存（热榜/月票榜打开即显示上一次快照再后台刷新）；④ 首页/书库离线兜底（网络失败时回退本地缓存列表）；⑤ 首页新增「继续阅读」纯本地书架进度入口；⑥ BackendClient 传输层单次重试改善冷启动抖动。独立后端、主站单源、物理隔离不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

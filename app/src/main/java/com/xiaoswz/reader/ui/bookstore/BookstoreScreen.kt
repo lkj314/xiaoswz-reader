@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,6 +63,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.data.model.BookDto
+import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
+import com.xiaoswz.reader.data.bookshelf.BookEntity
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
@@ -87,6 +91,17 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val featured = state.books.take(8)
+
+    // 「继续阅读」：纯本地书架进度，零网络依赖（粉丝向社区的核心留存入口）
+    val appCtx = LocalContext.current.applicationContext
+    val bookshelfRepo = remember { BookshelfRepository(appCtx) }
+    val shelfBooks by bookshelfRepo.observeAll().collectAsState(initial = emptyList())
+    val continueBooks = remember(shelfBooks) {
+        shelfBooks
+            .filter { it.lastChapterId != null }
+            .sortedByDescending { it.lastReadAt }
+            .take(8)
+    }
 
     // ── 局域网自动更新（启动即检查一次）──
     val context = LocalContext.current
@@ -179,6 +194,16 @@ fun HomeScreen(
                     }
                 }
                 item {
+                    if (continueBooks.isNotEmpty()) {
+                        SectionHeader(title = "继续阅读")
+                    }
+                }
+                item {
+                    if (continueBooks.isNotEmpty()) {
+                        ContinueReadingRow(books = continueBooks, onBookClick = onBookClick)
+                    }
+                }
+                item {
                     BrowseLibraryCard(onBrowseLibrary = onBrowseLibrary)
                 }
             }
@@ -234,6 +259,100 @@ private fun BrowseLibraryCard(onBrowseLibrary: () -> Unit) {
                     modifier = Modifier.size(24.dp),
                 )
             }
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+//  首页「继续阅读」（纯本地书架进度，零网络）
+// ══════════════════════════════════════════════════════════
+
+/** 继续阅读横滑行：展示本地书架里「有阅读进度」的书，按最近阅读时间排序 */
+@Composable
+private fun ContinueReadingRow(
+    books: List<BookEntity>,
+    onBookClick: (String) -> Unit,
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        lazyItems(
+            items = books,
+            key = { book: BookEntity -> book.slug },
+        ) { book: BookEntity ->
+            ContinueReadingCard(book = book, onClick = { onBookClick(book.slug) })
+        }
+    }
+}
+
+/** 单张继续阅读卡片：封面 + 底部「继续」标签 + 书名 + 上次阅读章节 */
+@Composable
+private fun ContinueReadingCard(
+    book: BookEntity,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(120.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(GlassTokens.GlassFillStrong),
+        ) {
+            AsyncImage(
+                model = resolveCoverUrl(book.coverUrl),
+                contentDescription = book.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color(0xFF0D1B2A).copy(alpha = 0.9f),
+                            ),
+                        ),
+                    ),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(WhaleColors.WhaleBlue.copy(alpha = 0.92f))
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                Text(
+                    text = "继续",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = book.title,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = GlassTokens.Label,
+        )
+        if (!book.lastChapterTitle.isNullOrBlank()) {
+            Text(
+                text = book.lastChapterTitle.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = GlassTokens.SecondaryLabel,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

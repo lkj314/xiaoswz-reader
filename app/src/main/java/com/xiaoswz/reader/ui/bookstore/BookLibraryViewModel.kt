@@ -3,6 +3,7 @@ package com.xiaoswz.reader.ui.bookstore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xiaoswz.reader.data.BookRepository
+import com.xiaoswz.reader.data.cache.CatalogCache
 import com.xiaoswz.reader.data.model.BookDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -65,8 +66,25 @@ class BookLibraryViewModel(
                     )
                 }
             }.onFailure { e ->
-                _uiState.update {
-                    it.copy(isLoading = false, error = e.message ?: "网络错误，请稍后重试")
+                // 离线兜底：无筛选/无搜索时若有本地缓存列表，仍展示上一次数据
+                val cached = if (state.query.isBlank() && state.category == "all") {
+                    CatalogCache.get(state.sort)
+                } else {
+                    null
+                }
+                if (cached != null) {
+                    _uiState.update {
+                        it.copy(
+                            books = cached.books.orEmpty(),
+                            page = cached.page ?: 1,
+                            totalPages = cached.totalPages ?: 1,
+                            isLoading = false,
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(isLoading = false, error = e.message ?: "网络错误，请稍后重试")
+                    }
                 }
             }
         }
