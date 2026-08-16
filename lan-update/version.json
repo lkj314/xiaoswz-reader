@@ -1,6 +1,6 @@
 {
-  "versionCode": 54,
-  "versionName": "0.7.9",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.7.9/surf-reader-0.7.9.apk",
-  "notes": "0.7.9（0.7.4–0.7.9 合集·真机实测）：书单详情/收藏/分享到社区/新建/书籍详情加入书单/书单举报；社区热门流🔥/帖子举报/书单引用与作者主页跳转；用户主页关注·取关·拉黑（自己页隐藏）+ 帖子/书单/书架 Tab + 阅读成就卡；阅读成就等级·连续打卡·勋章墙；运营位首页 Banner+公告+精选书单横滑。后端书单举报路由修复已上线 Vercel。APK 托管于 GitHub Releases（兜底可改回局域网地址）。"
+  "versionCode": 55,
+  "versionName": "0.8.0",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.8.0/surf-reader-0.8.0.apk",
+  "notes": "0.8.0（书单内加书组件 + UID 书号识别 + 本地预加载缓存 + 独立用户中心）：书架内书单可从书城搜索直接添加并按书号精准收录；书籍详情与书城首屏本地文件缓存，重开不重拉书源；设置页抽出独立用户中心（账号/云同步/阅读成就）。后端 bookUid 列已上线 Vercel。APK 托管于 GitHub Releases（兜底可改回局域网地址）。"
 }

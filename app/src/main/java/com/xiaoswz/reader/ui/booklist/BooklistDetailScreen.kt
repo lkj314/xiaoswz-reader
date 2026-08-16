@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
@@ -55,6 +56,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.api.BooklistItemDto
+import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
+import com.xiaoswz.reader.data.booklist.BooklistRepository
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.ReportSheet
 import com.xiaoswz.reader.ui.theme.GlassTokens
@@ -73,6 +76,7 @@ fun BooklistDetailScreen(
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var showReport by remember { mutableStateOf(false) }
+    var showPicker by remember { mutableStateOf(false) }
     var justShared by remember { mutableStateOf(false) }
     var justCollected by remember { mutableStateOf(false) }
 
@@ -241,7 +245,18 @@ fun BooklistDetailScreen(
             }
 
             item {
-                Text("书单内容（${detail.items.size}）", style = MaterialTheme.typography.titleMedium, color = GlassTokens.Label, fontWeight = FontWeight.SemiBold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("书单内容（${detail.items.size}）", style = MaterialTheme.typography.titleMedium, color = GlassTokens.Label, fontWeight = FontWeight.SemiBold)
+                    androidx.compose.material3.AssistChip(
+                        onClick = { showPicker = true },
+                        label = { Text("添加书籍") },
+                        leadingIcon = { Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp)) },
+                    )
+                }
             }
 
             if (detail.items.isEmpty()) {
@@ -266,6 +281,33 @@ fun BooklistDetailScreen(
                 }
             }
         }
+    }
+
+    if (showPicker) {
+        BookPickerSheet(
+            onDismiss = { showPicker = false },
+            onPicked = { book ->
+                val slug = book.slug ?: return@BookPickerSheet
+                scope.launch {
+                    BooklistRepository.addItem(
+                        id = booklistId,
+                        bookSourceId = BOOK_SOURCE_MAIN,
+                        bookId = slug,
+                        title = book.title,
+                        author = book.displayAuthor,
+                        coverUrl = book.coverImage,
+                        note = null,
+                        bookUid = book.uid,
+                    ).onSuccess {
+                        viewModel.load(booklistId)
+                        android.widget.Toast.makeText(context, "已加入书单", android.widget.Toast.LENGTH_SHORT).show()
+                        showPicker = false
+                    }.onFailure { e ->
+                        android.widget.Toast.makeText(context, e.message ?: "添加失败", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+        )
     }
 
     if (showReport) {
@@ -316,6 +358,9 @@ private fun BooklistItemRow(
             Text(item.title ?: "未知书目", style = MaterialTheme.typography.bodyLarge, color = GlassTokens.Label, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             item.author?.let {
                 Text(it, style = MaterialTheme.typography.labelSmall, color = GlassTokens.SecondaryLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            item.bookUid?.let {
+                Text("书号 $it", style = MaterialTheme.typography.labelSmall, color = GlassTokens.SystemBlue, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             item.note?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = GlassTokens.TertiaryLabel, maxLines = 2, overflow = TextOverflow.Ellipsis)

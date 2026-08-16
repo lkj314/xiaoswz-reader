@@ -703,6 +703,7 @@ data class BooklistItemDto(
     val id: String,
     val bookSourceId: String,
     val bookId: String,
+    val bookUid: String? = null,
     val title: String? = null,
     val author: String? = null,
     val coverUrl: String? = null,
@@ -763,6 +764,7 @@ data class BooklistDetail(
 data class BooklistItemBody(
     val bookSourceId: String = BOOK_SOURCE_MAIN,
     val bookId: String,
+    val bookUid: String? = null,
     val title: String? = null,
     val author: String? = null,
     val coverUrl: String? = null,

@@ -122,6 +122,7 @@ fun BookDetailScreen(
                 author = d.author,
                 coverUrl = d.coverUrl,
                 note = null,
+                bookUid = null,
             ).onSuccess {
                 Toast.makeText(context, "已加入书单", Toast.LENGTH_SHORT).show()
                 showAddToBooklist = false

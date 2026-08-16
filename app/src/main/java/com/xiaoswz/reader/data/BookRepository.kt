@@ -2,6 +2,8 @@ package com.xiaoswz.reader.data
 
 import com.xiaoswz.reader.data.api.ApiClient
 import com.xiaoswz.reader.data.api.XiaoswzApi
+import com.xiaoswz.reader.data.cache.BookMetaCache
+import com.xiaoswz.reader.data.cache.CatalogCache
 import com.xiaoswz.reader.data.cache.ChapterCacheManager
 import com.xiaoswz.reader.data.model.BookDetailDto
 import com.xiaoswz.reader.data.model.BookListResponse
@@ -38,20 +40,41 @@ class BookRepository(
         page: Int,
         sort: String,
         search: String? = null,
-    ): Result<BookListResponse> = runCatching {
-        api.getBooks(
-            page = page,
-            sort = sort,
-            search = search?.trim()?.takeIf { it.isNotEmpty() },
-        )
+    ): Result<BookListResponse> {
+        val q = search?.trim()?.takeIf { it.isNotEmpty() }
+        // 书城首屏（无搜索）做文件缓存：开书城秒开，30min 内视为新鲜
+        if (page == 1 && q == null) {
+            if (CatalogCache.isFresh(sort)) {
+                val cached = CatalogCache.get(sort)
+                if (cached != null) return Result.success(cached)
+            }
+        }
+        return runCatching {
+            api.getBooks(page = page, sort = sort, search = q).also { resp ->
+                if (page == 1 && q == null) CatalogCache.put(sort, resp)
+            }
+        }
     }
 
-    suspend fun getBookDetail(slug: String): Result<BookDetailDto> {
-        detailCache[slug]?.let { return Result.success(it) }
+    suspend fun getBookDetail(slug: String, forceRefresh: Boolean = false): Result<BookDetailDto> {
+        if (!forceRefresh) {
+            detailCache[slug]?.let { return Result.success(it) }
+            if (BookMetaCache.isFresh(slug)) {
+                val cached = BookMetaCache.get(slug)
+                if (cached != null) {
+                    detailCache[slug] = cached
+                    return Result.success(cached)
+                }
+            }
+        }
         return runCatching {
             api.getBookDetail(bookId = slug).also { detail ->
                 detailCache[slug] = detail
+                BookMetaCache.put(slug, detail)
             }
+        }.recoverCatching { e ->
+            // 网络失败兜底：若有陈旧文件缓存也先拿来开书（断网可读目录）
+            BookMetaCache.get(slug)?.also { detailCache[slug] = it } ?: throw e
         }
     }
 
@@ -79,5 +102,7 @@ class BookRepository(
     fun clearCache() {
         detailCache.clear()
         contentCache.clear()
+        BookMetaCache.clear()
+        CatalogCache.clear()
     }
 }

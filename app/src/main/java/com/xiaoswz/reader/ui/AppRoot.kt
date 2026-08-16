@@ -70,6 +70,7 @@ import com.xiaoswz.reader.ui.booklist.BooklistDetailScreen
 import com.xiaoswz.reader.ui.detail.BookDetailScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
+import com.xiaoswz.reader.ui.settings.UserCenterScreen
 import com.xiaoswz.reader.ui.settings.AccountScreen
 import com.xiaoswz.reader.ui.bookshelf.BookshelfScreen
 import com.xiaoswz.reader.ui.profile.UserProfileScreen
@@ -95,6 +96,7 @@ object Routes {
     const val BOOKLIST_DETAIL = "booklist/{id}"
     const val USER_PROFILE = "user/{id}"
     const val READING_STATS = "reading-stats"
+    const val USER_CENTER = "user-center"
 
     // slug 可能含中文，必须 URL 编码后再拼路由
     fun detail(slug: String) = "detail/${Uri.encode(slug)}"
@@ -322,7 +324,15 @@ private fun AppShell() {
                 composable(Routes.SETTINGS) {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
+                        onUserCenterClick = { navController.navigate(Routes.USER_CENTER) },
+                    )
+                }
+
+                composable(Routes.USER_CENTER) {
+                    UserCenterScreen(
+                        onBack = { navController.popBackStack() },
                         onAccountClick = { navController.navigate(Routes.ACCOUNT) },
+                        onReadingStats = { navController.navigate(Routes.READING_STATS) },
                     )
                 }
 

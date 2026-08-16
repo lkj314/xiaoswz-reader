@@ -46,12 +46,14 @@ object BooklistRepository {
         author: String?,
         coverUrl: String?,
         note: String?,
+        bookUid: String? = null,
     ): Result<Boolean> = runCatching {
         BackendClient.api.addBooklistItem(
             id,
             BooklistItemBody(
                 bookSourceId = bookSourceId,
                 bookId = bookId,
+                bookUid = bookUid,
                 title = title,
                 author = author,
                 coverUrl = coverUrl,
