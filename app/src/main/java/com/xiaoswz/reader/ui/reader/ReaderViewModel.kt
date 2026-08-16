@@ -13,6 +13,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * 连续滚动（无缝阅读）模式下，已加载进同一条滚动流的单个章节块。
+ * content 已是预处理（缩进/段距）后的正文，屏幕直接渲染。
+ */
+data class ChapterBlock(
+    val id: String,
+    val title: String,
+    val index: Int,
+    val content: String,
+    val fromOffline: Boolean = false,
+)
+
 data class ReaderUiState(
     val bookSlug: String = "",
     val currentChapterId: String = "",
@@ -27,11 +39,24 @@ data class ReaderUiState(
     val settings: ReaderSettings = ReaderSettings(),
     /** 当前章节内容是否来自离线文件缓存（断网可读） */
     val isOffline: Boolean = false,
+    // ── 连续滚动（无缝阅读）状态 ──
+    /** 是否处于连续滚动渲染模式（continuousScroll && 滚动模式） */
+    val isContinuous: Boolean = false,
+    /** 已加载进同一条滚动流的连续章节窗口 */
+    val chapterBlocks: List<ChapterBlock> = emptyList(),
+    /** 末尾正在 append 下一章 */
+    val blockAppendLoading: Boolean = false,
+    /** 顶部正在 prepend 上一章 */
+    val blockPrependLoading: Boolean = false,
+    /** 请求屏幕滚动到指定章节块（TOC 跳转 / 上一章下一章按钮） */
+    val pendingScrollToChapterId: String? = null,
 ) {
     val currentIndex: Int get() = toc.indexOfFirst { it.id == currentChapterId }.let { if (it < 0) 0 else it }
     val totalChapters: Int get() = toc.size
     val prevChapterId: String? get() = toc.getOrNull(toc.indexOfFirst { it.id == currentChapterId } - 1)?.id
     val nextChapterId: String? get() = toc.getOrNull(toc.indexOfFirst { it.id == currentChapterId } + 1)?.id
+    val hasPrevChapter: Boolean get() = prevChapterId != null
+    val hasNextChapter: Boolean get() = nextChapterId != null
 }
 
 class ReaderViewModel(application: Application) : AndroidViewModel(application) {
@@ -57,8 +82,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     /** 入口：加载书籍目录 + 指定章节 */
     fun load(bookSlug: String, chapterId: String) {
         if (_uiState.value.bookSlug == bookSlug && _uiState.value.toc.isNotEmpty()) {
-            // 同一本书已就绪，直接切章
-            if (_uiState.value.currentChapterId != chapterId) loadChapter(chapterId)
+            // 同一本书已就绪，直接以当前模式切章
+            if (_uiState.value.currentChapterId != chapterId) openChapter(chapterId)
             return
         }
         _uiState.update { it.copy(bookSlug = bookSlug, isLoading = true, error = null) }
@@ -71,7 +96,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                             bookName = detail.name.orEmpty(),
                         )
                     }
-                    loadChapter(chapterId)
+                    openChapter(chapterId)
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -81,8 +106,36 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun loadChapter(chapterId: String) {
-        _uiState.update { it.copy(isLoading = true, error = null, isOffline = false) }
+    /** 按当前阅读模式分派：连续滚动 → 多章窗口；否则 → 单章 */
+    private fun openChapter(chapterId: String) {
+        val s = _uiState.value
+        val continuous = s.settings.continuousScroll && s.settings.pageMode == ReaderSettings.MODE_SCROLL
+        if (continuous) openContinuousChapter(chapterId) else openSingleChapter(chapterId)
+    }
+
+    /** 设置（模式）切换后，若当前内容形态与新模式不匹配则重新打开当前章 */
+    fun reopen() {
+        val s = _uiState.value
+        if (s.currentChapterId.isBlank()) return
+        val cont = s.settings.continuousScroll && s.settings.pageMode == ReaderSettings.MODE_SCROLL
+        if (cont && s.chapterBlocks.isEmpty() && !s.isLoading) {
+            openContinuousChapter(s.currentChapterId)
+        } else if (!cont && s.rawContent.isEmpty() && !s.isLoading) {
+            openSingleChapter(s.currentChapterId)
+        }
+    }
+
+    // ── 单章模式（翻页 / 单章滚动）：整体替换当前章 ──
+    private fun openSingleChapter(chapterId: String) {
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                error = null,
+                isOffline = false,
+                isContinuous = false,
+                chapterBlocks = emptyList(),
+            )
+        }
         viewModelScope.launch {
             repository.getChapterContent(chapterId)
                 .onSuccess { result ->
@@ -98,7 +151,6 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                             settingsVisible = false,
                         )
                     }
-                    // 双向多章预读（下 N + 上 1），翻章几乎零等待
                     prefetchAround(result.data.id ?: chapterId)
                 }
                 .onFailure { e ->
@@ -109,42 +161,178 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /** 读章后后台预取周围的章节（下 N + 上 1），命中文件缓存则跳过 */
-    private fun prefetchAround(currentChapterId: String) {
-        val state = _uiState.value
-        val toc = state.toc
-        if (toc.isEmpty()) return
-        val idx = toc.indexOfFirst { it.id == currentChapterId }.takeIf { it >= 0 } ?: return
-        val ids = mutableListOf<String>()
-        for (i in 1..state.settings.prefetchNext) {
-            toc.getOrNull(idx + i)?.id?.let { ids.add(it) }
+    // ── 连续滚动模式：把章节载入「连续窗口」，并立刻把下一章接上 ──
+    private fun openContinuousChapter(chapterId: String) {
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                error = null,
+                isOffline = false,
+                isContinuous = true,
+                chapterBlocks = emptyList(),
+                pendingScrollToChapterId = null,
+            )
         }
-        for (i in 1..state.settings.prefetchPrev) {
-            toc.getOrNull(idx - i)?.id?.let { ids.add(it) }
-        }
-        ids.forEach { id ->
-            viewModelScope.launch {
-                repository.prefetchChapter(id)
+        viewModelScope.launch {
+            loadBlock(chapterId)?.let { block ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        currentChapterId = chapterId,
+                        chapterTitle = block.title,
+                        chapterBlocks = listOf(block),
+                        isOffline = block.fromOffline,
+                        menuVisible = false,
+                        settingsVisible = false,
+                    )
+                }
+                prefetchAround(chapterId)
+                // 立刻把下一章 append 进同一条滚动流，滚动即无缝
+                appendNextChapter()
+            } ?: _uiState.update {
+                it.copy(isLoading = false, error = "章节加载失败")
             }
         }
     }
 
-    fun goToChapter(chapterId: String) = loadChapter(chapterId)
+    /** 拉取并预处理单个章节块（命中文件缓存则瞬时，无感） */
+    private suspend fun loadBlock(chapterId: String): ChapterBlock? {
+        val s = _uiState.value
+        return repository.getChapterContent(chapterId).fold(
+            onSuccess = { res ->
+                val raw = res.data.content.orEmpty()
+                val processed = preprocessContent(
+                    raw,
+                    s.settings.indentFirstLine,
+                    s.settings.paraSpacing,
+                )
+                val idx = s.toc.indexOfFirst { it.id == chapterId }
+                ChapterBlock(
+                    id = chapterId,
+                    title = res.data.title.orEmpty(),
+                    index = idx,
+                    content = processed,
+                    fromOffline = res.fromOfflineCache,
+                )
+            },
+            onFailure = { null },
+        )
+    }
 
-    /** 翻到下一章；没有下一章返回 false */
-    fun nextChapter(): Boolean =
-        _uiState.value.nextChapterId?.let { loadChapter(it); true } ?: false
+    /** 滚动到末块时调用：把下一章 append 进连续窗口（缓存命中即瞬时） */
+    fun appendNextChapter() {
+        val s = _uiState.value
+        if (s.isLoading || s.blockAppendLoading || s.chapterBlocks.isEmpty()) return
+        val last = s.chapterBlocks.last()
+        val idx = s.toc.indexOfFirst { it.id == last.id }
+        val nextDto = s.toc.getOrNull(idx + 1) ?: return // 已到末章
+        if (s.chapterBlocks.any { it.id == nextDto.id }) return // 该章已在窗口
+        _uiState.update { it.copy(blockAppendLoading = true) }
+        viewModelScope.launch {
+            val nid = nextDto.id ?: return@launch
+            val blk = loadBlock(nid)
+            _uiState.update { st ->
+                if (blk != null) {
+                    st.copy(chapterBlocks = st.chapterBlocks + blk, blockAppendLoading = false)
+                } else {
+                    st.copy(blockAppendLoading = false) // 失败静默，下次滚动到底再试
+                }
+            }
+        }
+    }
 
-    /** 翻到上一章；没有上一章返回 false */
-    fun prevChapter(): Boolean =
-        _uiState.value.prevChapterId?.let { loadChapter(it); true } ?: false
+    /** 向上滚动到首块时调用：把上一章 prepend 进连续窗口 */
+    fun prependPrevChapter() {
+        val s = _uiState.value
+        if (s.isLoading || s.blockPrependLoading || s.chapterBlocks.isEmpty()) return
+        val first = s.chapterBlocks.first()
+        val idx = s.toc.indexOfFirst { it.id == first.id }
+        val prevDto = s.toc.getOrNull(idx - 1) ?: return // 已到首章
+        if (s.chapterBlocks.any { it.id == prevDto.id }) return
+        _uiState.update { it.copy(blockPrependLoading = true) }
+        viewModelScope.launch {
+            val pid = prevDto.id ?: return@launch
+            val blk = loadBlock(pid)
+            _uiState.update { st ->
+                if (blk != null) {
+                    st.copy(chapterBlocks = listOf(blk) + st.chapterBlocks, blockPrependLoading = false)
+                } else {
+                    st.copy(blockPrependLoading = false)
+                }
+            }
+        }
+    }
+
+    /** 滚动时由屏幕上报当前顶部可见章，用于进度保存与预读推进 */
+    fun setCurrentChapter(chapterId: String) {
+        if (_uiState.value.currentChapterId == chapterId) return
+        _uiState.update { it.copy(currentChapterId = chapterId) }
+        prefetchAround(chapterId)
+    }
+
+    fun requestScrollToChapter(id: String) {
+        _uiState.update { it.copy(pendingScrollToChapterId = id) }
+    }
+
+    fun clearPendingScroll() {
+        _uiState.update { it.copy(pendingScrollToChapterId = null) }
+    }
+
+    fun goToChapter(chapterId: String) {
+        val s = _uiState.value
+        if (s.isContinuous && s.chapterBlocks.any { it.id == chapterId }) {
+            requestScrollToChapter(chapterId)
+        } else {
+            openChapter(chapterId)
+        }
+    }
+
+    /** 翻到下一章；连续模式下平滑滚动到下一章块（而非整屏替换） */
+    fun nextChapter(): Boolean {
+        val s = _uiState.value
+        if (s.isContinuous) {
+            val idx = s.chapterBlocks.indexOfFirst { it.id == s.currentChapterId }
+            val target = s.chapterBlocks.getOrNull(idx + 1)?.id ?: s.nextChapterId
+            if (target != null) {
+                if (s.chapterBlocks.any { it.id == target }) {
+                    requestScrollToChapter(target)
+                } else {
+                    openChapter(target) // 该章尚未载入窗口，重建窗口
+                }
+                return true
+            }
+            return false
+        }
+        return s.nextChapterId?.let { openChapter(it); true } ?: false
+    }
+
+    /** 翻到上一章；连续模式下平滑滚动到上一章块 */
+    fun prevChapter(): Boolean {
+        val s = _uiState.value
+        if (s.isContinuous) {
+            val idx = s.chapterBlocks.indexOfFirst { it.id == s.currentChapterId }
+            val target = s.chapterBlocks.getOrNull(idx - 1)?.id ?: s.prevChapterId
+            if (target != null) {
+                if (s.chapterBlocks.any { it.id == target }) {
+                    requestScrollToChapter(target)
+                } else {
+                    openChapter(target)
+                }
+                return true
+            }
+            return false
+        }
+        return s.prevChapterId?.let { openChapter(it); true } ?: false
+    }
 
     fun retry() {
-        val state = _uiState.value
-        if (state.toc.isEmpty()) {
-            load(state.bookSlug, state.currentChapterId)
+        val s = _uiState.value
+        if (s.toc.isEmpty()) {
+            load(s.bookSlug, s.currentChapterId)
+        } else if (s.isContinuous && s.chapterBlocks.isEmpty()) {
+            openContinuousChapter(s.currentChapterId)
         } else {
-            loadChapter(state.currentChapterId)
+            openSingleChapter(s.currentChapterId)
         }
     }
 
@@ -167,6 +355,26 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     fun updateSettings(transform: (ReaderSettings) -> ReaderSettings) {
         viewModelScope.launch {
             settingsRepo.update(transform)
+        }
+    }
+
+    /** 读章后后台预取周围的章节（下 N + 上 1），命中文件缓存则跳过 */
+    private fun prefetchAround(currentChapterId: String) {
+        val state = _uiState.value
+        val toc = state.toc
+        if (toc.isEmpty()) return
+        val idx = toc.indexOfFirst { it.id == currentChapterId }.takeIf { it >= 0 } ?: return
+        val ids = mutableListOf<String>()
+        for (i in 1..state.settings.prefetchNext) {
+            toc.getOrNull(idx + i)?.id?.let { ids.add(it) }
+        }
+        for (i in 1..state.settings.prefetchPrev) {
+            toc.getOrNull(idx - i)?.id?.let { ids.add(it) }
+        }
+        ids.forEach { id ->
+            viewModelScope.launch {
+                repository.prefetchChapter(id)
+            }
         }
     }
 }

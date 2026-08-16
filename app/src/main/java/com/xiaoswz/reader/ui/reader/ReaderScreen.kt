@@ -21,6 +21,9 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -68,6 +71,7 @@ import com.xiaoswz.reader.CrashLogger
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.ui.theme.ReaderThemes
+import com.xiaoswz.reader.ui.theme.ReaderTheme
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -184,7 +188,11 @@ fun ReaderScreen(
             val reservedHeightPx = with(density) { 64.dp.toPx() }
 
             val scrollState = rememberScrollState()
+            val lazyListState = rememberLazyListState()
             val textMeasurer = rememberTextMeasurer()
+            /** 是否处于连续滚动（无缝阅读）渲染模式 */
+            val isContinuous = state.settings.continuousScroll &&
+                state.settings.pageMode == ReaderSettings.MODE_SCROLL
 
             // 正文预处理（缩进 / 段距）
             val processed = remember(
@@ -254,7 +262,20 @@ fun ReaderScreen(
 
             // 翻页/翻章动作（滚动模式）
             fun scrollPrev() {
-                if (scrollState.value > 0) {
+                if (isContinuous) {
+                    // 连续流里向上整页平滑滚动（不换章，无缝）
+                    scope.launch {
+                        val curIdx = lazyListState.firstVisibleItemIndex
+                        val curOff = lazyListState.firstVisibleItemScrollOffset
+                        val half = (heightPx * 0.9f).toInt()
+                        val newOff = curOff - half
+                        if (newOff >= 0) {
+                            lazyListState.animateScrollToItem(curIdx, newOff)
+                        } else if (curIdx > 0) {
+                            lazyListState.animateScrollToItem(curIdx - 1, 0)
+                        }
+                    }
+                } else if (scrollState.value > 0) {
                     scope.launch {
                         scrollState.animateScrollTo(
                             (scrollState.value - heightPx * 0.9f).toInt().coerceAtLeast(0),
@@ -266,15 +287,25 @@ fun ReaderScreen(
             }
 
             fun scrollNext() {
-                val maxValue = scrollState.maxValue
-                if (maxValue != Int.MAX_VALUE && scrollState.value < maxValue) {
+                if (isContinuous) {
+                    // 连续流里向下整页平滑滚动（不换章，无缝）
                     scope.launch {
-                        scrollState.animateScrollTo(
-                            (scrollState.value + heightPx * 0.9f).toInt().coerceAtMost(maxValue),
-                        )
+                        val curIdx = lazyListState.firstVisibleItemIndex
+                        val curOff = lazyListState.firstVisibleItemScrollOffset
+                        val half = (heightPx * 0.9f).toInt()
+                        lazyListState.animateScrollToItem(curIdx, (curOff + half).coerceAtLeast(0))
                     }
                 } else {
-                    viewModel.nextChapter()
+                    val maxValue = scrollState.maxValue
+                    if (maxValue != Int.MAX_VALUE && scrollState.value < maxValue) {
+                        scope.launch {
+                            scrollState.animateScrollTo(
+                                (scrollState.value + heightPx * 0.9f).toInt().coerceAtMost(maxValue),
+                            )
+                        }
+                    } else {
+                        viewModel.nextChapter()
+                    }
                 }
             }
 
@@ -308,11 +339,13 @@ fun ReaderScreen(
                 }
             }
 
-            // 换章后重置滚动位置
+            // 换章后重置滚动位置（连续模式不重置：由 LazyColumn 自行管理滚动流）
             LaunchedEffect(state.currentChapterId) {
-                scrollState.scrollTo(0)
-                if (!pendingJumpToEnd && pagerState.currentPage != 0) {
-                    pagerState.scrollToPage(0)
+                if (!isContinuous) {
+                    scrollState.scrollTo(0)
+                    if (!pendingJumpToEnd && pagerState.currentPage != 0) {
+                        pagerState.scrollToPage(0)
+                    }
                 }
             }
             // 上一章切换完成后跳到其末页
@@ -323,34 +356,81 @@ fun ReaderScreen(
                 }
             }
 
-            // ── 滚动模式触底自动续读下一章（下一章已预读，切换无感）──
-            LaunchedEffect(Unit) {
-                if (state.settings.continuousScroll &&
-                    state.settings.pageMode == ReaderSettings.MODE_SCROLL
-                ) {
-                    snapshotFlow { scrollState.value to scrollState.maxValue }
-                        .collect { (pos, max) ->
-                            val s = viewModel.uiState.value
-                            if (s.settings.continuousScroll &&
-                                s.settings.pageMode == ReaderSettings.MODE_SCROLL &&
-                                s.nextChapterId != null && !s.isLoading &&
-                                max > 100 && pos >= max - 60
-                            ) {
-                                viewModel.nextChapter()
-                            }
+            // ── 连续滚动（无缝阅读）核心：滚动到窗口边缘时无缝 append/prepend ──
+            LaunchedEffect(isContinuous) {
+                if (isContinuous) {
+                    snapshotFlow {
+                        val info = lazyListState.layoutInfo
+                        val first = lazyListState.firstVisibleItemIndex
+                        val last = info.visibleItemsInfo.lastOrNull()?.index ?: first
+                        first to last
+                    }.collect { (firstIdx, lastIdx) ->
+                        val s = viewModel.uiState.value
+                        if (!s.isContinuous) return@collect
+                        // 滚到末尾 → 把下一章接进同一条流（缓存命中即瞬时，无感）
+                        if (lastIdx >= s.chapterBlocks.lastIndex &&
+                            s.hasNextChapter && !s.blockAppendLoading
+                        ) {
+                            viewModel.appendNextChapter()
                         }
+                        // 滚到顶部 → 把上一章接进流（仅多章时才预读，避免首章抖动）
+                        if (firstIdx <= 1 && s.hasPrevChapter &&
+                            !s.blockPrependLoading && s.chapterBlocks.size > 1
+                        ) {
+                            viewModel.prependPrevChapter()
+                        }
+                        // 上报顶部可见章（进度保存 + 预读推进）
+                        val top = s.chapterBlocks.getOrNull(firstIdx)
+                        if (top != null && top.id != s.currentChapterId) {
+                            viewModel.setCurrentChapter(top.id)
+                        }
+                    }
                 }
             }
 
+            // ── TOC 跳转 / 上一章下一章按钮：平滑滚动到目标章块（不换屏）──
+            LaunchedEffect(state.pendingScrollToChapterId) {
+                val id = state.pendingScrollToChapterId ?: return@LaunchedEffect
+                val idx = state.chapterBlocks.indexOfFirst { it.id == id }
+                if (idx >= 0) {
+                    lazyListState.animateScrollToItem(idx)
+                }
+                viewModel.clearPendingScroll()
+            }
+
+            // ── 向上预读时保持原可见位置（prepend 后内容整体上移，需还原）──
+            var prependAnchor by remember { mutableStateOf<Pair<String, Int>?>(null) }
+            LaunchedEffect(state.blockPrependLoading) {
+                if (state.blockPrependLoading) {
+                    val idx = lazyListState.firstVisibleItemIndex
+                    val key = state.chapterBlocks.getOrNull(idx)?.id
+                    prependAnchor = key?.let { it to lazyListState.firstVisibleItemScrollOffset }
+                } else if (prependAnchor != null) {
+                    val (key, offset) = prependAnchor!!
+                    val newIdx = state.chapterBlocks.indexOfFirst { it.id == key }
+                    if (newIdx >= 0) lazyListState.scrollToItem(newIdx, offset)
+                    prependAnchor = null
+                }
+            }
+
+            // ── 阅读模式切换（翻页↔滚动 / 连续开关）：内容形态不匹配时重开当前章 ──
+            LaunchedEffect(state.settings.continuousScroll, state.settings.pageMode) {
+                viewModel.reopen()
+            }
+
             // ── 内容区 ──
+            val showSpinner = state.isLoading &&
+                if (state.isContinuous) state.chapterBlocks.isEmpty() else state.rawContent.isEmpty()
+            val showError = state.error != null &&
+                if (state.isContinuous) state.chapterBlocks.isEmpty() else state.rawContent.isEmpty()
             when {
-                state.isLoading && state.rawContent.isEmpty() -> {
+                showSpinner -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
 
-                state.error != null && state.rawContent.isEmpty() -> {
+                showError -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -419,8 +499,63 @@ fun ReaderScreen(
                     }
                 }
 
+                state.isContinuous -> {
+                    // 连续滚动（无缝阅读）：所有章节拼成同一条滚动流，滚到底自然接续下一章
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = hMarginDp)
+                            .pointerInput(state.menuVisible) {
+                                detectTapGestures { offset -> handleTap(offset.x) }
+                            },
+                    ) {
+                        items(
+                            items = state.chapterBlocks,
+                            key = { it.id },
+                        ) { block ->
+                            ChapterBlockView(block = block, theme = theme, settings = state.settings)
+                        }
+                        // 末尾：加载中 / 全文完 / 下滑提示
+                        item {
+                            when {
+                                state.blockAppendLoading -> {
+                                    Box(
+                                        Modifier.fillMaxWidth().padding(24.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) { CircularProgressIndicator(strokeWidth = 2.dp) }
+                                }
+                                !state.hasNextChapter -> {
+                                    Box(
+                                        Modifier.fillMaxWidth().padding(vertical = 36.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            "—— 全文完 ——",
+                                            color = theme.text.copy(alpha = 0.5f),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    Box(
+                                        Modifier.fillMaxWidth().padding(24.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            "下滑继续阅读",
+                                            color = theme.text.copy(alpha = 0.4f),
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 else -> {
-                    // 滚动模式
+                    // 滚动模式（单章）：保留原「一章一屏」行为，供不需要连续流的场景使用
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -563,5 +698,44 @@ fun ReaderScreen(
                 }
             }
         }
+    }
+}
+
+/**
+ * 连续滚动流中的单个章节块：标题 + 正文 + 章节分隔留白。
+ * 多章在一条 LazyColumn 中首尾相连，滚到底自然接续下一章（无缝衔接）。
+ */
+@Composable
+private fun ChapterBlockView(
+    block: ChapterBlock,
+    theme: ReaderTheme,
+    settings: ReaderSettings,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 18.dp, bottom = 4.dp),
+    ) {
+        Text(
+            text = block.title,
+            style = MaterialTheme.typography.titleLarge,
+            color = theme.text,
+        )
+        if (block.index >= 0) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "第 ${block.index + 1} 章",
+                style = MaterialTheme.typography.bodySmall,
+                color = theme.text.copy(alpha = 0.5f),
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = block.content,
+            fontSize = settings.fontSize.sp,
+            lineHeight = (settings.fontSize * settings.lineSpacing).sp,
+            color = theme.text,
+        )
+        Spacer(modifier = Modifier.height(36.dp))
     }
 }

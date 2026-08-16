@@ -418,13 +418,13 @@ fun SettingsScreen(
                     steps = 4,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                // 滚动触底自动续读下一章
+                // 连续无缝滚动（原生阅读体验：所有章节拼成一条长文，下滑直接衔接下一章）
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("滚动触底自动续读", style = MaterialTheme.typography.bodyMedium)
+                    Text("连续无缝滚动", style = MaterialTheme.typography.bodyMedium)
                     Switch(
                         checked = continuousScroll,
                         onCheckedChange = {

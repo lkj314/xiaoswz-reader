@@ -23,7 +23,7 @@ private val Context.readerSettingsStore: DataStore<Preferences> by preferencesDa
 data class ReaderSettings(
     val fontSize: Int = 18,
     val themeIndex: Int = THEME_DAY,
-    val pageMode: Int = MODE_COVER,
+    val pageMode: Int = MODE_SCROLL,
     val lineSpacing: Float = 1.7f,
     /** 段落间额外空行数 0/1/2 */
     val paraSpacing: Int = 0,
