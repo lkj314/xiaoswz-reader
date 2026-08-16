@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 62
-        versionName = "0.11.1" // 0.11.1·热修：修复 0.11.0 引入的"无法滚动"回归（选区手势 detectDragGestures 吞掉滚动，改为 detectDragGesturesAfterLongPress，长按才选词、正常滑动/翻页恢复）；按用户要求删除书签功能（工具栏书签入口、面板书签分页、导出、ViewModel/Repository 书签代码全移除），保留多色划线/笔记/复制/书内搜索与跨设备云端同步。物理隔离、主站只读不变
+        versionCode = 63
+        versionName = "0.11.2" // 0.11.2·核心去脆弱化：彻底移除核心里的「选区/划线/标注面板」UI（SelectionText 手势即便改为长按仍会干扰滚动，且长按划词已失效）。划线/书签/复制等增强能力未来以「创意工坊插件」形式开放给用户自选安装，不进入核心，永不牺牲滚动阅读体验。数据层（AnnotationModels/Store/Repository）与后端 annotations 表/API 保留作插件地基。保留书内搜索。物理隔离、主站只读不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

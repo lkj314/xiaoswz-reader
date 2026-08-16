@@ -1,6 +1,6 @@
 {
-  "versionCode": 62,
-  "versionName": "0.11.1",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.1/surf-reader-0.11.1.apk",
-  "notes": "0.11.1·热修：修复0.11.0引入的「无法滚动」回归（选区手势吞掉滚动，改为长按才选词、正常滑动/翻页恢复）；按用户要求删除书签功能（工具栏书签入口、面板书签分页、导出、ViewModel/Repository 书签代码全移除），保留多色划线/笔记/复制/书内搜索与跨设备云端同步。物理隔离、主站只读不变。"
+  "versionCode": 63,
+  "versionName": "0.11.2",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.2/surf-reader-0.11.2.apk",
+  "notes": "0.11.2·核心去脆弱化：彻底移除核心里的「选区/划线/标注面板」UI（自研 SelectionText 即便改长按仍会干扰滚动、且划词已失效）。划线/书签/复制等增强能力未来以「创意工坊插件」形式开放给用户自选安装，不进入核心，永不牺牲滚动阅读体验。数据层与后端 annotations 表/API 保留作插件地基。保留书内搜索。物理隔离、主站只读不变。"
 }
