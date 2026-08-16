@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.NavigateBefore
 import androidx.compose.material.icons.filled.NavigateNext
@@ -103,6 +104,9 @@ fun ReaderBottomBar(
     ttsActive: Boolean,
     onShare: () -> Unit,
     onSearch: () -> Unit,
+    annoActive: Boolean = false,
+    annoAvailable: Boolean = true,
+    onAnnoToggle: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -151,6 +155,13 @@ fun ReaderBottomBar(
             }
             IconButton(onClick = onShare) {
                 Icon(Icons.Filled.Share, contentDescription = "分享到书友圈", tint = OverlayText)
+            }
+            IconButton(onClick = onAnnoToggle, enabled = annoAvailable) {
+                Icon(
+                    Icons.Filled.Create,
+                    contentDescription = "划词标注",
+                    tint = if (annoActive) MaterialTheme.colorScheme.primary else OverlayText,
+                )
             }
         }
     }

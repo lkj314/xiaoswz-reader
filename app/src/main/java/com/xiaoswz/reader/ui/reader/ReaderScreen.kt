@@ -9,7 +9,17 @@ import android.speech.tts.UtteranceProgressListener
 import android.view.KeyEvent
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.selection.SelectionContainer
 import android.view.WindowManager
 import java.util.Locale
 import androidx.compose.foundation.background
@@ -92,6 +102,10 @@ import com.xiaoswz.reader.CrashLogger
 import com.xiaoswz.reader.data.model.ChapterDto
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.data.community.CommunityRepository
+import com.xiaoswz.reader.data.annotation.AnnotationEntity
+import com.xiaoswz.reader.data.annotation.AnnotationRepository
+import com.xiaoswz.reader.data.plugin.PluginManifest
+import com.xiaoswz.reader.data.plugin.PluginRepository
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.ui.reader.components.ReaderBottomBar
 import com.xiaoswz.reader.ui.reader.components.ReaderTopBar
@@ -145,6 +159,20 @@ fun ReaderScreen(
     LaunchedEffect(bookSlug, chapterId) {
         viewModel.load(bookSlug, chapterId)
     }
+
+    // ── 创意工坊 v1：划词标注（opt-in 只读 BasicTextField，选区偏移相对预处理正文）──
+    // 本书全部标注（本地为权威），用于 decorator 锚点渲染。
+    val annotations = remember { mutableStateListOf<AnnotationEntity>() }
+    LaunchedEffect(bookSlug) {
+        runCatching { annotations.clear(); annotations.addAll(AnnotationRepository.loadLocal(context, bookSlug)) }
+            .onFailure { CrashLogger.report(context, it) }
+    }
+    // 当前生效的「选区动作」类插件（官方高亮/书签 + 用户安装），驱动选区菜单动态追加项。
+    val annoPlugins by PluginRepository.annotationPlugins(context)
+        .collectAsState(initial = emptyList())
+    // 划词标注模式开关 + 只读文本字段（承载选区状态，offset 相对预处理正文）
+    var annoActive by remember { mutableStateOf(false) }
+    val annoTextField = remember { mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero)) }
 
     // ── 记录阅读进度到本地书架（仅已收藏书籍，未收藏不产生数据）──
     LaunchedEffect(state.currentChapterId) {
@@ -262,6 +290,45 @@ fun ReaderScreen(
                     state.settings.indentFirstLine,
                     state.settings.paraSpacing,
                 )
+            }
+
+            // 划词标注：进入/换章时同步只读文本字段（offset 相对预处理正文）
+            LaunchedEffect(processed, annoActive) {
+                if (annoActive) annoTextField.value = TextFieldValue(text = processed, selection = TextRange.Zero)
+            }
+            // 离开「单章滚动」模式时关闭划词标注（覆盖/连续模式不支持选区偏移映射）
+            LaunchedEffect(state.settings.pageMode, isContinuous) {
+                if (!(state.settings.pageMode == ReaderSettings.MODE_SCROLL && !isContinuous)) annoActive = false
+            }
+
+            /** 选区 → 写入一条标注（落本地 + 推云端 + 即时刷新 decorator），并收起选区 */
+            fun annotateFromSelection(plugin: PluginManifest, start: Int, end: Int, chapterId: String) {
+                val cap = plugin.capabilities.annotation ?: return
+                val s = start.coerceAtLeast(0)
+                val e = end.coerceAtMost(processed.length)
+                if (s >= e) return
+                val quoted = processed.substring(s, e)
+                val entity = AnnotationRepository.createAnnotation(
+                    bookId = bookSlug,
+                    chapterId = chapterId,
+                    start = s,
+                    end = e,
+                    quoted = quoted,
+                    color = cap.defaultColor ?: -14336,
+                    type = cap.annotationType,
+                    note = null,
+                )
+                scope.launch {
+                    runCatching {
+                        val list = AnnotationRepository.loadLocal(context, bookSlug).toMutableList()
+                        list.add(entity)
+                        AnnotationRepository.persist(context, bookSlug, list)
+                        AnnotationRepository.pushOne(context, entity)
+                    }.onFailure { CrashLogger.report(context, it) }
+                }
+                if (annotations.none { it.clientId == entity.clientId }) annotations.add(entity)
+                annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero)
+                android.widget.Toast.makeText(context, "已添加「${cap.label}」", android.widget.Toast.LENGTH_SHORT).show()
             }
 
             // 跳转到某章（搜索结果命中）
@@ -634,13 +701,15 @@ fun ReaderScreen(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = pages.value.getOrElse(pageIndex) { "" },
-                                    fontSize = state.settings.fontSize.sp,
-                                    lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
-                                    color = theme.text,
-                                    modifier = Modifier.weight(1f),
-                                )
+                                SelectionContainer {
+                                    Text(
+                                        text = pages.value.getOrElse(pageIndex) { "" },
+                                        fontSize = state.settings.fontSize.sp,
+                                        lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
+                                        color = theme.text,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -687,6 +756,7 @@ fun ReaderScreen(
                                 settings = state.settings,
                                 isReadingChapter = isReadingChapter,
                                 readingRange = readingRange,
+                                annotations = annotations.filter { it.chapterId == block.id },
                             )
                         }
                         item {
@@ -732,8 +802,8 @@ fun ReaderScreen(
                             .fillMaxSize()
                             .verticalScroll(scrollState)
                             .padding(horizontal = hMarginDp)
-                            .pointerInput(state.menuVisible) {
-                                detectTapGestures { offset -> handleTap(offset.x) }
+                            .pointerInput(annoActive to state.menuVisible) {
+                                if (!annoActive) detectTapGestures { offset -> handleTap(offset.x) }
                             },
                     ) {
                         Spacer(modifier = Modifier.height(14.dp))
@@ -755,21 +825,48 @@ fun ReaderScreen(
                             ttsSentenceRanges.value.getOrNull(ttsIndex.value)
                                 ?.let { it.start until it.end }
                         else null
-                        Text(
-                            text = if (isReadingChapter && readingRange != null)
-                                buildAnnotatedString {
-                                    append(processed)
-                                    addStyle(
-                                        SpanStyle(background = theme.text.copy(alpha = 0.14f)),
-                                        readingRange.first,
-                                        readingRange.last + 1,
+                        val annoAnnotations = annotations.filter { it.chapterId == state.currentChapterId }
+                        if (annoActive) {
+                            val annoTransform = remember(processed, annoAnnotations, readingRange, theme) {
+                                VisualTransformation { text ->
+                                    TransformedText(
+                                        buildAnnotatedContent(
+                                            content = text.text,
+                                            annotations = annoAnnotations,
+                                            readingRange = if (isReadingChapter) readingRange else null,
+                                            theme = theme,
+                                        ),
+                                        OffsetMapping.Identity,
                                     )
                                 }
-                            else buildAnnotatedString { append(processed) },
-                            fontSize = state.settings.fontSize.sp,
-                            lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
-                            color = theme.text,
-                        )
+                            }
+                            BasicTextField(
+                                value = annoTextField.value,
+                                onValueChange = { annoTextField.value = it },
+                                readOnly = true,
+                                textStyle = TextStyle(
+                                    color = theme.text,
+                                    fontSize = state.settings.fontSize.sp,
+                                    lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
+                                ),
+                                visualTransformation = annoTransform,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        } else {
+                            SelectionContainer {
+                                Text(
+                                    text = buildAnnotatedContent(
+                                        content = processed,
+                                        annotations = annoAnnotations,
+                                        readingRange = if (isReadingChapter) readingRange else null,
+                                        theme = theme,
+                                    ),
+                                    fontSize = state.settings.fontSize.sp,
+                                    lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
+                                    color = theme.text,
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.height(28.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -873,9 +970,39 @@ fun ReaderScreen(
                             searchResults = emptyList()
                             showSearch = true
                         },
+                        annoActive = annoActive,
+                        annoAvailable = state.settings.pageMode == ReaderSettings.MODE_SCROLL && !isContinuous,
+                        onAnnoToggle = {
+                            val next = !annoActive
+                            annoActive = next
+                            if (next) annoTextField.value = TextFieldValue(text = processed, selection = TextRange.Zero)
+                            else annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero)
+                        },
                     )
                 }
             }
+
+            // 创意工坊 v1：划词标注选区浮层（复制 + 动态插件动作）
+            AnnoSelectionBar(
+                visible = annoActive &&
+                    annoTextField.value.selection.start < annoTextField.value.selection.end,
+                plugins = annoPlugins,
+                onCopy = {
+                    val sel = annoTextField.value.selection
+                    if (sel.start < sel.end) {
+                        val text = annoTextField.value.text.substring(sel.start, sel.end)
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("标注", text))
+                        android.widget.Toast.makeText(context, "已复制", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onAnnotate = { plugin ->
+                    val sel = annoTextField.value.selection
+                    annotateFromSelection(plugin, sel.start, sel.end, state.currentChapterId)
+                },
+                onClose = { annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero) },
+            )
 
             // 设置面板
             if (state.settingsVisible) {
@@ -953,6 +1080,7 @@ private fun ChapterBlockView(
     settings: ReaderSettings,
     isReadingChapter: Boolean = false,
     readingRange: IntRange? = null,
+    annotations: List<AnnotationEntity> = emptyList(),
 ) {
     Column(
         modifier = Modifier
@@ -973,21 +1101,19 @@ private fun ChapterBlockView(
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = if (isReadingChapter && readingRange != null)
-                buildAnnotatedString {
-                    append(block.content)
-                    addStyle(
-                        SpanStyle(background = theme.text.copy(alpha = 0.14f)),
-                        readingRange.first,
-                        readingRange.last + 1,
-                    )
-                }
-            else buildAnnotatedString { append(block.content) },
-            fontSize = settings.fontSize.sp,
-            lineHeight = (settings.fontSize * settings.lineSpacing).sp,
-            color = theme.text,
-        )
+        SelectionContainer {
+            Text(
+                text = buildAnnotatedContent(
+                    content = block.content,
+                    annotations = annotations,
+                    readingRange = if (isReadingChapter) readingRange else null,
+                    theme = theme,
+                ),
+                fontSize = settings.fontSize.sp,
+                lineHeight = (settings.fontSize * settings.lineSpacing).sp,
+                color = theme.text,
+            )
+        }
         Spacer(modifier = Modifier.height(36.dp))
     }
 }
@@ -1127,3 +1253,64 @@ private fun ReaderShareSheet(
 
 /** 一句在原文中的区间，用于听书锚点高亮与 TTS 索引同步 */
 private data class SentenceRange(val text: String, val start: Int, val end: Int)
+
+/**
+ * 将正文 + 既有标注 + TTS 朗读区间合并为带背景样式的 AnnotatedString。
+ * 标注锚点（decorator 槽）与听书高亮同源渲染，互不干扰；标注偏移相对预处理正文。
+ */
+private fun buildAnnotatedContent(
+    content: String,
+    annotations: List<AnnotationEntity>,
+    readingRange: IntRange?,
+    theme: ReaderTheme,
+): AnnotatedString = buildAnnotatedString {
+    append(content)
+    for (a in annotations) {
+        val s = a.startOffset.coerceAtLeast(0)
+        val e = a.endOffset.coerceAtMost(content.length)
+        if (e > s) {
+            val c = a.color?.let { Color(it) } ?: Color(-14336)
+            addStyle(SpanStyle(background = c.copy(alpha = 0.22f)), s, e)
+        }
+    }
+    if (readingRange != null) {
+        val s = readingRange.first.coerceAtLeast(0)
+        val e = readingRange.last + 1
+        if (e <= content.length && e > s) {
+            addStyle(SpanStyle(background = theme.text.copy(alpha = 0.14f)), s, e)
+        }
+    }
+}
+
+/**
+ * 划词标注选区浮层：只读 BasicTextField 选中文字后浮现，提供「复制」与动态插件动作
+ * （高亮/书签等）。仅 single-chapter 滚动模式可用（由 [annoAvailable] 收敛）。
+ */
+@Composable
+private fun AnnoSelectionBar(
+    visible: Boolean,
+    plugins: List<PluginManifest>,
+    onCopy: () -> Unit,
+    onAnnotate: (PluginManifest) -> Unit,
+    onClose: () -> Unit,
+) {
+    if (!visible) return
+    Box(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 8.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onCopy) { Text("复制") }
+            for (plugin in plugins) {
+                val cap = plugin.capabilities.annotation ?: continue
+                TextButton(onClick = { onAnnotate(plugin) }) { Text(cap.label) }
+            }
+            TextButton(onClick = onClose) { Text("完成") }
+        }
+    }
+}

@@ -1,6 +1,6 @@
 {
-  "versionCode": 67,
-  "versionName": "0.11.6",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.6/surf-reader-0.11.6.apk",
-  "notes": "0.11.6·听书修复：①暂停后再次播放从原句续读（不再从头）；②当前朗读句加低透明背景锚点高亮（与 TTS 索引严格同步，排版不变）。前置 0.11.5 社区分享、0.11.3 听书、0.11.2 核心去脆弱化。物理隔离、主站只读不变。"
+  "versionCode": 68,
+  "versionName": "0.12.0",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.12.0/surf-reader-0.12.0.apk",
+  "notes": "0.12.0·创意工坊 v1：①底部栏新增「工坊」入口，插件广场四 Tab（广场/我的/制作/教程），可浏览安装官方与社区插件、DIY 生成标注插件；②阅读器新增「划词标注」（单章滚动模式），选中文字即浮现操作条，一键高亮/书签并落本地+推云端，既有标注以低透明背景锚点渲染；③严格物理隔离主站，插件仅围绕 APP 自身资源。覆盖/连续阅读模式沿用原生选区，滚动体验不受影响。"
 }

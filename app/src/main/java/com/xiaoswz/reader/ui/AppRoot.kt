@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -76,6 +77,7 @@ import com.xiaoswz.reader.ui.settings.AccountScreen
 import com.xiaoswz.reader.ui.bookshelf.BookshelfScreen
 import com.xiaoswz.reader.ui.profile.UserProfileScreen
 import com.xiaoswz.reader.ui.profile.ReadingStatsScreen
+import com.xiaoswz.reader.ui.plugin.PluginPlazaScreen
 import com.xiaoswz.reader.ui.theme.SurfReaderTheme
 import com.xiaoswz.reader.ui.components.WhaleBackground
 import com.xiaoswz.reader.ui.theme.GlassTokens
@@ -99,6 +101,7 @@ object Routes {
     const val USER_PROFILE = "user/{id}"
     const val READING_STATS = "reading-stats"
     const val USER_CENTER = "user-center"
+    const val PLUGIN_PLAZA = "plugin-plaza" // 0.12.0 创意工坊 · 插件广场
 
     // slug 可能含中文，必须 URL 编码后再拼路由
     fun detail(slug: String) = "detail/${Uri.encode(slug)}"
@@ -114,6 +117,7 @@ private val TopLevelRoutes = setOf(
     Routes.BOOKSHELF,
     Routes.COMMUNITY,
     Routes.BOOKLISTS,
+    Routes.PLUGIN_PLAZA,
     Routes.SETTINGS,
 )
 
@@ -128,6 +132,7 @@ private val BottomTabs = listOf(
     BottomTab(Routes.BOOKSHELF, "书架", Icons.Default.MenuBook),
     BottomTab(Routes.COMMUNITY, "书友圈", Icons.Default.Forum),
     BottomTab(Routes.BOOKLISTS, "书单", Icons.Default.MenuBook),
+    BottomTab(Routes.PLUGIN_PLAZA, "工坊", Icons.Default.Extension),
     BottomTab(Routes.SETTINGS, "设置", Icons.Default.Settings),
 )
 
@@ -334,6 +339,12 @@ private fun AppShell() {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
                         onUserCenterClick = { navController.navigate(Routes.USER_CENTER) },
+                    )
+                }
+
+                composable(Routes.PLUGIN_PLAZA) {
+                    PluginPlazaScreen(
+                        onBack = { navController.popBackStack() },
                     )
                 }
 

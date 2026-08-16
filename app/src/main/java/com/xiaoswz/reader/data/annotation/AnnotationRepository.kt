@@ -22,17 +22,41 @@ object AnnotationRepository {
         end: Int,
         quoted: String?,
         color: Int,
+    ): AnnotationEntity = createAnnotation(
+        bookId = bookId,
+        chapterId = chapterId,
+        start = start,
+        end = end,
+        quoted = quoted,
+        color = color,
+        type = ANNOTATION_TYPE_HIGHLIGHT,
+        note = null,
+    )
+
+    /**
+     * 通用标注创建（高亮/书签等统一入口，供创意工坊 annotation 插件调用）。
+     * 字符偏移相对「预处理后正文」，与渲染同源；type 为开放字符串（无需改表）。
+     */
+    fun createAnnotation(
+        bookId: String,
+        chapterId: String,
+        start: Int,
+        end: Int,
+        quoted: String?,
+        color: Int?,
+        type: String,
+        note: String? = null,
     ): AnnotationEntity = AnnotationEntity(
         clientId = newClientId(),
         bookSourceId = BOOK_SOURCE_MAIN,
         bookId = bookId,
         chapterId = chapterId,
-        type = ANNOTATION_TYPE_HIGHLIGHT,
+        type = type,
         startOffset = minOf(start, end),
         endOffset = maxOf(start, end),
         quotedText = quoted,
         color = color,
-        note = null,
+        note = note,
         updatedAt = System.currentTimeMillis(),
     )
 

@@ -299,6 +299,15 @@ interface BackendApi {
 
     @DELETE("api/annotations/{clientId}")
     suspend fun deleteAnnotation(@Path("clientId") clientId: String): OkAck
+
+    // ── 0.12.0 创意工坊 · 插件广场（只读浏览；安装/点赞接口后续补）──
+    /** 广场列表：支持 ?pinned=true 把教程/官方示范置顶，分页/过滤由后端实现后生效 */
+    @GET("api/plugins")
+    suspend fun getPlugins(@Query("pinned") pinned: Boolean? = null): PluginListResponse
+
+    /** 单插件完整清单：安装时拉取 */
+    @GET("api/plugins/{pluginId}")
+    suspend fun getPluginManifest(@Path("pluginId") pluginId: String): PluginManifestResponse
 }
 
 // ── 请求体 ──
@@ -982,3 +991,71 @@ data class AnnotationPushResult(
 
 @Serializable
 data class AnnotationPushAck(val results: List<AnnotationPushResult> = emptyList())
+
+// ── 0.12.0 创意工坊 · 插件广场 DTO ──
+// 与 APP 端 data.plugin.PluginManifest 字段对齐；用可空/默认容错未知字段。
+@Serializable
+data class PluginSummary(
+    val pluginId: String,
+    val name: String,
+    val author: String = "",
+    val description: String = "",
+    val icon: String = "",
+    val type: String = "",
+    val minAppVersion: Int = 67,
+    val pinned: Boolean = false,
+    val installs: Int = 0,
+    val likes: Int = 0,
+)
+
+@Serializable
+data class PluginListResponse(val items: List<PluginSummary> = emptyList())
+
+@Serializable
+data class PluginManifestResponse(val manifest: PluginManifestDto)
+
+@Serializable
+data class PluginManifestDto(
+    val id: String,
+    val name: String,
+    val version: Int = 1,
+    val author: String = "",
+    val description: String = "",
+    val icon: String = "",
+    val minAppVersion: Int = 67,
+    val type: String,
+    val capabilities: PluginCapabilitiesDto = PluginCapabilitiesDto(),
+)
+
+@Serializable
+data class PluginCapabilitiesDto(
+    val annotation: PluginAnnotationCapDto? = null,
+    val theme: PluginThemeCapDto? = null,
+    val toolbar: PluginToolbarCapDto? = null,
+    val decorator: PluginDecoratorCapDto? = null,
+)
+
+@Serializable
+data class PluginAnnotationCapDto(
+    val annotationType: String,
+    val label: String,
+    val defaultColor: Int? = null,
+    val withNote: Boolean = false,
+)
+
+@Serializable
+data class PluginThemeCapDto(val name: String, val background: Int, val text: Int)
+
+@Serializable
+data class PluginToolbarCapDto(
+    val action: String,
+    val label: String,
+    val position: String = "bottom",
+)
+
+@Serializable
+data class PluginDecoratorCapDto(
+    val targetType: String,
+    val style: String = "background",
+    val color: Int? = null,
+)

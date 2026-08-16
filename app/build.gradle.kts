@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 67
-        versionName = "0.11.6" // 0.11.6·听书修复：①暂停后再次播放从原句续读（不再从头）；②当前朗读句加低透明背景锚点高亮（AnnotatedString，排版不变，与 TTS 索引同步）。引入 ttsStarted/ttsChapterId 跟踪章节，splitToSentencesWithRanges 返回句区间。前置 0.11.5 社区分享、0.11.3 听书、0.11.2 核心去脆弱化。物理隔离、主站只读不变
+        versionCode = 68
+        versionName = "0.12.0" // 0.12.0·创意工坊 v1：插件广场（广场/我的/制作/教程四 Tab）+ 选区→标注（高亮/书签以官方插件回归）+ decorator 锚点渲染（AnnotatedString）。物理隔离、主站只读不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
