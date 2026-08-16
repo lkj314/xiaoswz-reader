@@ -7,6 +7,9 @@ import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.view.KeyEvent
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import android.view.WindowManager
 import java.util.Locale
 import androidx.compose.foundation.background
@@ -132,8 +135,11 @@ fun ReaderScreen(
     // ── 听书 TTS 状态 ──
     val ttsEngine = remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsSpeaking by remember { mutableStateOf(false) }
+    var ttsStarted by remember { mutableStateOf(false) } // 是否已开始过（用于暂停后续读 + 锚点显示）
     val ttsIndex = remember { mutableStateOf(0) }
     val ttsSentences = remember { mutableStateOf<List<String>>(emptyList()) }
+    val ttsSentenceRanges = remember { mutableStateOf<List<SentenceRange>>(emptyList()) } // 每句在原文中的 [start,end)，供锚点高亮
+    val ttsChapterId = remember { mutableStateOf<String?>(null) } // TTS 当前断句对应的是哪一章
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
     LaunchedEffect(bookSlug, chapterId) {
@@ -264,9 +270,22 @@ fun ReaderScreen(
             }
 
             // ── 听书 TTS：逐句朗读当前章，读完自动续下一章 ──
-            fun splitToSentences(text: String): List<String> =
-                text.split(Regex("(?<=[。！？!?；;\\n])")).map { it.trim() }
-                    .filter { it.isNotBlank() }
+            // 断句并保留每句在原文中的区间，供锚点高亮精确对齐
+            fun splitToSentencesWithRanges(text: String): List<SentenceRange> {
+                if (text.isEmpty()) return emptyList()
+                val regex = Regex("(?<=[。！？!?；;\\n])")
+                val ranges = mutableListOf<SentenceRange>()
+                var cursor = 0
+                for (part in regex.split(text)) {
+                    val trimmed = part.trim()
+                    if (trimmed.isBlank()) { cursor += part.length; continue }
+                    val start = cursor + part.indexOf(trimmed)
+                    val end = start + trimmed.length
+                    ranges.add(SentenceRange(trimmed, start, end))
+                    cursor += part.length
+                }
+                return ranges
+            }
 
             fun speakCurrentSentence() {
                 val engine = ttsEngine.value ?: return
@@ -295,14 +314,15 @@ fun ReaderScreen(
             fun startTts() {
                 val text = viewModel.currentChapterProcessedText()
                 if (text.isBlank()) { ttsSpeaking = false; return }
-                ttsSentences.value = splitToSentences(text)
-                ttsIndex.value = 0
-                ttsSpeaking = true // 由下方 LaunchedEffect 实际触发朗读（引擎就绪时）
+                ttsStarted = true
+                // 不在此清零 ttsIndex：同章暂停后再次播放由下方 LaunchedEffect 从原位置续读；
+                // 若章节已变（ttsChapterId != 当前章），LaunchedEffect 会重新断句并从章首开始。
+                ttsSpeaking = true
             }
 
             fun stopTts() {
                 ttsEngine.value?.stop()
-                ttsSpeaking = false
+                ttsSpeaking = false // 仅暂停：保留 ttsIndex / ttsStarted / ttsSentenceRanges，下次续读
             }
 
             // 覆盖模式分页（在协程中计算，避免组合阶段同步测量整章卡顿/崩溃）
@@ -543,13 +563,21 @@ fun ReaderScreen(
                 }
             }
 
-            // 听书：开始 / 切章时重新朗读当前章（引擎就绪才真正发声）
+            // 听书：开始 / 切章时朗读当前章（引擎就绪才真正发声）
+            // 关键：仅当「章节变化」才重新断句并归零；同章内 ttsSpeaking 由 false→true（暂停后续读）
+            // 时沿用已有 ttsIndex，从暂停处继续，而不是从头。
             LaunchedEffect(ttsSpeaking, state.currentChapterId, ttsEngine.value != null) {
                 if (!ttsSpeaking) return@LaunchedEffect
                 val text = viewModel.currentChapterProcessedText()
                 if (text.isBlank()) return@LaunchedEffect
-                ttsSentences.value = splitToSentences(text)
-                ttsIndex.value = 0
+                if (ttsChapterId.value != state.currentChapterId) {
+                    // 章节变了（首次 / 手动切章 / 自动续章）：重新断句，从章首开始
+                    val ranges = splitToSentencesWithRanges(text)
+                    ttsSentenceRanges.value = ranges
+                    ttsSentences.value = ranges.map { it.text }
+                    ttsIndex.value = 0
+                    ttsChapterId.value = state.currentChapterId
+                }
                 if (ttsEngine.value != null) speakCurrentSentence()
             }
 
@@ -648,10 +676,17 @@ fun ReaderScreen(
                             items = state.chapterBlocks,
                             key = { it.id },
                         ) { block ->
+                            val isReadingChapter = ttsStarted && block.id == state.currentChapterId
+                            val readingRange = if (isReadingChapter)
+                                ttsSentenceRanges.value.getOrNull(ttsIndex.value)
+                                    ?.let { it.start until it.end }
+                            else null
                             ChapterBlockView(
                                 block = block,
                                 theme = theme,
                                 settings = state.settings,
+                                isReadingChapter = isReadingChapter,
+                                readingRange = readingRange,
                             )
                         }
                         item {
@@ -715,8 +750,22 @@ fun ReaderScreen(
                             )
                         }
                         Spacer(modifier = Modifier.height(16.dp))
+                        val isReadingChapter = ttsStarted
+                        val readingRange = if (isReadingChapter)
+                            ttsSentenceRanges.value.getOrNull(ttsIndex.value)
+                                ?.let { it.start until it.end }
+                        else null
                         Text(
-                            text = processed,
+                            text = if (isReadingChapter && readingRange != null)
+                                buildAnnotatedString {
+                                    append(processed)
+                                    addStyle(
+                                        SpanStyle(background = theme.text.copy(alpha = 0.14f)),
+                                        readingRange.first,
+                                        readingRange.last + 1,
+                                    )
+                                }
+                            else buildAnnotatedString { append(processed) },
                             fontSize = state.settings.fontSize.sp,
                             lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
                             color = theme.text,
@@ -902,6 +951,8 @@ private fun ChapterBlockView(
     block: ChapterBlock,
     theme: ReaderTheme,
     settings: ReaderSettings,
+    isReadingChapter: Boolean = false,
+    readingRange: IntRange? = null,
 ) {
     Column(
         modifier = Modifier
@@ -923,7 +974,16 @@ private fun ChapterBlockView(
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = block.content,
+            text = if (isReadingChapter && readingRange != null)
+                buildAnnotatedString {
+                    append(block.content)
+                    addStyle(
+                        SpanStyle(background = theme.text.copy(alpha = 0.14f)),
+                        readingRange.first,
+                        readingRange.last + 1,
+                    )
+                }
+            else buildAnnotatedString { append(block.content) },
             fontSize = settings.fontSize.sp,
             lineHeight = (settings.fontSize * settings.lineSpacing).sp,
             color = theme.text,
@@ -1064,3 +1124,6 @@ private fun ReaderShareSheet(
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+/** 一句在原文中的区间，用于听书锚点高亮与 TTS 索引同步 */
+private data class SentenceRange(val text: String, val start: Int, val end: Int)

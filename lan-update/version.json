@@ -1,6 +1,6 @@
 {
-  "versionCode": 66,
-  "versionName": "0.11.5",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.5/surf-reader-0.11.5.apk",
-  "notes": "0.11.5·模块D 社区分享：阅读底部栏新增「分享」入口，打开面板预填本章标题+正文（可编辑），一键发布到书友圈（复用 0.7.2 社区后端 POST /api/community/posts，需登录）。前置 0.11.4 护眼、0.11.3 听书TTS、0.11.2 核心去脆弱化。物理隔离、主站只读不变。"
+  "versionCode": 67,
+  "versionName": "0.11.6",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.6/surf-reader-0.11.6.apk",
+  "notes": "0.11.6·听书修复：①暂停后再次播放从原句续读（不再从头）；②当前朗读句加低透明背景锚点高亮（与 TTS 索引严格同步，排版不变）。前置 0.11.5 社区分享、0.11.3 听书、0.11.2 核心去脆弱化。物理隔离、主站只读不变。"
 }
