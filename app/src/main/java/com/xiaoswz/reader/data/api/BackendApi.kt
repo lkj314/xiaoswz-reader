@@ -283,6 +283,10 @@ interface BackendApi {
         @Query("search") search: String? = null,
         @Query("category") category: String? = null,
     ): CatalogListResponse
+
+    // ── 0.8.2 书库分区（分类）列表：用于「分区浏览」入口 ──
+    @GET("api/catalog/categories")
+    suspend fun getCatalogCategories(): CatalogCategoriesResponse
 }
 
 // ── 请求体 ──
@@ -925,3 +929,6 @@ data class CatalogListResponse(
     val page: Int = 1,
     val totalPages: Int = 1,
 )
+
+@Serializable
+data class CatalogCategoriesResponse(val categories: List<String> = emptyList())

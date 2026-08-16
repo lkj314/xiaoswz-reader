@@ -63,7 +63,8 @@ import com.xiaoswz.reader.data.api.ApiClient
 import com.xiaoswz.reader.data.api.BackendClient
 import com.xiaoswz.reader.data.sync.SyncRepository
 import com.xiaoswz.reader.data.auth.AuthRepository
-import com.xiaoswz.reader.ui.bookstore.BookstoreScreen
+import com.xiaoswz.reader.ui.bookstore.HomeScreen
+import com.xiaoswz.reader.ui.bookstore.BookLibraryScreen
 import com.xiaoswz.reader.ui.community.CommunityScreen
 import com.xiaoswz.reader.ui.booklist.BooklistsScreen
 import com.xiaoswz.reader.ui.booklist.BooklistDetailScreen
@@ -85,7 +86,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 
 object Routes {
-    const val BOOKSTORE = "bookstore"
+    const val HOME = "home"
+    const val BOOKLIBRARY = "booklibrary"
     const val BOOKSHELF = "bookshelf"
     const val COMMUNITY = "community"
     const val BOOKLISTS = "booklists"
@@ -108,7 +110,7 @@ object Routes {
 
 /** 顶层目标（显示底部导航栏），详情/阅读器为覆盖式全屏，不显示底栏 */
 private val TopLevelRoutes = setOf(
-    Routes.BOOKSTORE,
+    Routes.HOME,
     Routes.BOOKSHELF,
     Routes.COMMUNITY,
     Routes.BOOKLISTS,
@@ -122,7 +124,7 @@ private data class BottomTab(
 )
 
 private val BottomTabs = listOf(
-    BottomTab(Routes.BOOKSTORE, "书城", Icons.Default.Home),
+    BottomTab(Routes.HOME, "首页", Icons.Default.Home),
     BottomTab(Routes.BOOKSHELF, "书架", Icons.Default.MenuBook),
     BottomTab(Routes.COMMUNITY, "书友圈", Icons.Default.Forum),
     BottomTab(Routes.BOOKLISTS, "书单", Icons.Default.MenuBook),
@@ -157,7 +159,7 @@ private val PopExitTransitionX: androidx.compose.animation.ExitTransition =
 /** 底部导航切换：回到起始目的地之上再跳转，避免堆叠 */
 private fun NavHostController.navigateTopLevel(route: String) {
     navigate(route) {
-        popUpTo(Routes.BOOKSTORE) { saveState = true }
+        popUpTo(Routes.HOME) { saveState = true }
         launchSingleTop = true
         restoreState = true
     }
@@ -238,13 +240,20 @@ private fun AppShell() {
         ) { padding ->
             NavHost(
                 navController = navController,
-                startDestination = Routes.BOOKSTORE,
+                startDestination = Routes.HOME,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
             ) {
-                composable(Routes.BOOKSTORE) {
-                    BookstoreScreen(
+                composable(Routes.HOME) {
+                    HomeScreen(
+                        onBookClick = { slug -> navController.navigate(Routes.detail(slug)) },
+                        onBrowseLibrary = { navController.navigate(Routes.BOOKLIBRARY) },
+                    )
+                }
+
+                composable(Routes.BOOKLIBRARY) {
+                    BookLibraryScreen(
                         onBookClick = { slug -> navController.navigate(Routes.detail(slug)) },
                     )
                 }

@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 56
-        versionName = "0.8.1" // 0.8.1（后端客户端适配第一期·自有书库）：后端新增 BookCatalog 轻量书库表（仅元数据，封面只存 http(s)，经主站公开 API 抓取持久化，与主站零共享表/连接/凭据，物理隔离不变）；新增 GET /api/catalog（自有库快速返回）+ POST /api/catalog/sync（从主站播种）。客户端发现类操作（书城列表/搜索/书单加书）从直连主站改为读后端自有书库，主站仅作空库/不可达兜底，首屏不再实时爬主站、消除主站冷启动。延续 0.8.0 四项改进。独立后端、主站单源、物理隔离不变
+        versionCode = 57
+        versionName = "0.8.2" // 0.8.2·书城拆首页+书库：书城拆为「首页」（Hero+热度轮播+浏览书库入口，简洁）与「书库」（搜索+分区浏览+状态/排序+热榜+月票榜+最新上架网格）；底部导航不新增书库 tab，书库仅由首页入口进入。后端新增 GET /api/catalog/categories 支撑分区浏览。独立后端、主站单源、物理隔离不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

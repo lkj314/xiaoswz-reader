@@ -45,10 +45,12 @@ class BookRepository(
         page: Int,
         sort: String,
         search: String? = null,
+        category: String? = null,
     ): Result<BookListResponse> {
         val q = search?.trim()?.takeIf { it.isNotEmpty() }
-        // 书城首屏（无搜索）优先用文件缓存：开书城秒开，30min 内视为新鲜
-        if (page == 1 && q == null && CatalogCache.isFresh(sort)) {
+        val cat = category?.trim()?.takeIf { it.isNotEmpty() && it != "all" }
+        // 书城首屏（无搜索、无分类）优先用文件缓存：开书城秒开，30min 内视为新鲜
+        if (page == 1 && q == null && cat == null && CatalogCache.isFresh(sort)) {
             CatalogCache.get(sort)?.let { return Result.success(it) }
         }
         // 主路径：读后端自有书库（快，不实时爬主站）
@@ -58,11 +60,12 @@ class BookRepository(
                 limit = 24,
                 sort = mapCatalogSort(sort),
                 search = q,
+                category = cat,
             ).let { mapCatalogToBookList(it) }
         }
         if (backend.isSuccess) {
             val resp = backend.getOrThrow()
-            if (page == 1 && q == null) CatalogCache.put(sort, resp)
+            if (page == 1 && q == null && cat == null) CatalogCache.put(sort, resp)
             // 后端书库尚未播种（空）时兜底主站，保证可用
             if (resp.books.isNullOrEmpty()) {
                 return fetchMainSiteBooks(page, sort, q)
@@ -71,6 +74,11 @@ class BookRepository(
         }
         // 后端不可达 → 兜底主站
         return fetchMainSiteBooks(page, sort, q)
+    }
+
+    /** 书库分区（分类）列表：来自冲浪阅读自有 BookCatalog，用于「分区浏览」入口 */
+    suspend fun getCatalogCategories(): Result<List<String>> = runCatching {
+        BackendClient.api.getCatalogCategories().categories
     }
 
     /** 后端书库排序字段映射到主站排序（保持兜底一致） */
