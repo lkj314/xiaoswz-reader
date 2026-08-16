@@ -1,6 +1,6 @@
 {
-  "versionCode": 65,
-  "versionName": "0.11.4",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.4/surf-reader-0.11.4.apk",
-  "notes": "0.11.4·模块C 护眼显示：新增蓝光过滤（暖色滤镜叠加全屏，不拦截滚动/触摸，可随时开关）+ 连续阅读休息提醒（10/20/30/45/60 分钟可选，达阈值弹「休息一下」提示且不阻断阅读）。复用既有阅读主题（米纸/护眼绿/夜间/纯黑）。前置 0.11.3 听书TTS、0.11.2 核心去脆弱化。物理隔离、主站只读不变。"
+  "versionCode": 66,
+  "versionName": "0.11.5",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.5/surf-reader-0.11.5.apk",
+  "notes": "0.11.5·模块D 社区分享：阅读底部栏新增「分享」入口，打开面板预填本章标题+正文（可编辑），一键发布到书友圈（复用 0.7.2 社区后端 POST /api/community/posts，需登录）。前置 0.11.4 护眼、0.11.3 听书TTS、0.11.2 核心去脆弱化。物理隔离、主站只读不变。"
 }
