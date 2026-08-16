@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.NavigateBefore
 import androidx.compose.material.icons.filled.NavigateNext
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -100,6 +101,7 @@ fun ReaderBottomBar(
     onNext: () -> Unit,
     onTtsToggle: () -> Unit,
     ttsActive: Boolean,
+    onShare: () -> Unit,
     onSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -146,6 +148,9 @@ fun ReaderBottomBar(
             }
             IconButton(onClick = onSearch) {
                 Icon(Icons.Filled.Search, contentDescription = "书内搜索", tint = OverlayText)
+            }
+            IconButton(onClick = onShare) {
+                Icon(Icons.Filled.Share, contentDescription = "分享到书友圈", tint = OverlayText)
             }
         }
     }

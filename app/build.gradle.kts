@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 64
-        versionName = "0.11.3" // 0.11.3·模块B（听书 TTS）：正文听书（Android TextToSpeech 逐句朗读 + 章末自动续读下一章）、DataStore 存储语速（0.5x~2.0x 滑块调节）、底部栏播放/停止。前置 0.11.2 核心去脆弱化（移除核心选区/划线/标注面板 UI，永保滚动体验），划线/书签/复制等增强未来以「创意工坊插件」形式开放，不进核心。物理隔离、主站只读不变
+        versionCode = 65
+        versionName = "0.11.4" // 0.11.4·模块C（护眼显示）：新增蓝光过滤（暖色滤镜叠加，不拦截滚动）+ 连续阅读休息提醒（10/20/30/45/60 分钟可选，达阈值弹提醒不阻断阅读）；复用既有阅读主题（米纸/护眼绿/夜间/纯黑）。前置 0.11.3 听书TTS、0.11.2 核心去脆弱化。物理隔离、主站只读不变
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

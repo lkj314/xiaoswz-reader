@@ -43,6 +43,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,6 +75,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,6 +88,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.CrashLogger
 import com.xiaoswz.reader.data.model.ChapterDto
 import com.xiaoswz.reader.data.settings.ReaderSettings
+import com.xiaoswz.reader.data.community.CommunityRepository
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.ui.reader.components.ReaderBottomBar
 import com.xiaoswz.reader.ui.reader.components.ReaderTopBar
@@ -120,6 +123,11 @@ fun ReaderScreen(
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<SearchMatch>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
+    // 休息提醒（护眼模块C）：连续阅读计时起点 + 是否弹出提醒
+    var showRestReminder by remember { mutableStateOf(false) }
+    val restStartMs = remember { mutableStateOf(System.currentTimeMillis()) }
+    // 分享到书友圈（模块D）
+    var showShare by remember { mutableStateOf(false) }
 
     // ── 听书 TTS 状态 ──
     val ttsEngine = remember { mutableStateOf<TextToSpeech?>(null) }
@@ -184,6 +192,20 @@ fun ReaderScreen(
     }
     DisposableEffect(Unit) {
         onDispose { VolumeKeyBus.readerActive = false }
+    }
+
+    // 休息提醒计时（护眼模块C）：开启后每 30s 检查连续阅读时长，达阈值弹提醒（不阻断阅读）
+    LaunchedEffect(state.settings.restReminderEnabled, state.settings.restReminderMinutes) {
+        if (!state.settings.restReminderEnabled) return@LaunchedEffect
+        val threshold = state.settings.restReminderMinutes * 60_000L
+        while (true) {
+            delay(30_000L)
+            if (!showRestReminder &&
+                System.currentTimeMillis() - restStartMs.value >= threshold
+            ) {
+                showRestReminder = true
+            }
+        }
     }
 
     val theme = ReaderThemes.getOrElse(state.settings.themeIndex) { ReaderThemes[0] }
@@ -730,6 +752,15 @@ fun ReaderScreen(
                 }
             }
 
+            // ── 护眼蓝光过滤层（叠加暖色滤镜，不拦截触摸/滚动）──
+            if (state.settings.blueLightFilter) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFFFB43C).copy(alpha = 0.12f)),
+                )
+            }
+
             // ── 离线缓存提示条 ──
             if (state.isOffline) {
                 Box(
@@ -787,6 +818,7 @@ fun ReaderScreen(
                         onNext = { viewModel.nextChapter() },
                         onTtsToggle = { if (ttsSpeaking) stopTts() else startTts() },
                         ttsActive = ttsSpeaking,
+                        onShare = { showShare = true },
                         onSearch = {
                             searchQuery = ""
                             searchResults = emptyList()
@@ -821,6 +853,40 @@ fun ReaderScreen(
                         onDismiss = { showSearch = false },
                     )
                 }
+            }
+
+            // 分享到书友圈（模块D）
+            if (showShare) {
+                val shareInitial = buildString {
+                    append("《${state.bookName}》\n")
+                    append(viewModel.currentChapterProcessedText().take(600))
+                }
+                ModalBottomSheet(onDismissRequest = { showShare = false }) {
+                    ReaderShareSheet(initialText = shareInitial, onDismiss = { showShare = false })
+                }
+            }
+
+            // 休息提醒弹窗（护眼模块C）
+            if (showRestReminder) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showRestReminder = false
+                        restStartMs.value = System.currentTimeMillis()
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showRestReminder = false
+                            restStartMs.value = System.currentTimeMillis()
+                        }) { Text("好的，休息一下") }
+                    },
+                    title = { Text("休息一下吧") },
+                    text = {
+                        Text(
+                            "你已经连续阅读约 ${state.settings.restReminderMinutes} 分钟了，" +
+                                "起来活动活动、看看远处，保护眼睛~",
+                        )
+                    },
+                )
             }
 
         }
@@ -936,4 +1002,65 @@ private fun HorizontalDivider() {
             .height(1.dp)
             .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
     )
+}
+
+/**
+ * 分享当前书摘到书友圈（模块D）：预填本章标题+正文，可编辑后发布。
+ * 复用 CommunityRepository.createPost（需登录；未登录由后端返回 login_required 并映射提示）。
+ */
+@Composable
+private fun ReaderShareSheet(
+    initialText: String,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val sheetScope = rememberCoroutineScope()
+    var text by remember { mutableStateOf(initialText) }
+    var posting by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+    ) {
+        Text("分享到书友圈", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 180.dp, max = 300.dp),
+            label = { Text("书摘内容") },
+            singleLine = false,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(
+            onClick = {
+                val content = text.trim()
+                if (content.isEmpty()) {
+                    android.widget.Toast.makeText(context, "内容不能为空", android.widget.Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+                posting = true
+                sheetScope.launch {
+                    CommunityRepository.createPost(content, emptyList())
+                        .onSuccess {
+                            android.widget.Toast.makeText(context, "已分享到书友圈", android.widget.Toast.LENGTH_SHORT).show()
+                            posting = false
+                            onDismiss()
+                        }
+                        .onFailure { e ->
+                            android.widget.Toast.makeText(context, e.message ?: "分享失败（需登录）", android.widget.Toast.LENGTH_SHORT).show()
+                            posting = false
+                        }
+                }
+            },
+            enabled = !posting,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (posting) "发布中…" else "发布到书友圈")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
 }

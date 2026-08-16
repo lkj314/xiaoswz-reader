@@ -25,9 +25,11 @@ import androidx.compose.material.icons.filled.FormatIndentIncrease
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Nightlight
 import androidx.compose.material.icons.filled.Subject
 import androidx.compose.material.icons.filled.VerticalAlignCenter
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -195,6 +197,35 @@ fun ReaderSettingsSheet(
                     textAlign = TextAlign.End,
                     modifier = Modifier.width(40.dp),
                 )
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // ── 护眼 ──
+        SectionTitle("护眼")
+        Spacer(modifier = Modifier.height(8.dp))
+        SettingSwitchRow(
+            icon = Icons.Filled.Nightlight,
+            label = "蓝光过滤",
+            checked = settings.blueLightFilter,
+        ) { v -> onChange { it.copy(blueLightFilter = v) } }
+        SettingSwitchRow(
+            icon = Icons.Filled.Timer,
+            label = "休息提醒",
+            checked = settings.restReminderEnabled,
+        ) { v -> onChange { it.copy(restReminderEnabled = v) } }
+        if (settings.restReminderEnabled) {
+            SettingRow(icon = Icons.Filled.Timer, label = "间隔") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(10, 20, 30, 45, 60).forEach { m ->
+                        FilterChip(
+                            selected = settings.restReminderMinutes == m,
+                            onClick = { onChange { it.copy(restReminderMinutes = m) } },
+                            label = { Text("${m}分") },
+                        )
+                    }
+                }
             }
         }
 

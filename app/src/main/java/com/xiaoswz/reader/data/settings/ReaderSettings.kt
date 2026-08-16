@@ -43,6 +43,12 @@ data class ReaderSettings(
     val continuousScroll: Boolean = true,
     /** 听书语音语速 0.5~2.0，默认 1.0 */
     val ttsRate: Float = 1.0f,
+    /** 护眼蓝光过滤：叠加暖色滤镜降低蓝光 */
+    val blueLightFilter: Boolean = false,
+    /** 连续阅读休息提醒开关 */
+    val restReminderEnabled: Boolean = false,
+    /** 休息提醒间隔（分钟） */
+    val restReminderMinutes: Int = 20,
 ) {
     companion object {
         const val THEME_DAY = 0
@@ -81,6 +87,9 @@ class ReaderSettingsRepository(private val context: Context) {
         val PREFETCH_PREV = intPreferencesKey("prefetch_prev")
         val CONTINUOUS = booleanPreferencesKey("continuous_scroll")
         val TTS_RATE = floatPreferencesKey("tts_rate")
+        val BLUE_LIGHT = booleanPreferencesKey("blue_light_filter")
+        val REST_REMINDER = booleanPreferencesKey("rest_reminder_enabled")
+        val REST_MINUTES = intPreferencesKey("rest_reminder_minutes")
     }
 
     val settingsFlow: Flow<ReaderSettings> =
@@ -101,6 +110,9 @@ class ReaderSettingsRepository(private val context: Context) {
                 prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: defaults.prefetchPrev,
                 continuousScroll = prefs[Keys.CONTINUOUS] ?: defaults.continuousScroll,
                 ttsRate = prefs[Keys.TTS_RATE] ?: defaults.ttsRate,
+                blueLightFilter = prefs[Keys.BLUE_LIGHT] ?: defaults.blueLightFilter,
+                restReminderEnabled = prefs[Keys.REST_REMINDER] ?: defaults.restReminderEnabled,
+                restReminderMinutes = prefs[Keys.REST_MINUTES] ?: defaults.restReminderMinutes,
             )
         }
 
@@ -121,6 +133,9 @@ class ReaderSettingsRepository(private val context: Context) {
                 prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: 1,
                 continuousScroll = prefs[Keys.CONTINUOUS] ?: true,
                 ttsRate = prefs[Keys.TTS_RATE] ?: 1.0f,
+                blueLightFilter = prefs[Keys.BLUE_LIGHT] ?: false,
+                restReminderEnabled = prefs[Keys.REST_REMINDER] ?: false,
+                restReminderMinutes = prefs[Keys.REST_MINUTES] ?: 20,
             )
             val next = transform(current)
             prefs[Keys.FONT_SIZE] = next.fontSize.coerceIn(
@@ -143,6 +158,9 @@ class ReaderSettingsRepository(private val context: Context) {
             prefs[Keys.TTS_RATE] = next.ttsRate.coerceIn(
                 ReaderSettings.MIN_TTS_RATE, ReaderSettings.MAX_TTS_RATE,
             )
+            prefs[Keys.BLUE_LIGHT] = next.blueLightFilter
+            prefs[Keys.REST_REMINDER] = next.restReminderEnabled
+            prefs[Keys.REST_MINUTES] = next.restReminderMinutes.coerceIn(5, 120)
         }
     }
 }

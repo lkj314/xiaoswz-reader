@@ -1,6 +1,6 @@
 {
-  "versionCode": 64,
-  "versionName": "0.11.3",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.3/surf-reader-0.11.3.apk",
-  "notes": "0.11.3·模块B 听书 TTS：正文逐句朗读（Android TextToSpeech，按句断句）+ 章末自动续读下一章；设置页新增语速调节（0.5x~2.0x 滑块）；阅读底部栏播放/停止。前置 0.11.2 核心去脆弱化——永久移除核心选区/划线/标注面板 UI，永保滚动阅读体验；划线/书签/复制等增强未来以「创意工坊插件」形式开放，不进核心。保留书内搜索。物理隔离、主站只读不变。"
+  "versionCode": 65,
+  "versionName": "0.11.4",
+  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.11.4/surf-reader-0.11.4.apk",
+  "notes": "0.11.4·模块C 护眼显示：新增蓝光过滤（暖色滤镜叠加全屏，不拦截滚动/触摸，可随时开关）+ 连续阅读休息提醒（10/20/30/45/60 分钟可选，达阈值弹「休息一下」提示且不阻断阅读）。复用既有阅读主题（米纸/护眼绿/夜间/纯黑）。前置 0.11.3 听书TTS、0.11.2 核心去脆弱化。物理隔离、主站只读不变。"
 }
