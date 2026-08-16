@@ -971,12 +971,21 @@ fun ReaderScreen(
                             showSearch = true
                         },
                         annoActive = annoActive,
-                        annoAvailable = state.settings.pageMode == ReaderSettings.MODE_SCROLL && !isContinuous,
+                        annoAvailable = true,
                         onAnnoToggle = {
-                            val next = !annoActive
-                            annoActive = next
-                            if (next) annoTextField.value = TextFieldValue(text = processed, selection = TextRange.Zero)
-                            else annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero)
+                            // 划词标注仅「单章滚动」模式可用（连续/覆盖模式正文形态不支持选区偏移映射）
+                            if (state.settings.pageMode == ReaderSettings.MODE_SCROLL && !isContinuous) {
+                                val next = !annoActive
+                                annoActive = next
+                                if (next) annoTextField.value = TextFieldValue(text = processed, selection = TextRange.Zero)
+                                else annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero)
+                            } else {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "划词标注需在「单章滚动」阅读模式使用（设置 → 阅读模式 → 单章滚动）",
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            }
                         },
                     )
                 }

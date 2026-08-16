@@ -5,6 +5,7 @@ import com.xiaoswz.reader.data.api.BackendClient
 import com.xiaoswz.reader.data.api.PluginCapabilitiesDto
 import com.xiaoswz.reader.data.api.PluginManifestDto
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
@@ -19,11 +20,15 @@ import kotlinx.coroutines.flow.map
  */
 object PluginRepository {
 
-    /** 全部「生效中」的插件 manifest（bundled ∪ installed，已启用 + 版本门控） */
+    /** 全部「生效中」的插件 manifest（bundled ∪ installed，已启用 + 版本门控 + 内置停用覆盖） */
     fun activeManifestsFlow(ctx: Context): Flow<List<PluginManifest>> =
-        PluginStateStore.installedFlow(ctx).map { installs ->
+        combine(
+            PluginStateStore.installedFlow(ctx),
+            PluginStateStore.disabledBundledFlow(ctx),
+        ) { installs, disabledBundled ->
             val installed = installs.filter { it.enabled }.map { it.manifest }
-            (BundledPlugins.all + installed)
+            val bundled = BundledPlugins.all.filter { it.id !in disabledBundled }
+            (bundled + installed)
                 .distinctBy { it.id }
                 .let { PluginManager.filterActive(it) }
         }
@@ -65,7 +70,12 @@ object PluginRepository {
     }
 
     suspend fun setEnabled(ctx: Context, pluginId: String, enabled: Boolean) {
-        PluginStateStore.setEnabled(ctx, pluginId, enabled)
+        // 内置插件走「停用覆盖」集合；DIY / 广场插件走已装列表。
+        if (BundledPlugins.all.any { it.id == pluginId }) {
+            PluginStateStore.setBundledDisabled(ctx, pluginId, !enabled)
+        } else {
+            PluginStateStore.setEnabled(ctx, pluginId, enabled)
+        }
     }
 }
 

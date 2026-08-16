@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.kotlin.ksp)
 }
 
 // 本机 safe-delete 在回收站不可用时阻断一切"删除"操作，导致 Gradle 增量构建
@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 69
-        versionName = "0.12.1" // 0.12.1·修复：创意工坊页面打开即测量崩溃（内容区 fillMaxSize 滚动容器改 weight(1f) 确定高度；制作 Tab 组合期写 state 改 remember）
+        versionCode = 71
+        versionName = "0.13.0" // 0.13.0·创意工坊升级：插件可点开内部页（书签/划线收藏段落合集浏览）+ 内置插件可停用 + 制作Tab支持类型/颜色/编辑DIY + 划词标注全程可发现
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
@@ -94,8 +94,8 @@ dependencies {
     // 设置持久化
     implementation(libs.androidx.datastore.preferences)
 
-    // 本地书架（Room）
+    // 本地书架（Room）—— 用 KSP 替代 kapt，避免 kapt 在 Kotlin 2.0 下强制 1.9 回退吞掉真实编译错误
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 }

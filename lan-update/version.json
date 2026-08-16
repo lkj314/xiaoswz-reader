@@ -1,6 +1,6 @@
 {
-  "versionCode": 69,
-  "versionName": "0.12.1",
-  "apkUrl": "https://github.com/lkj314/xiaoswz-reader/releases/download/v0.12.1/surf-reader-0.12.1.apk",
-  "notes": "0.12.1·修复：创意工坊页面打开即测量崩溃。根因：内容区滚动容器（广场/我的 LazyColumn、制作/教程 Column）直接以 fillMaxSize 挂在外层 Column 下导致约束成环/重测死循环；另修复制作 Tab 在组合期写 state 的无限重组合。已改内容区用 Box(fillMaxSize) 框住以提供有限确定高度。严格物理隔离主站不变。"
+  "versionCode": 71,
+  "versionName": "0.13.0",
+  "apkUrl": "https://xiaoswz-reader-backend.vercel.app/surf-reader-0.13.0.apk",
+  "notes": "0.13.0·创意工坊升级：工坊内书签插件新增「书签 / 划线段落合集」浏览页（复制选中文本加书签后可在插件内直接查看合集）；插件支持点开内部页与停用；制作 Tab 支持类型 / 颜色 / 自定义编辑 DIY；划词标注全程可发现。严格物理隔离主站，不碰主站任何代码与数据。"
 }

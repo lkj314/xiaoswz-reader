@@ -6,12 +6,16 @@ import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import java.io.File
 
 /**
  * 标注仓储：本地文件为权威，云端做跨设备合并（LWW by updatedAt）。
  * 未登录时云端调用失败被 runCatching 吞掉，本地标注照常工作。
  */
 object AnnotationRepository {
+    /** 一条标注及其所属书（枚举全量时使用） */
+    data class AnnoItem(val bookId: String, val entity: AnnotationEntity)
+
 
     fun newClientId(): String = UUID.randomUUID().toString()
 
@@ -63,6 +67,7 @@ object AnnotationRepository {
     fun loadLocal(ctx: Context, bookId: String): List<AnnotationEntity> =
         AnnotationStore.load(ctx, bookId)
 
+
     fun persist(ctx: Context, bookId: String, items: List<AnnotationEntity>) {
         AnnotationStore.save(ctx, bookId, items)
     }
@@ -97,4 +102,32 @@ object AnnotationRepository {
             }
             local
         }
+
+
+
+    fun loadAll(ctx: Context): List<AnnoItem> {
+        val dir = File(ctx.filesDir, "annotations")
+        if (!dir.exists() || !dir.isDirectory) return emptyList()
+        val result = mutableListOf<AnnoItem>()
+        val files = dir.listFiles()
+        if (files != null) {
+            for (f in files) {
+                if (f.extension == "json") {
+                    val bookId = f.nameWithoutExtension
+                    for (e in loadLocal(ctx, bookId)) {
+                        result.add(AnnoItem(bookId, e))
+                    }
+                }
+            }
+        }
+        return result
+    }
+
+    /** 删除单条标注（按 clientId），并落盘。云端 tombstone 同步留待后续版本。 */
+    fun deleteOne(ctx: Context, bookId: String, clientId: String) {
+        val list = loadLocal(ctx, bookId).toMutableList()
+        if (list.removeAll { it.clientId == clientId }) {
+            persist(ctx, bookId, list)
+        }
+    }
 }

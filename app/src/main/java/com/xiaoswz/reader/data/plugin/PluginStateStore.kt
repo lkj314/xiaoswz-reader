@@ -9,6 +9,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.SetSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
 /**
@@ -22,6 +24,7 @@ private val Context.pluginStore: DataStore<Preferences> by preferencesDataStore(
 )
 
 private val KEY_INSTALLED = stringPreferencesKey("installed_plugins")
+private val KEY_DISABLED_BUNDLED = stringPreferencesKey("disabled_bundled_plugins")
 
 private val json = Json { ignoreUnknownKeys = true }
 
@@ -62,6 +65,27 @@ object PluginStateStore {
         ctx.pluginStore.edit { prefs ->
             val next = currentList(prefs).filter { it.manifest.id != pluginId }
             prefs[KEY_INSTALLED] = json.encodeToString(ListSerializer(PluginInstall.serializer()), next)
+        }
+    }
+
+    /**
+     * 内置插件停用覆盖集合：内置插件不可卸载，但用户可在「我的」里停用。
+     * 这里单独存一组被停用的内置 id，[PluginRepository.activeManifestsFlow] 据此过滤。
+     */
+    fun disabledBundledFlow(ctx: Context): Flow<Set<String>> =
+        ctx.pluginStore.data.map { prefs ->
+            prefs[KEY_DISABLED_BUNDLED]?.let { raw ->
+                runCatching { json.decodeFromString<Set<String>>(raw) }.getOrElse { emptySet() }
+            } ?: emptySet()
+        }
+
+    suspend fun setBundledDisabled(ctx: Context, pluginId: String, disabled: Boolean) {
+        ctx.pluginStore.edit { prefs ->
+            val cur = prefs[KEY_DISABLED_BUNDLED]
+                ?.let { runCatching { json.decodeFromString<MutableSet<String>>(it) }.getOrElse { mutableSetOf() } }
+                ?: mutableSetOf()
+            if (disabled) cur.add(pluginId) else cur.remove(pluginId)
+            prefs[KEY_DISABLED_BUNDLED] = json.encodeToString(SetSerializer(String.serializer()), cur.toSet())
         }
     }
 
