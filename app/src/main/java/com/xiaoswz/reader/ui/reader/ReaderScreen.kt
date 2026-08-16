@@ -392,6 +392,35 @@ fun ReaderScreen(
                 ttsSpeaking = false // 仅暂停：保留 ttsIndex / ttsStarted / ttsSentenceRanges，下次续读
             }
 
+            /**
+             * 听书：从选定文字的偏移位置开始朗读（而非章首）。
+             * 用于「选中某段 → 从此处听书」，避免长章节只能从头听几十分钟。
+             */
+            fun startTtsFromOffset(offset: Int) {
+                val text = viewModel.currentChapterProcessedText()
+                if (text.isBlank()) { ttsSpeaking = false; return }
+                // 若章节已变（首次 / 手动切章 / 自动续章），重新断句并锁定当前章
+                if (ttsChapterId.value != state.currentChapterId) {
+                    val ranges = splitToSentencesWithRanges(text)
+                    ttsSentenceRanges.value = ranges
+                    ttsSentences.value = ranges.map { it.text }
+                    ttsChapterId.value = state.currentChapterId
+                }
+                // 找到选中偏移所在的句子下标（找不到则从头）
+                val idx = ttsSentenceRanges.value
+                    .indexOfFirst { offset >= it.start && offset < it.end }
+                    .let { if (it < 0) 0 else it }
+                ttsIndex.value = idx
+                ttsStarted = true
+                if (ttsSpeaking) {
+                    // 已在朗读：立即跳到新起点（下一句 onDone 自然续进）
+                    speakCurrentSentence()
+                } else {
+                    // 未朗读：置 true 触发下方 LaunchedEffect 从 idx 开始
+                    ttsSpeaking = true
+                }
+            }
+
             // 覆盖模式分页（在协程中计算，避免组合阶段同步测量整章卡顿/崩溃）
             val textMeasurer = rememberTextMeasurer()
             val pages = remember { mutableStateOf(emptyList<String>()) }
@@ -907,24 +936,6 @@ fun ReaderScreen(
                 )
             }
 
-            // ── 离线缓存提示条 ──
-            if (state.isOffline) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.94f))
-                        .padding(vertical = 4.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "⚠ 离线缓存内容，可能不是最新",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                }
-            }
-
             // ── 菜单层 ──
             Box(modifier = Modifier.fillMaxSize()) {
                 AnimatedVisibility(
@@ -1004,6 +1015,15 @@ fun ReaderScreen(
                             as android.content.ClipboardManager
                         cm.setPrimaryClip(android.content.ClipData.newPlainText("标注", text))
                         android.widget.Toast.makeText(context, "已复制", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onListen = {
+                    val sel = annoTextField.value.selection
+                    if (sel.start < sel.end) {
+                        startTtsFromOffset(sel.start)
+                        // 退出划词模式并清除选区，回到正常正文（含朗读锚点高亮）
+                        annoActive = false
+                        annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero)
                     }
                 },
                 onAnnotate = { plugin ->
@@ -1300,6 +1320,7 @@ private fun AnnoSelectionBar(
     visible: Boolean,
     plugins: List<PluginManifest>,
     onCopy: () -> Unit,
+    onListen: () -> Unit,
     onAnnotate: (PluginManifest) -> Unit,
     onClose: () -> Unit,
 ) {
@@ -1315,6 +1336,7 @@ private fun AnnoSelectionBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onClick = onCopy) { Text("复制") }
+            TextButton(onClick = onListen) { Text("听书") }
             for (plugin in plugins) {
                 val cap = plugin.capabilities.annotation ?: continue
                 TextButton(onClick = { onAnnotate(plugin) }) { Text(cap.label) }

@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 71
-        versionName = "0.13.0" // 0.13.0·创意工坊升级：插件可点开内部页（书签/划线收藏段落合集浏览）+ 内置插件可停用 + 制作Tab支持类型/颜色/编辑DIY + 划词标注全程可发现
+        versionCode = 72
+        versionName = "0.13.1" // 0.13.1·阅读体验修正：移除置顶「离线缓存」警示条（改为目录缓存章置灰+「缓存」标）；听书支持「选中段落从此处开始听」
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
