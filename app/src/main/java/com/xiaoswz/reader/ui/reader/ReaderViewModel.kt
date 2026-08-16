@@ -4,6 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.xiaoswz.reader.data.BookRepository
+import com.xiaoswz.reader.data.annotation.ANNOTATION_TYPE_BOOKMARK
+import com.xiaoswz.reader.data.annotation.ANNOTATION_TYPE_HIGHLIGHT
+import com.xiaoswz.reader.data.annotation.AnnotationEntity
+import com.xiaoswz.reader.data.annotation.AnnotationRepository
 import com.xiaoswz.reader.data.model.ChapterDto
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
@@ -23,6 +27,14 @@ data class ChapterBlock(
     val index: Int,
     val content: String,
     val fromOffline: Boolean = false,
+)
+
+/** 书内全文搜索结果项：章内字符偏移相对「预处理后正文」 */
+data class SearchMatch(
+    val chapterId: String,
+    val chapterTitle: String,
+    val offset: Int,
+    val snippet: String,
 )
 
 data class ReaderUiState(
@@ -50,6 +62,8 @@ data class ReaderUiState(
     val blockPrependLoading: Boolean = false,
     /** 请求屏幕滚动到指定章节块（TOC 跳转 / 上一章下一章按钮） */
     val pendingScrollToChapterId: String? = null,
+    /** 本书全部标注（高亮 + 书签），本地文件为权威，云端仅做跨设备合并 */
+    val annotations: List<AnnotationEntity> = emptyList(),
 ) {
     val currentIndex: Int get() = toc.indexOfFirst { it.id == currentChapterId }.let { if (it < 0) 0 else it }
     val totalChapters: Int get() = toc.size
@@ -70,6 +84,9 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private val _uiState = MutableStateFlow(ReaderUiState())
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
+    /** 当前书 slug（从状态流读取，供标注持久化按书寻址） */
+    private val bookSlug: String get() = _uiState.value.bookSlug
+
     init {
         // 订阅设置流，实时应用到阅读器
         viewModelScope.launch {
@@ -81,6 +98,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
 
     /** 入口：加载书籍目录 + 指定章节 */
     fun load(bookSlug: String, chapterId: String) {
+        // 标注按书加载（本地即时 + 云端合并，失败静默）
+        viewModelScope.launch { loadAnnotations(bookSlug) }
         if (_uiState.value.bookSlug == bookSlug && _uiState.value.toc.isNotEmpty()) {
             // 同一本书已就绪，直接以当前模式切章
             if (_uiState.value.currentChapterId != chapterId) openChapter(chapterId)
@@ -376,5 +395,107 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 repository.prefetchChapter(id)
             }
         }
+    }
+
+    // ── 模块 A：标注 / 书签 / 书内搜索 ──
+
+    /** 加载本书全部标注：本地文件为权威，云端合并补充（需登录；失败静默）。 */
+    private suspend fun loadAnnotations(bookId: String) {
+        val ctx = getApplication<Application>().applicationContext
+        runCatching {
+            val list = AnnotationRepository.sync(ctx, bookId)
+            _uiState.update { it.copy(annotations = list.filter { a -> !a.deleted }) }
+        }
+    }
+
+    /** 某章的高亮（用于连续滚动渲染背景）。 */
+    fun highlightsForChapter(chapterId: String): List<AnnotationEntity> =
+        _uiState.value.annotations.filter {
+            it.type == ANNOTATION_TYPE_HIGHLIGHT && it.chapterId == chapterId
+        }
+
+    /** 某章的书签。 */
+    fun bookmarksForChapter(chapterId: String): List<AnnotationEntity> =
+        _uiState.value.annotations.filter {
+            it.type == ANNOTATION_TYPE_BOOKMARK && it.chapterId == chapterId
+        }
+
+    fun addHighlight(chapterId: String, start: Int, end: Int, quoted: String?, color: Int): AnnotationEntity {
+        val ann = AnnotationRepository.createHighlight(bookSlug, chapterId, start, end, quoted, color)
+        commitAnnotation(ann)
+        return ann
+    }
+
+    fun addBookmark(chapterId: String, offset: Int, quoted: String?, note: String?) {
+        commitAnnotation(
+            AnnotationRepository.createBookmark(bookSlug, chapterId, offset, quoted, note),
+        )
+    }
+
+    fun updateAnnotationNote(clientId: String, note: String) {
+        val ctx = getApplication<Application>().applicationContext
+        val list = _uiState.value.annotations.toMutableList()
+        val idx = list.indexOfFirst { it.clientId == clientId }
+        if (idx < 0) return
+        val updated = list[idx].copy(note = note, updatedAt = System.currentTimeMillis())
+        list[idx] = updated
+        AnnotationRepository.persist(ctx, bookSlug, list)
+        _uiState.update { it.copy(annotations = list) }
+        viewModelScope.launch { AnnotationRepository.pushOne(ctx, updated) }
+    }
+
+    fun deleteAnnotation(clientId: String) {
+        val ctx = getApplication<Application>().applicationContext
+        val list = _uiState.value.annotations.toMutableList()
+        val idx = list.indexOfFirst { it.clientId == clientId }
+        if (idx < 0) return
+        val tombstone = list[idx].copy(deleted = true, updatedAt = System.currentTimeMillis())
+        list[idx] = tombstone
+        AnnotationRepository.persist(ctx, bookSlug, list)
+        _uiState.update { it.copy(annotations = list.filter { a -> !a.deleted }) }
+        viewModelScope.launch { AnnotationRepository.pushOne(ctx, tombstone) }
+    }
+
+    private fun commitAnnotation(ann: AnnotationEntity) {
+        val ctx = getApplication<Application>().applicationContext
+        val list = _uiState.value.annotations.toMutableList().apply { add(ann) }
+        AnnotationRepository.persist(ctx, bookSlug, list)
+        _uiState.update { it.copy(annotations = list) }
+        viewModelScope.launch { AnnotationRepository.pushOne(ctx, ann) }
+    }
+
+    /** 书内全文搜索：遍历目录逐章抓取（命中缓存则瞬时），返回章内偏移匹配。 */
+    suspend fun searchBook(query: String): List<SearchMatch> {
+        val q = query.trim()
+        if (q.isEmpty()) return emptyList()
+        val s = _uiState.value
+        val toc = s.toc
+        if (toc.isEmpty()) return emptyList()
+        val lower = q.lowercase()
+        val matches = mutableListOf<SearchMatch>()
+        for (dto in toc) {
+            val cid = dto.id ?: continue
+            val content = repository.getChapterContent(cid)
+                .fold({ it.data.content.orEmpty() }, { "" })
+            if (content.isEmpty()) continue
+            val processed = preprocessContent(content, s.settings.indentFirstLine, s.settings.paraSpacing)
+            var from = 0
+            while (true) {
+                val idx = processed.lowercase().indexOf(lower, from)
+                if (idx < 0) break
+                val snippetStart = maxOf(0, idx - 12)
+                val snippetEnd = minOf(processed.length, idx + q.length + 12)
+                matches.add(
+                    SearchMatch(
+                        chapterId = cid,
+                        chapterTitle = dto.name ?: "",
+                        offset = idx,
+                        snippet = processed.substring(snippetStart, snippetEnd),
+                    ),
+                )
+                from = idx + q.length
+            }
+        }
+        return matches
     }
 }

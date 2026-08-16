@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.NavigateBefore
 import androidx.compose.material.icons.filled.NavigateNext
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -95,6 +97,8 @@ fun ReaderBottomBar(
     onPrev: () -> Unit,
     onSettings: () -> Unit,
     onNext: () -> Unit,
+    onAnnotations: () -> Unit,
+    onSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -130,6 +134,12 @@ fun ReaderBottomBar(
                     contentDescription = "下一章",
                     tint = if (hasNext) OverlayText else OverlayTextDim,
                 )
+            }
+            IconButton(onClick = onAnnotations) {
+                Icon(Icons.Filled.Bookmark, contentDescription = "标注与书签", tint = OverlayText)
+            }
+            IconButton(onClick = onSearch) {
+                Icon(Icons.Filled.Search, contentDescription = "书内搜索", tint = OverlayText)
             }
         }
     }

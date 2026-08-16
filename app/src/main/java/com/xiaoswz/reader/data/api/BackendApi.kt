@@ -1,6 +1,8 @@
 package com.xiaoswz.reader.data.api
 
 import com.xiaoswz.reader.BuildConfig
+import com.xiaoswz.reader.data.annotation.AnnotationListResponse
+import com.xiaoswz.reader.data.annotation.AnnotationPushBody
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -287,6 +289,16 @@ interface BackendApi {
     // ── 0.8.2 书库分区（分类）列表：用于「分区浏览」入口 ──
     @GET("api/catalog/categories")
     suspend fun getCatalogCategories(): CatalogCategoriesResponse
+
+    // ── 0.11.0 标注 / 书签（阅读痕迹，跨设备同步）──
+    @GET("api/annotations")
+    suspend fun getAnnotations(@Query("bookId") bookId: String): AnnotationListResponse
+
+    @POST("api/annotations")
+    suspend fun pushAnnotations(@Body body: AnnotationPushBody): AnnotationPushAck
+
+    @DELETE("api/annotations/{clientId}")
+    suspend fun deleteAnnotation(@Path("clientId") clientId: String): OkAck
 }
 
 // ── 请求体 ──
@@ -958,3 +970,15 @@ data class CatalogListResponse(
 
 @Serializable
 data class CatalogCategoriesResponse(val categories: List<String> = emptyList())
+
+// ── 0.11.0 标注 / 书签同步响应 DTO ──
+@Serializable
+data class AnnotationPushResult(
+    val clientId: String = "",
+    val applied: Boolean = true,
+    val reason: String? = null,
+    val deleted: Boolean = false,
+)
+
+@Serializable
+data class AnnotationPushAck(val results: List<AnnotationPushResult> = emptyList())
