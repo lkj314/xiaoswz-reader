@@ -109,11 +109,17 @@ fun PluginPlazaScreen(onBack: () -> Unit) {
                     )
                 }
             }
-            when (selectedTab) {
-                0 -> PlazaTab(onBack)
-                1 -> MineTab()
-                2 -> MakeTab()
-                3 -> TutorialTab()
+            // 内容区用 Box(fillMaxSize) 框住：给内部 LazyColumn / 滚动容器一个有限、确定的高度，
+            // 避免「滚动容器 fillMaxSize 直接挂在外层 Column」引发的约束成环 / 重测崩溃。
+            Box(
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when (selectedTab) {
+                    0 -> PlazaTab(onBack)
+                    1 -> MineTab()
+                    2 -> MakeTab()
+                    3 -> TutorialTab()
+                }
             }
         }
     }
@@ -346,7 +352,6 @@ private fun MakeTab() {
     var label by remember { mutableStateOf("") }
     var note by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
-    var preview by remember { mutableStateOf("") }
 
     fun slugOf(input: String): String {
         val base = input.trim().replace(Regex("\\s+"), "_").lowercase()
@@ -409,20 +414,23 @@ private fun MakeTab() {
 
         Spacer(Modifier.height(8.dp))
         Text("预览清单（JSON）", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-        preview = buildString {
-            append("{\n")
-            append("  \"id\": \"${slugOf(name).ifBlank { "local.diy" }}\",\n")
-            append("  \"name\": \"${name.ifBlank { "我的插件" }}\",\n")
-            append("  \"type\": \"annotation\",\n")
-            append("  \"capabilities\": {\n")
-            append("    \"annotation\": {\n")
-            append("      \"annotationType\": \"$type\",\n")
-            append("      \"label\": \"${label.ifBlank { "划线" }}\",\n")
-            append("      \"defaultColor\": -14336,\n")
-            append("      \"withNote\": $note\n")
-            append("    }\n")
-            append("  }\n")
-            append("}")
+        // 预览仅在 name/label/note 变化时重算，绝不在组合期写 state（避免无限重组合 / 重测崩溃）。
+        val preview = remember(name, label, note) {
+            buildString {
+                append("{\n")
+                append("  \"id\": \"${slugOf(name).ifBlank { "local.diy" }}\",\n")
+                append("  \"name\": \"${name.ifBlank { "我的插件" }}\",\n")
+                append("  \"type\": \"annotation\",\n")
+                append("  \"capabilities\": {\n")
+                append("    \"annotation\": {\n")
+                append("      \"annotationType\": \"$type\",\n")
+                append("      \"label\": \"${label.ifBlank { "划线" }}\",\n")
+                append("      \"defaultColor\": -14336,\n")
+                append("      \"withNote\": $note\n")
+                append("    }\n")
+                append("  }\n")
+                append("}")
+            }
         }
         Card(modifier = Modifier.fillMaxWidth()) {
             Text(

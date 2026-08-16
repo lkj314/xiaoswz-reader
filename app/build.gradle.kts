@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 68
-        versionName = "0.12.0" // 0.12.0·创意工坊 v1：插件广场（广场/我的/制作/教程四 Tab）+ 选区→标注（高亮/书签以官方插件回归）+ decorator 锚点渲染（AnnotatedString）。物理隔离、主站只读不变
+        versionCode = 69
+        versionName = "0.12.1" // 0.12.1·修复：创意工坊页面打开即测量崩溃（内容区 fillMaxSize 滚动容器改 weight(1f) 确定高度；制作 Tab 组合期写 state 改 remember）
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
