@@ -47,7 +47,7 @@ class ChapterCommentViewModel : ViewModel() {
         }
     }
 
-    fun postComment(content: String) {
+    fun postComment(content: String, parentId: String? = null) {
         val text = content.trim()
         if (text.isEmpty()) return
         viewModelScope.launch {
@@ -60,7 +60,7 @@ class ChapterCommentViewModel : ViewModel() {
                 _uiState.update { it.copy(toast = "您已被禁言，暂时无法评论") }
                 return@launch
             }
-            val res = BackendRepository.postChapterComment(bookSlug, chapterId, text)
+            val res = BackendRepository.postChapterComment(bookSlug, chapterId, text, parentId)
             if (res.isSuccess) {
                 val comments = BackendRepository.getChapterComments(bookSlug, chapterId).getOrNull()
                 _uiState.update {

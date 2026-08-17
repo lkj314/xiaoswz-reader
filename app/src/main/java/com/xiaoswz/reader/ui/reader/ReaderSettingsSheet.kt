@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.BorderOuter
+import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.FormatIndentIncrease
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.GraphicEq
@@ -269,6 +270,11 @@ fun ReaderSettingsSheet(
             label = "屏幕常亮",
             checked = settings.keepScreenOn,
         ) { v -> onChange { it.copy(keepScreenOn = v) } }
+        SettingSwitchRow(
+            icon = Icons.Filled.Comment,
+            label = "段评标记",
+            checked = settings.showSegmentMarkers,
+        ) { v -> onChange { it.copy(showSegmentMarkers = v) } }
 
         Spacer(modifier = Modifier.height(24.dp))
     }

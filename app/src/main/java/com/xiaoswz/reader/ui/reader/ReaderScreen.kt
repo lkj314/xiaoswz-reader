@@ -27,7 +27,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
-import androidx.compose.ui.unit.IntOffset
 import android.view.WindowManager
 import java.util.Locale
 import androidx.compose.foundation.background
@@ -43,6 +42,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -99,6 +99,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -909,6 +911,8 @@ fun ReaderScreen(
                                 readingRange = readingRange,
                                 annotations = annotations.filter { it.chapterId == block.id },
                                 segmentSpans = segSpansByChapter[block.id] ?: emptyList(),
+                                showMarkers = state.settings.showSegmentMarkers,
+                                onOpenSeg = { pIdx, quote -> segThread = pIdx to quote },
                             )
                         }
                         item {
@@ -1007,20 +1011,18 @@ fun ReaderScreen(
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         } else {
-                            SelectionContainer {
-                                Text(
-                                    text = buildAnnotatedContent(
-                                        content = processed,
-                                        annotations = annoAnnotations,
-                                        readingRange = if (isReadingChapter) readingRange else null,
-                                        theme = theme,
-                                        segmentSpans = segSpansByChapter[state.currentChapterId] ?: emptyList(),
-                                    ),
-                                    fontSize = state.settings.fontSize.sp,
-                                    lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
-                                    color = theme.text,
-                                )
-                            }
+                            SegmentMarkedText(
+                                text = processed,
+                                annotations = annoAnnotations,
+                                readingRange = if (isReadingChapter) readingRange else null,
+                                theme = theme,
+                                segmentSpans = segSpansByChapter[state.currentChapterId] ?: emptyList(),
+                                showMarkers = state.settings.showSegmentMarkers,
+                                onOpenSeg = { pIdx, quote -> segThread = pIdx to quote },
+                                fontSizeSp = state.settings.fontSize,
+                                lineSpacing = state.settings.lineSpacing,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
                         }
                         Spacer(modifier = Modifier.height(28.dp))
                         Row(
@@ -1270,22 +1272,24 @@ fun ReaderScreen(
                 }
             }
 
-            // 章评（v0.15）：本章读者讨论，底部弹层
+            // 章评（v0.15）：本章读者讨论，底部弹层；顶部可切到段评
             if (showChapterComment) {
                 ChapterCommentSheet(
                     bookSlug = bookSlug,
                     chapterId = state.currentChapterId,
                     onDismiss = { showChapterComment = false },
+                    onOpenSegment = { showChapterComment = false; showSegmentList = true },
                 )
             }
 
-            // 段评列表（v0.15）：按段落归组，点开进入本段讨论
+            // 段评列表（v0.15）：按段落归组，点开进入本段讨论；顶部可切到章评
             if (showSegmentList) {
                 val segList = state.segmentCommentsByChapter[state.currentChapterId] ?: emptyList()
                 SegmentCommentSheet(
                     segmentComments = segList,
                     onDismiss = { showSegmentList = false },
                     onOpenThread = { pIdx, quote -> segThread = pIdx to quote },
+                    onOpenChapter = { showSegmentList = false; showChapterComment = true },
                 )
             }
 
@@ -1303,6 +1307,9 @@ fun ReaderScreen(
                     onReport = { id -> viewModel.reportSegmentComment(id) },
                     onPost = { content ->
                         viewModel.postSegmentComment(state.currentChapterId, pIdx, null, null, quote, content, null)
+                    },
+                    onReply = { pid, txt ->
+                        viewModel.postSegmentComment(state.currentChapterId, pIdx, null, null, quote, txt, pid)
                     },
                 )
             }
@@ -1360,6 +1367,85 @@ fun ReaderScreen(
  * 连续滚动流中的单个章节块：标题 + 正文 + 章节分隔留白。
  * 正文为纯文本渲染；划线/书签等增强能力未来以「创意工坊插件」形式提供，不进入核心。
  */
+/** 段评气泡定位信息（段落末尾，点击进段线程） */
+private data class BubbleInfo(
+    val x: Float,
+    val y: Float,
+    val paragraphIndex: Int,
+    val quote: String,
+    val count: Int,
+)
+
+/**
+ * 正文 + 段评下划线 + 段落末尾气泡（可点进段线程）。
+ * 选区由内部 SelectionContainer 保留；气泡层叠加在 Text 之上（绝对定位），不干扰选区。
+ * showMarkers=false（沉浸式设置）时只保留下划线、完全不渲染气泡。
+ */
+@Composable
+private fun SegmentMarkedText(
+    text: String,
+    annotations: List<AnnotationEntity>,
+    readingRange: IntRange?,
+    theme: ReaderTheme,
+    segmentSpans: List<SegSpan>,
+    showMarkers: Boolean,
+    onOpenSeg: (Int, String) -> Unit,
+    fontSizeSp: Int,
+    lineSpacing: Float,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+    var layoutResult by remember(text) { mutableStateOf<TextLayoutResult?>(null) }
+    val annotated = remember(text, annotations, readingRange, theme, segmentSpans) {
+        buildAnnotatedContent(text, annotations, readingRange, theme, segmentSpans)
+    }
+    Box(modifier) {
+        SelectionContainer {
+            Text(
+                text = annotated,
+                fontSize = fontSizeSp.sp,
+                lineHeight = (fontSizeSp * lineSpacing).sp,
+                color = theme.text,
+                onTextLayout = { layoutResult = it },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (showMarkers) {
+            val bubbleW = with(density) { 46.dp.toPx() }
+            val bubbles = remember(layoutResult, segmentSpans, text) {
+                layoutResult?.let { lo ->
+                    val len = text.length
+                    segmentSpans.mapNotNull { span ->
+                        if (span.end <= 0 || span.end > len) return@mapNotNull null
+                        val idx = (span.end - 1).coerceIn(0, len - 1)
+                        val box = lo.getBoundingBox(idx)
+                        val x = (box.right - bubbleW).coerceAtLeast(0f)
+                        BubbleInfo(x, box.top, span.paragraphIndex, span.quote, span.count)
+                    }
+                } ?: emptyList()
+            }
+            bubbles.forEach { b ->
+                Box(
+                    modifier = Modifier
+                        .offset { androidx.compose.ui.unit.IntOffset(b.x.toInt(), b.y.toInt()) }
+                        .width(46.dp)
+                        .height(22.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable { onOpenSeg(b.paragraphIndex, b.quote) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "💬 ${b.count}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ChapterBlockView(
     block: ChapterBlock,
@@ -1368,7 +1454,9 @@ private fun ChapterBlockView(
     isReadingChapter: Boolean = false,
     readingRange: IntRange? = null,
     annotations: List<AnnotationEntity> = emptyList(),
-    segmentSpans: List<Pair<Int, Int>> = emptyList(),
+    segmentSpans: List<SegSpan> = emptyList(),
+    showMarkers: Boolean = true,
+    onOpenSeg: (Int, String) -> Unit = { _, _ -> },
 ) {
     Column(
         modifier = Modifier
@@ -1389,20 +1477,18 @@ private fun ChapterBlockView(
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
-        SelectionContainer {
-            Text(
-                text = buildAnnotatedContent(
-                    content = block.content,
-                    annotations = annotations,
-                    readingRange = if (isReadingChapter) readingRange else null,
-                    theme = theme,
-                    segmentSpans = segmentSpans,
-                ),
-                fontSize = settings.fontSize.sp,
-                lineHeight = (settings.fontSize * settings.lineSpacing).sp,
-                color = theme.text,
-            )
-        }
+        SegmentMarkedText(
+            text = block.content,
+            annotations = annotations,
+            readingRange = if (isReadingChapter) readingRange else null,
+            theme = theme,
+            segmentSpans = segmentSpans,
+            showMarkers = showMarkers,
+            onOpenSeg = onOpenSeg,
+            fontSizeSp = settings.fontSize,
+            lineSpacing = settings.lineSpacing,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(modifier = Modifier.height(36.dp))
     }
 }
@@ -1544,32 +1630,46 @@ private fun ReaderShareSheet(
 private data class SentenceRange(val text: String, val start: Int, val end: Int)
 
 /**
- * 段评锚点 → 预处理正文中的绝对字符区间（供下划线/珊瑚底色渲染）。
- * 正文不在 DB，锚点仅在 Raw 坐标；按阅读设置把每段段评映射回该章预处理后正文的坐标，跨设备一致。
- * 有精确偏移（start/endOffset）者按偏移渲染；仅有段落号者整段高亮。
+ * 段评锚点（供下划线渲染 + 段落末尾气泡）。每段一条：含该段在预处理正文中的绝对区间、
+ * Raw 段落号、引用快照与段评数。正文不在 DB，锚点仅在 Raw 坐标，按阅读设置映射回 processed 坐标。
  */
+private data class SegSpan(
+    val start: Int,
+    val end: Int,
+    val paragraphIndex: Int,
+    val quote: String,
+    val count: Int,
+)
+
 private fun computeSegSpans(
     raw: String,
     list: List<SegmentCommentItem>,
     indent: Boolean,
     paraSpacing: Int,
-): List<Pair<Int, Int>> {
+): List<SegSpan> {
     if (raw.isBlank()) return emptyList()
     val ranges = mapParagraphRanges(raw, indent, paraSpacing)
     return list.filter { it.paragraphIndex != null }
         .groupBy { it.paragraphIndex!! }
-        .flatMap { (p, clist) ->
-            val range = ranges.getOrNull(p) ?: return@flatMap emptyList<Pair<Int, Int>>()
+        .mapNotNull { (p, clist) ->
+            val range = ranges.getOrNull(p) ?: return@mapNotNull null
             val hasSpecific = clist.any { it.startOffset != null && it.endOffset != null }
-            if (hasSpecific) {
+            val span = if (hasSpecific) {
                 clist.mapNotNull { c ->
                     val s = c.startOffset
                     val e = c.endOffset
                     if (s != null && e != null) segmentAbsoluteSpan(range, s, e) else null
-                }
+                }.firstOrNull() ?: segmentAbsoluteSpan(range, 0, range.contentLength)
             } else {
-                listOf(segmentAbsoluteSpan(range, 0, range.contentLength))
+                segmentAbsoluteSpan(range, 0, range.contentLength)
             }
+            SegSpan(
+                start = span.first,
+                end = span.second,
+                paragraphIndex = p,
+                quote = clist.firstOrNull()?.quotedText ?: clist.firstOrNull()?.content ?: "",
+                count = clist.size,
+            )
         }
 }
 
@@ -1582,7 +1682,7 @@ private fun buildAnnotatedContent(
     annotations: List<AnnotationEntity>,
     readingRange: IntRange?,
     theme: ReaderTheme,
-    segmentSpans: List<Pair<Int, Int>> = emptyList(),
+    segmentSpans: List<SegSpan> = emptyList(),
 ): AnnotatedString = buildAnnotatedString {
     append(content)
     for (a in annotations) {
@@ -1593,16 +1693,17 @@ private fun buildAnnotatedContent(
             addStyle(SpanStyle(background = c.copy(alpha = 0.22f)), s, e)
         }
     }
-    // 段评标记：珊瑚底色（正文不入库，锚点仅在 Raw 坐标，已映射回 processed 坐标）。
-    // 注：当前离线编译环境的 Compose UI 产物未携带 TextDecoration，故用底色高亮而非下划线，
-    // 珊瑚色与标注高亮（青/绿）区分明显，仍能清晰提示「本段有段评」。
-    for ((s, e) in segmentSpans) {
-        val ss = s.coerceAtLeast(0)
-        val ee = e.coerceAtMost(content.length)
+    // 段评标记：极淡珊瑚底色 + 下划线（正文不入库，锚点仅在 Raw 坐标，已映射回 processed 坐标）。
+    // 用 6% 底色而非 18%，避免与 Compose 选区高亮（深色块）混淆造成「始终被选中」的错觉；
+    // 下划线由 TextDecoration 提供，珊瑚色与标注高亮（青/绿）区分明显，仍清晰提示「本段有段评」。
+    for (span in segmentSpans) {
+        val ss = span.start.coerceAtLeast(0)
+        val ee = span.end.coerceAtMost(content.length)
         if (ee > ss) {
             addStyle(
                 SpanStyle(
-                    background = Color(0xFFFF7043).copy(alpha = 0.18f),
+                    background = Color(0xFFFF7043).copy(alpha = 0.06f),
+                    textDecoration = TextDecoration.Underline,
                 ),
                 ss, ee,
             )
@@ -1713,7 +1814,7 @@ private fun ReaderSelectionToolbar(
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset { IntOffset((centerX - widthPx.value / 2f).toInt(), y.toInt()) }
+                .offset { androidx.compose.ui.unit.IntOffset((centerX - widthPx.value / 2f).toInt(), y.toInt()) }
                 .onSizeChanged { widthPx.value = it.width }
                 .clip(RoundedCornerShape(14.dp))
                 .background(MaterialTheme.colorScheme.surface)

@@ -49,6 +49,8 @@ data class ReaderSettings(
     val restReminderEnabled: Boolean = false,
     /** 休息提醒间隔（分钟） */
     val restReminderMinutes: Int = 20,
+    /** 段评标记（段落末尾气泡 + 下划线）：关掉 = 沉浸式阅读（不显示任何段评提示） */
+    val showSegmentMarkers: Boolean = true,
 ) {
     companion object {
         const val THEME_DAY = 0
@@ -90,6 +92,7 @@ class ReaderSettingsRepository(private val context: Context) {
         val BLUE_LIGHT = booleanPreferencesKey("blue_light_filter")
         val REST_REMINDER = booleanPreferencesKey("rest_reminder_enabled")
         val REST_MINUTES = intPreferencesKey("rest_reminder_minutes")
+        val SEG_MARKERS = booleanPreferencesKey("show_segment_markers")
     }
 
     val settingsFlow: Flow<ReaderSettings> =
@@ -113,6 +116,7 @@ class ReaderSettingsRepository(private val context: Context) {
                 blueLightFilter = prefs[Keys.BLUE_LIGHT] ?: defaults.blueLightFilter,
                 restReminderEnabled = prefs[Keys.REST_REMINDER] ?: defaults.restReminderEnabled,
                 restReminderMinutes = prefs[Keys.REST_MINUTES] ?: defaults.restReminderMinutes,
+                showSegmentMarkers = prefs[Keys.SEG_MARKERS] ?: defaults.showSegmentMarkers,
             )
         }
 
@@ -136,6 +140,7 @@ class ReaderSettingsRepository(private val context: Context) {
                 blueLightFilter = prefs[Keys.BLUE_LIGHT] ?: false,
                 restReminderEnabled = prefs[Keys.REST_REMINDER] ?: false,
                 restReminderMinutes = prefs[Keys.REST_MINUTES] ?: 20,
+                showSegmentMarkers = prefs[Keys.SEG_MARKERS] ?: true,
             )
             val next = transform(current)
             prefs[Keys.FONT_SIZE] = next.fontSize.coerceIn(
@@ -161,6 +166,7 @@ class ReaderSettingsRepository(private val context: Context) {
             prefs[Keys.BLUE_LIGHT] = next.blueLightFilter
             prefs[Keys.REST_REMINDER] = next.restReminderEnabled
             prefs[Keys.REST_MINUTES] = next.restReminderMinutes.coerceIn(5, 120)
+            prefs[Keys.SEG_MARKERS] = next.showSegmentMarkers
         }
     }
 }

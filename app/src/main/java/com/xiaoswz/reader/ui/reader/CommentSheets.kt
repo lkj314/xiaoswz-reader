@@ -39,16 +39,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.data.api.CommentItem
 import com.xiaoswz.reader.data.api.SegmentCommentItem
 
-/** 共享：单条评论行（章评 / 段评通用）。quote 为段评引用快照，可空。 */
+/** 共享：单条评论行（章评 / 段评通用）。quote 为段评引用快照，可空。支持楼中楼就地回复。 */
 @Composable
 private fun CommentRow(
+    id: String,
     content: String,
     likeCount: Int,
     quote: String? = null,
+    isReply: Boolean = false,
     onLike: () -> Unit,
     onReport: () -> Unit,
+    onReply: (parentId: String, content: String) -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+    var replying by remember { mutableStateOf(false) }
+    var replyText by remember { mutableStateOf("") }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (isReply) Modifier.padding(start = 16.dp) else Modifier),
+    ) {
         if (!quote.isNullOrBlank()) {
             Text(
                 text = "“${quote}”",
@@ -59,10 +68,39 @@ private fun CommentRow(
             )
             Spacer(modifier = Modifier.height(4.dp))
         }
-        Text(text = content, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = content,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isReply) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TextButton(onClick = onLike) { Text("赞 $likeCount") }
+            TextButton(onClick = { replying = !replying }) { Text("回复") }
             TextButton(onClick = onReport) { Text("举报") }
+        }
+        if (replying) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = replyText,
+                    onValueChange = { replyText = it },
+                    placeholder = { Text("回复楼主…") },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 3,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        if (replyText.isNotBlank()) {
+                            onReply(id, replyText.trim())
+                            replyText = ""
+                            replying = false
+                        }
+                    },
+                ) { Text("发送") }
+            }
         }
         HorizontalDivider()
     }
@@ -101,6 +139,7 @@ fun ChapterCommentSheet(
     bookSlug: String,
     chapterId: String,
     onDismiss: () -> Unit,
+    onOpenSegment: () -> Unit = {},
 ) {
     val vm: ChapterCommentViewModel = viewModel()
     val state by vm.uiState.collectAsState()
@@ -114,23 +153,45 @@ fun ChapterCommentSheet(
     }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text("章评（${state.commentTotal}）", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("章评（${state.commentTotal}）", style = MaterialTheme.typography.titleMedium)
+                TextButton(onClick = onOpenSegment) { Text("段评 ›") }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                     androidx.compose.material3.CircularProgressIndicator()
                 }
             } else {
+                val topLevel = state.comments.filter { it.parentId == null }
                 LazyColumn(
                     modifier = Modifier.heightIn(max = 420.dp),
                 ) {
-                    items(state.comments, key = { it.id }) { c ->
+                    items(topLevel, key = { it.id }) { c ->
+                        val replies = state.comments.filter { it.parentId == c.id }
                         CommentRow(
+                            id = c.id,
                             content = c.content,
                             likeCount = c.likeCount,
                             onLike = { vm.likeComment(c.id) },
                             onReport = { vm.reportComment(c.id) },
+                            onReply = { pid, txt -> vm.postComment(txt, pid) },
                         )
+                        replies.forEach { r ->
+                            CommentRow(
+                                id = r.id,
+                                content = r.content,
+                                likeCount = r.likeCount,
+                                isReply = true,
+                                onLike = { vm.likeComment(r.id) },
+                                onReport = { vm.reportComment(r.id) },
+                                onReply = { pid, txt -> vm.postComment(txt, pid) },
+                            )
+                        }
                     }
                 }
             }
@@ -145,13 +206,21 @@ fun SegmentCommentSheet(
     segmentComments: List<SegmentCommentItem>,
     onDismiss: () -> Unit,
     onOpenThread: (paragraphIndex: Int, quote: String) -> Unit,
+    onOpenChapter: () -> Unit = {},
 ) {
     val groups = segmentComments.filter { it.paragraphIndex != null }
         .groupBy { it.paragraphIndex!! }
         .toSortedMap()
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text("段评", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("段评", style = MaterialTheme.typography.titleMedium)
+                TextButton(onClick = onOpenChapter) { Text("章评 ›") }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             if (groups.isEmpty()) {
                 Text(
@@ -201,6 +270,7 @@ fun SegmentThreadSheet(
     onLike: (String) -> Unit,
     onReport: (String) -> Unit,
     onPost: (String) -> Unit,
+    onReply: (parentId: String, content: String) -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -219,14 +289,29 @@ fun SegmentThreadSheet(
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
+            val topLevel = comments.filter { it.parentId == null }
             LazyColumn(modifier = Modifier.heightIn(max = 380.dp)) {
-                items(comments, key = { it.id }) { c ->
+                items(topLevel, key = { it.id }) { c ->
+                    val replies = comments.filter { it.parentId == c.id }
                     CommentRow(
+                        id = c.id,
                         content = c.content,
                         likeCount = c.likeCount,
                         onLike = { onLike(c.id) },
                         onReport = { onReport(c.id) },
+                        onReply = onReply,
                     )
+                    replies.forEach { r ->
+                        CommentRow(
+                            id = r.id,
+                            content = r.content,
+                            likeCount = r.likeCount,
+                            isReply = true,
+                            onLike = { onLike(r.id) },
+                            onReport = { onReport(r.id) },
+                            onReply = onReply,
+                        )
+                    }
                 }
             }
             CommentInputBar(onSend = onPost)
