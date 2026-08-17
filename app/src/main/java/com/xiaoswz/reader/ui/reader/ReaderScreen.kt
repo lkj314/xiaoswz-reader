@@ -19,7 +19,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.platform.TextToolbar
+import androidx.compose.ui.platform.TextToolbarStatus
+import androidx.compose.ui.unit.IntOffset
 import android.view.WindowManager
 import java.util.Locale
 import androidx.compose.foundation.background
@@ -173,6 +181,14 @@ fun ReaderScreen(
     // 划词标注模式开关 + 只读文本字段（承载选区状态，offset 相对预处理正文）
     var annoActive by remember { mutableStateOf(false) }
     val annoTextField = remember { mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero)) }
+
+    // ── 听书：选中文字起点（自定义选区菜单 + 公开 API 拿选中文字）──
+    // 默认 SelectionContainer 的选区菜单只有「复制/全选」，没有「听书」入口；
+    // 这里用自定义 TextToolbar 替换默认菜单，让正常阅读长按选中即可「从选中处听书」。
+    // 因本版本 Compose 的 Selection / SelectionContainer(selection=) 为 internal，无法直接读偏移，
+    // 故「听书」时通过复制回调拿到选中文字，再在整章正文定位起点开读（参考微信读书做法）。
+    val readerToolbar = remember { ReaderTextToolbar() }
+    val defaultTextToolbar = LocalTextToolbar.current
 
     // ── 记录阅读进度到本地书架（仅已收藏书籍，未收藏不产生数据）──
     LaunchedEffect(state.currentChapterId) {
@@ -378,37 +394,19 @@ fun ReaderScreen(
                 speakCurrentSentence()
             }
 
-            fun startTts() {
-                val text = viewModel.currentChapterProcessedText()
-                if (text.isBlank()) { ttsSpeaking = false; return }
-                ttsStarted = true
-                // 不在此清零 ttsIndex：同章暂停后再次播放由下方 LaunchedEffect 从原位置续读；
-                // 若章节已变（ttsChapterId != 当前章），LaunchedEffect 会重新断句并从章首开始。
-                ttsSpeaking = true
-            }
-
-            fun stopTts() {
-                ttsEngine.value?.stop()
-                ttsSpeaking = false // 仅暂停：保留 ttsIndex / ttsStarted / ttsSentenceRanges，下次续读
-            }
-
             /**
-             * 听书：从选定文字的偏移位置开始朗读（而非章首）。
+             * 听书：从指定偏移位置开始朗读（而非章首）。
              * 用于「选中某段 → 从此处听书」，避免长章节只能从头听几十分钟。
+             * 直接以传入的正文 + 章节断句，不依赖「当前章」状态，保证选中哪章就从哪章读。
              */
-            fun startTtsFromOffset(offset: Int) {
-                val text = viewModel.currentChapterProcessedText()
+            fun startTtsFromText(offset: Int, text: String, chapterId: String) {
                 if (text.isBlank()) { ttsSpeaking = false; return }
-                // 若章节已变（首次 / 手动切章 / 自动续章），重新断句并锁定当前章
-                if (ttsChapterId.value != state.currentChapterId) {
-                    val ranges = splitToSentencesWithRanges(text)
-                    ttsSentenceRanges.value = ranges
-                    ttsSentences.value = ranges.map { it.text }
-                    ttsChapterId.value = state.currentChapterId
-                }
+                val ranges = splitToSentencesWithRanges(text)
+                ttsSentenceRanges.value = ranges
+                ttsSentences.value = ranges.map { it.text }
+                ttsChapterId.value = chapterId
                 // 找到选中偏移所在的句子下标（找不到则从头）
-                val idx = ttsSentenceRanges.value
-                    .indexOfFirst { offset >= it.start && offset < it.end }
+                val idx = ranges.indexOfFirst { offset >= it.start && offset < it.end }
                     .let { if (it < 0) 0 else it }
                 ttsIndex.value = idx
                 ttsStarted = true
@@ -419,6 +417,54 @@ fun ReaderScreen(
                     // 未朗读：置 true 触发下方 LaunchedEffect 从 idx 开始
                     ttsSpeaking = true
                 }
+            }
+
+            fun startTts() {
+                val text = viewModel.currentChapterProcessedText()
+                if (text.isBlank()) { ttsSpeaking = false; return }
+                // 从头朗读当前章
+                startTtsFromText(0, text, state.currentChapterId)
+            }
+
+            fun stopTts() {
+                ttsEngine.value?.stop()
+                ttsSpeaking = false // 仅暂停：保留 ttsIndex / ttsStarted / ttsSentenceRanges，下次续读
+            }
+
+            /**
+             * 听书：从「选中的文字」开始朗读。
+             * 本版本 Compose 的 Selection 为 internal，无法直接取选区偏移，
+             * 故用选中的文字在整章预处理正文（或连续模式各已加载章块）中定位起点句子，
+             * 再交给 [startTtsFromText] 开读。定位不到则从头朗读。
+             */
+            fun startTtsFromSelectedText(selected: String) {
+                val s = selected.trim()
+                if (s.isBlank()) { startTts(); return }
+                val (chapterId, offset, text) = if (state.isContinuous) {
+                    val hit = state.chapterBlocks.firstNotNullOfOrNull { blk ->
+                        val i = blk.content.indexOf(s)
+                        if (i >= 0) kotlin.Triple(blk.id, i, blk.content) else null
+                    }
+                    hit ?: run {
+                        val t = viewModel.currentChapterProcessedText()
+                        kotlin.Triple(state.currentChapterId, maxOf(0, t.indexOf(s)), t)
+                    }
+                } else {
+                    val t = processed
+                    kotlin.Triple(state.currentChapterId, maxOf(0, t.indexOf(s)), t)
+                }
+                viewModel.setCurrentChapter(chapterId)
+                startTtsFromText(offset, text, chapterId)
+            }
+
+            // 选区「听书」入口：长按选中 → 自定义工具条「听书」→ 复制拿字 → 定位起点开读
+            readerToolbar.onListen = {
+                // 通过复制回调拿到选中文字（公开 API），再定位到章内偏移开读
+                readerToolbar.onCopy?.invoke()
+                val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                val selected = cm?.primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
+                startTtsFromSelectedText(selected)
+                readerToolbar.hide()
             }
 
             // 覆盖模式分页（在协程中计算，避免组合阶段同步测量整章卡顿/崩溃）
@@ -454,6 +500,7 @@ fun ReaderScreen(
             }
 
             val pagerState = rememberPagerState(pageCount = { pages.value.size.coerceAtLeast(1) })
+
             var pendingJumpToEnd by remember { mutableStateOf(false) }
 
             // 翻页/翻章动作（覆盖模式）
@@ -682,6 +729,7 @@ fun ReaderScreen(
                 if (state.isContinuous) state.chapterBlocks.isEmpty() else state.rawContent.isEmpty()
             val showError = state.error != null &&
                 if (state.isContinuous) state.chapterBlocks.isEmpty() else state.rawContent.isEmpty()
+            CompositionLocalProvider(LocalTextToolbar provides (if (annoActive) defaultTextToolbar else readerToolbar)) {
             when {
                 showSpinner -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -926,6 +974,18 @@ fun ReaderScreen(
                     }
                 }
             }
+            } // CompositionLocalProvider 结束（仅包裹内容区选区）
+
+            // 选区浮动工具条（复制 / 全选 / 听书）：仅在正文有选中时显示
+            readerToolbar.rectState.value?.let { rect ->
+                ReaderSelectionToolbar(
+                    rect = rect,
+                    onCopy = { readerToolbar.onCopy?.invoke(); readerToolbar.hide() },
+                    onSelectAll = { readerToolbar.onSelectAll?.invoke(); readerToolbar.hide() },
+                    onListen = { readerToolbar.onListen?.invoke() },
+                    onDismiss = { readerToolbar.hide() },
+                )
+            }
 
             // ── 护眼蓝光过滤层（叠加暖色滤镜，不拦截触摸/滚动）──
             if (state.settings.blueLightFilter) {
@@ -1020,7 +1080,7 @@ fun ReaderScreen(
                 onListen = {
                     val sel = annoTextField.value.selection
                     if (sel.start < sel.end) {
-                        startTtsFromOffset(sel.start)
+                        startTtsFromText(sel.start, processed, state.currentChapterId)
                         // 退出划词模式并清除选区，回到正常正文（含朗读锚点高亮）
                         annoActive = false
                         annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero)
@@ -1342,6 +1402,75 @@ private fun AnnoSelectionBar(
                 TextButton(onClick = { onAnnotate(plugin) }) { Text(cap.label) }
             }
             TextButton(onClick = onClose) { Text("完成") }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 听书：选中文字起点 相关（自定义选区菜单 + 公开 API 拿选中文字）
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * 替换默认选区菜单的自定义 TextToolbar：选区出现时记录选区矩形并暴露回调，
+ * 由 ReaderSelectionToolbar 在 Compose 层绘制「复制 / 全选 / 听书」浮条。
+ * 参考主流阅读软件（微信读书/微信）：选中文字 → 弹出菜单 → 从选中处朗读。
+ */
+private class ReaderTextToolbar : TextToolbar {
+    val rectState = mutableStateOf<Rect?>(null)
+    var onCopy: (() -> Unit)? = null
+    var onSelectAll: (() -> Unit)? = null
+    var onListen: (() -> Unit)? = null
+
+    override val status: TextToolbarStatus
+        get() = if (rectState.value != null) TextToolbarStatus.Shown else TextToolbarStatus.Hidden
+
+    override fun showMenu(
+        rect: Rect,
+        onCopyRequested: (() -> Unit)?,
+        onPasteRequested: (() -> Unit)?,
+        onCutRequested: (() -> Unit)?,
+        onSelectAllRequested: (() -> Unit)?,
+    ) {
+        onCopy = onCopyRequested
+        onSelectAll = onSelectAllRequested
+        rectState.value = rect
+    }
+
+    override fun hide() {
+        rectState.value = null
+    }
+}
+
+/**
+ * 选区浮动工具条：复制 / 全选 / 听书。定位在选区矩形上方（空间不足则置于下方）。
+ */
+@Composable
+private fun ReaderSelectionToolbar(
+    rect: Rect,
+    onCopy: () -> Unit,
+    onSelectAll: () -> Unit,
+    onListen: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val density = LocalDensity.current
+    val widthPx = remember { mutableStateOf(0) }
+    val barH = with(density) { 44.dp.toPx() }
+    val centerX = (rect.left + rect.right) / 2f
+    val y = if (rect.top > barH + 24f) rect.top - barH - 12f else rect.bottom + 12f
+    Box(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset { IntOffset((centerX - widthPx.value / 2f).toInt(), y.toInt()) }
+                .onSizeChanged { widthPx.value = it.width }
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onCopy) { Text("复制") }
+            TextButton(onClick = onSelectAll) { Text("全选") }
+            TextButton(onClick = onListen) { Text("听书") }
         }
     }
 }

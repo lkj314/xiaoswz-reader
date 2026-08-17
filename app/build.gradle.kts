@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 72
-        versionName = "0.13.1" // 0.13.1·阅读体验修正：移除置顶「离线缓存」警示条（改为目录缓存章置灰+「缓存」标）；听书支持「选中段落从此处开始听」
+        versionCode = 73
+        versionName = "0.13.2" // 0.13.2·听书修复：选中段落听书入口此前误藏在划词标注浮层（正常阅读不可见），本次改为自定义选区工具条（复制/全选/听书）常驻所有阅读模式，长按选中即出现「听书」并从选中处开读；长章节中途打断可续读保留
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
