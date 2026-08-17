@@ -10,6 +10,8 @@ import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.api.AdCreativeDto
 import com.xiaoswz.reader.data.api.BookStatsResponse
 import com.xiaoswz.reader.data.api.CommentItem
+import com.xiaoswz.reader.data.api.CharacterDto
+import com.xiaoswz.reader.data.api.CharacterListResponse
 import com.xiaoswz.reader.data.api.RatingResponse
 import com.xiaoswz.reader.data.api.VoteBalance
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
@@ -30,6 +32,7 @@ data class DetailUiState(
     val rating: RatingResponse? = null,
     val comments: List<CommentItem> = emptyList(),
     val commentTotal: Int = 0,
+    val characters: List<CharacterDto> = emptyList(),
     val ad: AdCreativeDto? = null,
     val toast: String? = null,
     // ── 整本离线下载（0.9.5）──
@@ -83,6 +86,7 @@ class BookDetailViewModel(
             val balance = BackendRepository.getVoteBalance().getOrNull()
             val rating = BackendRepository.getRating(slug).getOrNull()
             val comments = BackendRepository.getComments(slug).getOrNull()
+            val characters = BackendRepository.getCharacters(slug).getOrNull()
             val ad = BackendRepository.getAds("detail").getOrNull()?.creatives?.firstOrNull()
 
             _uiState.update {
@@ -92,6 +96,7 @@ class BookDetailViewModel(
                     rating = rating,
                     comments = comments?.comments ?: emptyList(),
                     commentTotal = comments?.total ?: 0,
+                    characters = characters?.characters ?: emptyList(),
                     ad = ad,
                 )
             }

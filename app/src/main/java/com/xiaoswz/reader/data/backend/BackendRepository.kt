@@ -16,6 +16,13 @@ import com.xiaoswz.reader.data.api.RatingResponse
 import com.xiaoswz.reader.data.api.VoteBalance
 import com.xiaoswz.reader.data.api.VoteBody
 import com.xiaoswz.reader.data.api.VoteResult
+import com.xiaoswz.reader.data.api.CharacterListResponse
+import com.xiaoswz.reader.data.api.CharacterDetailResponse
+import com.xiaoswz.reader.data.api.HeartResponse
+import com.xiaoswz.reader.data.api.TagListResponse
+import com.xiaoswz.reader.data.api.TagResponse
+import com.xiaoswz.reader.data.api.TagBody
+import com.xiaoswz.reader.data.api.TagVoteResponse
 
 /**
  * 冲浪阅读独立后端的统一访问层。所有方法都包了 runCatching——
@@ -89,5 +96,46 @@ object BackendRepository {
 
     suspend fun reportAttribution(channel: String?, referrer: String? = null, campaign: String? = null): Result<Unit> = runCatching {
         api.reportAttribution(AttributionBody(channel, referrer, campaign))
+    }
+
+    // ── 0.14.0 书籍角色互动 ──
+    /** 书籍角色列表（横滑卡片） */
+    suspend fun getCharacters(bookId: String): Result<CharacterListResponse> = runCatching {
+        api.getCharacters(BOOK_SOURCE_MAIN, bookId)
+    }
+
+    /** 角色详情：比心数 + 我的比心 + 标签墙 */
+    suspend fun getCharacterDetail(characterId: String): Result<CharacterDetailResponse> = runCatching {
+        api.getCharacterDetail(characterId)
+    }
+
+    /** 比心切换（登录） */
+    suspend fun toggleHeart(characterId: String): Result<HeartResponse> = runCatching {
+        api.toggleHeart(characterId)
+    }
+
+    /** 角色标签列表 */
+    suspend fun getTags(characterId: String): Result<TagListResponse> = runCatching {
+        api.getTags(characterId)
+    }
+
+    /** 新建角色标签（登录） */
+    suspend fun createTag(characterId: String, name: String): Result<TagResponse> = runCatching {
+        api.createTag(characterId, TagBody(name))
+    }
+
+    /** 标签投票切换（登录） */
+    suspend fun toggleTagVote(tagId: String): Result<TagVoteResponse> = runCatching {
+        api.toggleTagVote(tagId)
+    }
+
+    /** 角色讨论列表（复用 Comment 表） */
+    suspend fun getCharacterComments(characterId: String, page: Int = 1): Result<CommentListResponse> = runCatching {
+        api.getCharacterComments(characterId, page)
+    }
+
+    /** 发角色讨论（登录） */
+    suspend fun postCharacterComment(characterId: String, content: String, parentId: String? = null): Result<Unit> = runCatching {
+        api.postCharacterComment(characterId, CommentBody(content, parentId))
     }
 }

@@ -70,6 +70,7 @@ import com.xiaoswz.reader.ui.community.CommunityScreen
 import com.xiaoswz.reader.ui.booklist.BooklistsScreen
 import com.xiaoswz.reader.ui.booklist.BooklistDetailScreen
 import com.xiaoswz.reader.ui.detail.BookDetailScreen
+import com.xiaoswz.reader.ui.detail.CharacterDetailScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
 import com.xiaoswz.reader.ui.settings.UserCenterScreen
@@ -97,6 +98,7 @@ object Routes {
     const val ACCOUNT = "account"
     const val DETAIL = "detail/{slug}"
     const val READER = "reader/{bookSlug}/{chapterId}"
+    const val CHARACTER = "character/{characterId}" // 0.14.0 角色互动：角色详情
     const val BOOKLIST_DETAIL = "booklist/{id}"
     const val USER_PROFILE = "user/{id}"
     const val READING_STATS = "reading-stats"
@@ -107,6 +109,7 @@ object Routes {
     fun detail(slug: String) = "detail/${Uri.encode(slug)}"
     fun reader(bookSlug: String, chapterId: String) =
         "reader/${Uri.encode(bookSlug)}/${Uri.encode(chapterId)}"
+    fun character(characterId: String) = "character/${Uri.encode(characterId)}"
     fun booklist(id: String) = "booklist/$id"
     fun user(id: String) = "user/$id"
 }
@@ -376,6 +379,25 @@ private fun AppShell() {
                             navController.navigate(Routes.reader(slug, chapterId))
                         },
                         onBookClick = { s -> navController.navigate(Routes.detail(s)) },
+                        onAccountClick = { navController.navigate(Routes.ACCOUNT) },
+                        onCharacterClick = { characterId ->
+                            navController.navigate(Routes.character(characterId))
+                        },
+                    )
+                }
+
+                composable(
+                    route = Routes.CHARACTER,
+                    arguments = listOf(navArgument("characterId") { type = NavType.StringType }),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val characterId = entry.arguments?.getString("characterId").orEmpty()
+                    CharacterDetailScreen(
+                        characterId = characterId,
+                        onBack = { navController.popBackStack() },
                         onAccountClick = { navController.navigate(Routes.ACCOUNT) },
                     )
                 }

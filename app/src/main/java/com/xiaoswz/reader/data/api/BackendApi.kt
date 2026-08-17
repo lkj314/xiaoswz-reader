@@ -130,6 +130,51 @@ interface BackendApi {
     @POST("api/comments/{id}/report")
     suspend fun reportComment(@Path("id") id: String): OkAck
 
+    // ── 0.14.0 书籍角色互动 ──
+    /** 书籍角色列表（横滑卡片） */
+    @GET("api/books/{src}/{id}/characters")
+    suspend fun getCharacters(
+        @Path("src") src: String,
+        @Path("id") id: String,
+    ): CharacterListResponse
+
+    /** 角色详情：比心数 + 我的比心 + 标签墙 */
+    @GET("api/characters/{charId}")
+    suspend fun getCharacterDetail(@Path("charId") charId: String): CharacterDetailResponse
+
+    /** 比心切换 */
+    @POST("api/characters/{charId}/heart")
+    suspend fun toggleHeart(@Path("charId") charId: String): HeartResponse
+
+    /** 角色标签列表 */
+    @GET("api/characters/{charId}/tags")
+    suspend fun getTags(@Path("charId") charId: String): TagListResponse
+
+    /** 新建角色标签 */
+    @POST("api/characters/{charId}/tags")
+    suspend fun createTag(
+        @Path("charId") charId: String,
+        @Body body: TagBody,
+    ): TagResponse
+
+    /** 标签投票切换 */
+    @POST("api/characters/tags/{tagId}/vote")
+    suspend fun toggleTagVote(@Path("tagId") tagId: String): TagVoteResponse
+
+    /** 角色讨论列表（复用 Comment 表） */
+    @GET("api/characters/{charId}/comments")
+    suspend fun getCharacterComments(
+        @Path("charId") charId: String,
+        @Query("page") page: Int = 1,
+    ): CommentListResponse
+
+    /** 发角色讨论 */
+    @POST("api/characters/{charId}/comments")
+    suspend fun postCharacterComment(
+        @Path("charId") charId: String,
+        @Body body: CommentBody,
+    ): OkAck
+
     // ── P3 广告 / 归因 ──
     /** 拉取广告位创意 */
     @GET("api/ads")
@@ -610,6 +655,71 @@ data class CommentItem(
 data class CommentBody(
     val content: String,
     val parentId: String? = null,
+)
+
+// ── 0.14.0 书籍角色互动 ──
+@Serializable
+data class CharacterDto(
+    val id: String,
+    val name: String,
+    val roleType: String = "main", // main / supporting
+    val avatarUrl: String? = null,
+    val description: String? = null,
+    val order: Int = 0,
+    val heartCount: Int = 0,
+)
+
+@Serializable
+data class CharacterListResponse(
+    val characters: List<CharacterDto> = emptyList(),
+)
+
+@Serializable
+data class CharacterTagDto(
+    val id: String,
+    val name: String,
+    val voteCount: Int = 0,
+    val myVote: Boolean = false,
+)
+
+@Serializable
+data class CharacterDetailResponse(
+    val id: String,
+    val name: String,
+    val roleType: String = "main",
+    val avatarUrl: String? = null,
+    val description: String? = null,
+    val heartCount: Int = 0,
+    val myHeart: Boolean = false,
+    val tags: List<CharacterTagDto> = emptyList(),
+)
+
+@Serializable
+data class TagListResponse(
+    val tags: List<CharacterTagDto> = emptyList(),
+)
+
+@Serializable
+data class TagResponse(
+    val id: String,
+    val name: String,
+    val voteCount: Int = 0,
+    val myVote: Boolean = false,
+)
+
+@Serializable
+data class TagBody(val name: String)
+
+@Serializable
+data class HeartResponse(
+    val hearted: Boolean = false,
+    val heartCount: Int = 0,
+)
+
+@Serializable
+data class TagVoteResponse(
+    val voted: Boolean = false,
+    val voteCount: Int = 0,
 )
 
 // ── P3 广告 / 归因 ──

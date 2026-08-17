@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 73
-        versionName = "0.13.2" // 0.13.2·听书修复：选中段落听书入口此前误藏在划词标注浮层（正常阅读不可见），本次改为自定义选区工具条（复制/全选/听书）常驻所有阅读模式，长按选中即出现「听书」并从选中处开读；长章节中途打断可续读保留
+        versionCode = 74
+        versionName = "0.14.0" // 0.14.0·角色互动：书籍详情页新增角色横滑卡片，点击进入角色详情（头像/简介/比心/标签墙/角色讨论）；借鉴起点角色栏与番茄章评，复用既有 User/Comment 底座，新增 BookCharacter 等模型由运营后端录入角色数据
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

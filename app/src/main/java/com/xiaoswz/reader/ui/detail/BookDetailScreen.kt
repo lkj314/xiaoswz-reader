@@ -16,9 +16,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -73,6 +75,7 @@ import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.data.booklist.BooklistRepository
 import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
 import com.xiaoswz.reader.data.api.BooklistSummary
+import com.xiaoswz.reader.data.api.CharacterDto
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -93,6 +96,7 @@ fun BookDetailScreen(
     onChapterClick: (String) -> Unit,
     onBookClick: (String) -> Unit = {},
     onAccountClick: () -> Unit = {},
+    onCharacterClick: (String) -> Unit = {},
     viewModel: BookDetailViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -399,6 +403,26 @@ fun BookDetailScreen(
                                 ad.bookId?.let(onBookClick)
                             },
                         )
+                    }
+
+                    // ── 角色互动横滑卡片（0.14.0）：点击进入角色详情 ──
+                    if (state.characters.isNotEmpty()) {
+                        item {
+                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                Text(
+                                    text = "角色",
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                                Spacer(Modifier.height(10.dp))
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    items(state.characters, key = { it.id }) { ch ->
+                                        CharacterChip(ch, onClick = { onCharacterClick(ch.id) })
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // 简介
@@ -764,6 +788,55 @@ private fun InteractionCard(
                     }
                 }
             }
+        }
+    }
+}
+
+/** 角色横滑卡片（0.14.0）：头像 + 名字 + 主角/配角 + 比心数 */
+@Composable
+private fun CharacterChip(
+    ch: com.xiaoswz.reader.data.api.CharacterDto,
+    onClick: () -> Unit,
+) {
+    LiquidGlassCard(
+        modifier = Modifier
+            .width(116.dp)
+            .clickable { onClick() },
+        radius = GlassTokens.RadiusLG,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            AsyncImage(
+                model = ch.avatarUrl,
+                contentDescription = ch.name,
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentScale = ContentScale.Crop,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = ch.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = if (ch.roleType == "main") "主角" else "配角",
+                style = MaterialTheme.typography.labelSmall,
+                color = GlassTokens.SecondaryLabel,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "❤ ${ch.heartCount}",
+                style = MaterialTheme.typography.labelSmall,
+                color = GlassTokens.SecondaryLabel,
+            )
         }
     }
 }
