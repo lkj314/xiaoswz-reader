@@ -115,6 +115,7 @@ import com.xiaoswz.reader.data.annotation.AnnotationRepository
 import com.xiaoswz.reader.data.plugin.PluginManifest
 import com.xiaoswz.reader.data.plugin.PluginRepository
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
+import com.xiaoswz.reader.data.api.SegmentCommentItem
 import com.xiaoswz.reader.ui.reader.components.ReaderBottomBar
 import com.xiaoswz.reader.ui.reader.components.ReaderTopBar
 import com.xiaoswz.reader.ui.theme.ReaderTheme
@@ -161,6 +162,8 @@ fun ReaderScreen(
     var segThread by remember { mutableStateOf<Pair<Int, String>?>(null) }
     // 段评：当前正在发表的锚点（来自划词选区），非空即弹发表对话框
     var segComposeAnchor by remember { mutableStateOf<SegmentAnchor?>(null) }
+    // 段评：当前发表锚点所属的章节（连续模式下选区可能在非「当前章」的可见块，必须精确归属）
+    var segComposeChapterId by remember { mutableStateOf<String?>(null) }
 
     // ── 听书 TTS 状态 ──
     val ttsEngine = remember { mutableStateOf<TextToSpeech?>(null) }
@@ -318,31 +321,30 @@ fun ReaderScreen(
 
             // 段评锚点 → 预处理正文中的绝对字符区间（供下划线渲染）。
             // 正文不在 DB，锚点仅在 Raw 坐标；按当前阅读设置映射回 processed 坐标，跨设备一致。
-            val segComments = state.segmentCommentsByChapter[state.currentChapterId] ?: emptyList()
-            val segSpans = remember(
-                processed, state.rawContent, state.settings.indentFirstLine,
-                state.settings.paraSpacing, segComments,
+            // 连续模式下逐 block 用其 rawContent 计算（state.rawContent 在连续模式为空），
+            // 单章模式用 state.rawContent；均按章节 id 分组成 Map，供对应块渲染高亮。
+            val segSpansByChapter = remember(
+                state.rawContent, state.chapterBlocks, state.settings.indentFirstLine,
+                state.settings.paraSpacing, state.segmentCommentsByChapter,
             ) {
-                val ranges = mapParagraphRanges(
-                    state.rawContent,
-                    state.settings.indentFirstLine,
-                    state.settings.paraSpacing,
-                )
-                segComments.filter { it.paragraphIndex != null }
-                    .groupBy { it.paragraphIndex!! }
-                    .flatMap { (p, list) ->
-                        val range = ranges.getOrNull(p) ?: return@flatMap emptyList<Pair<Int, Int>>()
-                        val hasSpecific = list.any { it.startOffset != null && it.endOffset != null }
-                        if (hasSpecific) {
-                            list.mapNotNull { c ->
-                                val s = c.startOffset
-                                val e = c.endOffset
-                                if (s != null && e != null) segmentAbsoluteSpan(range, s, e) else null
-                            }
-                        } else {
-                            listOf(segmentAbsoluteSpan(range, 0, range.contentLength))
-                        }
+                val indent = state.settings.indentFirstLine
+                val paraSpacing = state.settings.paraSpacing
+                val byChapter = state.segmentCommentsByChapter
+                if (!state.isContinuous) {
+                    mapOf(
+                        state.currentChapterId to computeSegSpans(
+                            state.rawContent, byChapter[state.currentChapterId] ?: emptyList(),
+                            indent, paraSpacing,
+                        ),
+                    )
+                } else {
+                    state.chapterBlocks.associate { blk ->
+                        blk.id to computeSegSpans(
+                            blk.rawContent, byChapter[blk.id] ?: emptyList(),
+                            indent, paraSpacing,
+                        )
                     }
+                }
             }
 
             // 划词标注：进入/换章时同步只读文本字段（offset 相对预处理正文）
@@ -501,6 +503,41 @@ fun ReaderScreen(
                 val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
                 val selected = cm?.primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
                 startTtsFromSelectedText(selected)
+                readerToolbar.hide()
+            }
+
+            // 选区「评」入口（v0.15.1）：覆盖所有阅读模式。
+            // 长按选中 → 自定义工具条「评」→ 复制拿字 → 内容寻址落锚 → 弹段评发表框。
+            // 连续模式下选区可能在非「当前章」的可见块，须精确归属到对应章节。
+            readerToolbar.onComment = {
+                readerToolbar.onCopy?.invoke()
+                val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                val selected = cm?.primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
+                val indent = state.settings.indentFirstLine
+                val paraSpacing = state.settings.paraSpacing
+                // 1) 解析选区所属章节与原始正文（连续模式逐块匹配，其余模式用当前章 raw）
+                val (chapterId, raw) = if (state.isContinuous) {
+                    val hit = state.chapterBlocks.firstNotNullOfOrNull { blk ->
+                        if (blk.content.indexOf(selected) >= 0) blk.id to blk.rawContent
+                        else null
+                    }
+                    hit ?: (state.currentChapterId to (state.chapterBlocks
+                        .firstOrNull { it.id == state.currentChapterId }?.rawContent ?: ""))
+                } else {
+                    state.currentChapterId to state.rawContent
+                }
+                // 2) 内容寻址落锚：只要那段话还在正文就能归位，不依赖段落序号稳定
+                val anchor = if (raw.isNotBlank()) locateQuote(raw, selected, indent, paraSpacing) else null
+                if (anchor != null) {
+                    segComposeChapterId = chapterId
+                    segComposeAnchor = anchor
+                } else {
+                    android.widget.Toast.makeText(
+                        context,
+                        "无法定位到段落，请重试",
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }
                 readerToolbar.hide()
             }
 
@@ -871,6 +908,7 @@ fun ReaderScreen(
                                 isReadingChapter = isReadingChapter,
                                 readingRange = readingRange,
                                 annotations = annotations.filter { it.chapterId == block.id },
+                                segmentSpans = segSpansByChapter[block.id] ?: emptyList(),
                             )
                         }
                         item {
@@ -949,7 +987,8 @@ fun ReaderScreen(
                                             annotations = annoAnnotations,
                                             readingRange = if (isReadingChapter) readingRange else null,
                                             theme = theme,
-                                            segmentSpans = segSpans,
+                                            segmentSpans = segSpansByChapter[state.currentChapterId]
+                                                ?: emptyList(),
                                         ),
                                         OffsetMapping.Identity,
                                     )
@@ -975,7 +1014,7 @@ fun ReaderScreen(
                                         annotations = annoAnnotations,
                                         readingRange = if (isReadingChapter) readingRange else null,
                                         theme = theme,
-                                        segmentSpans = segSpans,
+                                        segmentSpans = segSpansByChapter[state.currentChapterId] ?: emptyList(),
                                     ),
                                     fontSize = state.settings.fontSize.sp,
                                     lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
@@ -1015,13 +1054,14 @@ fun ReaderScreen(
             }
             } // CompositionLocalProvider 结束（仅包裹内容区选区）
 
-            // 选区浮动工具条（复制 / 全选 / 听书）：仅在正文有选中时显示
+            // 选区浮动工具条（复制 / 全选 / 听书 / 评）：仅在正文有选中时显示
             readerToolbar.rectState.value?.let { rect ->
                 ReaderSelectionToolbar(
                     rect = rect,
                     onCopy = { readerToolbar.onCopy?.invoke(); readerToolbar.hide() },
                     onSelectAll = { readerToolbar.onSelectAll?.invoke(); readerToolbar.hide() },
                     onListen = { readerToolbar.onListen?.invoke() },
+                    onComment = { readerToolbar.onComment?.invoke() },
                     onDismiss = { readerToolbar.hide() },
                 )
             }
@@ -1269,12 +1309,13 @@ fun ReaderScreen(
 
             // 发表段评（v0.15）：划词选区 → 预填引用 → 输入内容
             segComposeAnchor?.let { anchor ->
+                val targetChapter = segComposeChapterId ?: state.currentChapterId
                 SegmentComposeDialog(
                     anchor = anchor,
-                    onDismiss = { segComposeAnchor = null },
+                    onDismiss = { segComposeAnchor = null; segComposeChapterId = null },
                     onSend = { content ->
                         viewModel.postSegmentComment(
-                            state.currentChapterId,
+                            targetChapter,
                             anchor.paragraphIndex,
                             anchor.startOffset,
                             anchor.endOffset,
@@ -1283,6 +1324,7 @@ fun ReaderScreen(
                             null,
                         )
                         segComposeAnchor = null
+                        segComposeChapterId = null
                     },
                 )
             }
@@ -1326,6 +1368,7 @@ private fun ChapterBlockView(
     isReadingChapter: Boolean = false,
     readingRange: IntRange? = null,
     annotations: List<AnnotationEntity> = emptyList(),
+    segmentSpans: List<Pair<Int, Int>> = emptyList(),
 ) {
     Column(
         modifier = Modifier
@@ -1353,6 +1396,7 @@ private fun ChapterBlockView(
                     annotations = annotations,
                     readingRange = if (isReadingChapter) readingRange else null,
                     theme = theme,
+                    segmentSpans = segmentSpans,
                 ),
                 fontSize = settings.fontSize.sp,
                 lineHeight = (settings.fontSize * settings.lineSpacing).sp,
@@ -1500,6 +1544,36 @@ private fun ReaderShareSheet(
 private data class SentenceRange(val text: String, val start: Int, val end: Int)
 
 /**
+ * 段评锚点 → 预处理正文中的绝对字符区间（供下划线/珊瑚底色渲染）。
+ * 正文不在 DB，锚点仅在 Raw 坐标；按阅读设置把每段段评映射回该章预处理后正文的坐标，跨设备一致。
+ * 有精确偏移（start/endOffset）者按偏移渲染；仅有段落号者整段高亮。
+ */
+private fun computeSegSpans(
+    raw: String,
+    list: List<SegmentCommentItem>,
+    indent: Boolean,
+    paraSpacing: Int,
+): List<Pair<Int, Int>> {
+    if (raw.isBlank()) return emptyList()
+    val ranges = mapParagraphRanges(raw, indent, paraSpacing)
+    return list.filter { it.paragraphIndex != null }
+        .groupBy { it.paragraphIndex!! }
+        .flatMap { (p, clist) ->
+            val range = ranges.getOrNull(p) ?: return@flatMap emptyList<Pair<Int, Int>>()
+            val hasSpecific = clist.any { it.startOffset != null && it.endOffset != null }
+            if (hasSpecific) {
+                clist.mapNotNull { c ->
+                    val s = c.startOffset
+                    val e = c.endOffset
+                    if (s != null && e != null) segmentAbsoluteSpan(range, s, e) else null
+                }
+            } else {
+                listOf(segmentAbsoluteSpan(range, 0, range.contentLength))
+            }
+        }
+}
+
+/**
  * 将正文 + 既有标注 + TTS 朗读区间合并为带背景样式的 AnnotatedString。
  * 标注锚点（decorator 槽）与听书高亮同源渲染，互不干扰；标注偏移相对预处理正文。
  */
@@ -1594,6 +1668,7 @@ private class ReaderTextToolbar : TextToolbar {
     var onCopy: (() -> Unit)? = null
     var onSelectAll: (() -> Unit)? = null
     var onListen: (() -> Unit)? = null
+    var onComment: (() -> Unit)? = null
 
     override val status: TextToolbarStatus
         get() = if (rectState.value != null) TextToolbarStatus.Shown else TextToolbarStatus.Hidden
@@ -1616,7 +1691,9 @@ private class ReaderTextToolbar : TextToolbar {
 }
 
 /**
- * 选区浮动工具条：复制 / 全选 / 听书。定位在选区矩形上方（空间不足则置于下方）。
+ * 选区浮动工具条：复制 / 全选 / 听书 / 评。定位在选区矩形上方（空间不足则置于下方）。
+ * 「评」入口覆盖所有阅读模式（连续/翻页/单章滚动），点按后由 readerToolbar.onComment
+ * 经剪贴板取选中文字 → 内容寻址落锚 → 弹段评发表框，回应「段评工具条不出现」的问题。
  */
 @Composable
 private fun ReaderSelectionToolbar(
@@ -1624,6 +1701,7 @@ private fun ReaderSelectionToolbar(
     onCopy: () -> Unit,
     onSelectAll: () -> Unit,
     onListen: () -> Unit,
+    onComment: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -1645,6 +1723,7 @@ private fun ReaderSelectionToolbar(
             TextButton(onClick = onCopy) { Text("复制") }
             TextButton(onClick = onSelectAll) { Text("全选") }
             TextButton(onClick = onListen) { Text("听书") }
+            TextButton(onClick = onComment) { Text("评") }
         }
     }
 }

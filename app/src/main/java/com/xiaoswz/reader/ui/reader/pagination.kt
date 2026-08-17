@@ -169,3 +169,77 @@ fun segmentAbsoluteSpan(
     return (base + contentStart.coerceAtLeast(0)) to (base + contentEnd.coerceAtMost(range.contentLength))
 }
 
+/**
+ * 内容寻址落锚（v0.15.1）：给定章节原始正文与用户选中的「引用文本」，
+ * 在各段落 trim 后的 [ParaRange.contentText] 中查找该引用（容忍首尾全角缩进与空白差异），
+ * 返回与 [anchorFromSelection] / 渲染完全一致的 [SegmentAnchor]。
+ *
+ * 设计要点：不依赖段落序号的稳定性——只要那段话还在正文里，就能正确归位。
+ * 这直接回应「段评锚定过于乐观」的担忧：书源正文即使段落重排 / 微调，
+ * 段评依然能靠引用文本本身定位（契合正文不入库的隔离设计）。
+ * 连续滚动模式下选区只能拿到选中文字（拿不到数字偏移），本函数正是该模式的落锚手段。
+ *
+ * @param quote 用户选中的文本（可能来自预处理后的显示文本）
+ * @return 命中段落的锚点；未命中返回 null
+ */
+fun locateQuote(raw: String, quote: String, indent: Boolean, paraSpacing: Int): SegmentAnchor? {
+    val q = quote.trim()
+    if (q.isEmpty()) return null
+    val ranges = mapParagraphRanges(raw, indent, paraSpacing)
+    val nQ = normalizeWs(q)
+    for (r in ranges) {
+        val ct = r.contentText
+        // 1) 直接子串匹配（最常见：选中文本恰为某段落内子串）
+        var idx = ct.indexOf(q)
+        if (idx >= 0) return makeAnchor(r, idx, idx + q.length, ct)
+        // 2) 去掉用户可能连选的首行全角/半角缩进后再试
+        val q2 = q.removePrefix("　　").removePrefix(" ").trim()
+        if (q2 != q) {
+            idx = ct.indexOf(q2)
+            if (idx >= 0) return makeAnchor(r, idx, idx + q2.length, ct)
+        }
+        // 3) 空白归一化兜底（容忍预处理缩进/段距与源的差异）
+        val nIdx = normalizeWs(ct).indexOf(nQ)
+        if (nIdx >= 0) {
+            val (s, e) = mapNormToRaw(normalizeWs(ct), ct, nIdx, nIdx + nQ.length)
+            if (s >= 0 && e > s) return makeAnchor(r, s, e, ct)
+        }
+    }
+    return null
+}
+
+private fun makeAnchor(r: ParaRange, start: Int, end: Int, ct: String): SegmentAnchor {
+    val s = start.coerceAtLeast(0)
+    val e = end.coerceAtMost(ct.length)
+    if (e <= s) return SegmentAnchor(r.index, 0, ct.length, ct)
+    return SegmentAnchor(r.index, s, e, ct.substring(s, e))
+}
+
+/** 折叠所有空白（含全角空格/换行）为单空格并 trim，用于容错匹配 */
+private fun normalizeWs(s: String): String = s.replace(Regex("\\s+"), " ").trim()
+
+/**
+ * 将「空白归一化」坐标映射回原始 contentText 坐标。
+ * 归一化串与原始串的非空白字符一一对应，故按非空白字符计数即可定位。
+ */
+private fun mapNormToRaw(norm: String, raw: String, nStart: Int, nEnd: Int): Pair<Int, Int> {
+    var ni = 0
+    var rs = -1
+    var re = -1
+    for (ri in raw.indices) {
+        val c = raw[ri]
+        val isWs = c.isWhitespace() || c == '　'
+        if (!isWs) {
+            if (ni == nStart) rs = ri
+            if (ni == nEnd - 1) {
+                re = ri + 1
+                break
+            }
+            ni++
+        }
+    }
+    if (rs < 0) rs = 0
+    if (re < 0) re = raw.length
+    return rs to re
+}
+

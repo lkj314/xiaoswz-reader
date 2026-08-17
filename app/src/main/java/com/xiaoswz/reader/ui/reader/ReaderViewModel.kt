@@ -28,6 +28,7 @@ data class ChapterBlock(
     val title: String,
     val index: Int,
     val content: String,
+    val rawContent: String = "",
     val fromOffline: Boolean = false,
 )
 
@@ -237,6 +238,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                     title = res.data.title.orEmpty(),
                     index = idx,
                     content = processed,
+                    rawContent = raw,
                     fromOffline = res.fromOfflineCache,
                 )
             },

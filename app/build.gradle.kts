@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 76
-        versionName = "0.15.0" // 0.15.0·章评段评：章评（锚定章节）+ 段评（锚定段落+段内偏移，正文不入库，跨设备一致），含划词「评」入口、段评下划线、本段讨论线程、章评弹层
+        versionCode = 77
+        versionName = "0.15.1" // 0.15.1·段评全模式+内容寻址：修复默认连续滚动下划词「评」工具条不出现；段评落锚改为内容寻址（引用文本自身定位，容忍书源段落重排/微调，正文不入库）；连续/翻页/单章滚动均可划词发段评并珊瑚高亮
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
