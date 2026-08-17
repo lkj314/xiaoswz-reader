@@ -167,6 +167,14 @@ interface BackendApi {
         @Body body: SegmentCommentBody,
     ): SegmentCommentItem
 
+    /** 全书段评聚合（v0.15.3 段评独立全屏页）：跨章节根段评，按时间倒序，带 replyCount，cursor 分页 */
+    @GET("api/books/{src}/{id}/segment-comments")
+    suspend fun getBookSegmentComments(
+        @Path("src") src: String,
+        @Path("id") id: String,
+        @Query("cursor") cursor: Long? = null,
+    ): BookSegmentCommentListResponse
+
     // ── 0.14.0 书籍角色互动 ──
     /** 书籍角色列表（横滑卡片） */
     @GET("api/books/{src}/{id}/characters")
@@ -771,6 +779,27 @@ data class SegmentCommentItem(
 @Serializable
 data class SegmentCommentListResponse(
     val comments: List<SegmentCommentItem> = emptyList(),
+)
+
+/** 全书聚合段评条目（v0.15.3 段评独立全屏页）：根段评 + 楼中楼数，跨章节 */
+@Serializable
+data class BookSegmentCommentItem(
+    val id: String,
+    val content: String,
+    val likeCount: Int = 0,
+    val createdAt: Long = 0,
+    val chapterId: String? = null,
+    val paragraphIndex: Int? = null,
+    val quotedText: String? = null,
+    val replyCount: Int = 0,
+)
+
+/** 全书段评聚合响应（cursor 分页） */
+@Serializable
+data class BookSegmentCommentListResponse(
+    val comments: List<BookSegmentCommentItem> = emptyList(),
+    val nextCursor: Long? = null,
+    val hasMore: Boolean = false,
 )
 
 // ── 0.14.0 书籍角色互动 ──

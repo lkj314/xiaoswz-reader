@@ -14,6 +14,7 @@ import com.xiaoswz.reader.data.api.CommentListResponse
 import com.xiaoswz.reader.data.api.SegmentCommentBody
 import com.xiaoswz.reader.data.api.SegmentCommentItem
 import com.xiaoswz.reader.data.api.SegmentCommentListResponse
+import com.xiaoswz.reader.data.api.BookSegmentCommentListResponse
 import com.xiaoswz.reader.data.api.LeaderboardResponse
 import com.xiaoswz.reader.data.api.RatingResponse
 import com.xiaoswz.reader.data.api.VoteBalance
@@ -181,6 +182,11 @@ object BackendRepository {
             chapterId,
             SegmentCommentBody(content, parentId, paragraphIndex, startOffset, endOffset, quotedText),
         )
+    }
+
+    /** 全书段评聚合（v0.15.3 段评独立全屏页）：跨章节根段评，cursor 分页 */
+    suspend fun getBookSegmentComments(bookId: String, cursor: Long? = null): Result<BookSegmentCommentListResponse> = runCatching {
+        api.getBookSegmentComments(BOOK_SOURCE_MAIN, bookId, cursor)
     }
 
     // ── 创作者 / 管理（admin，App 内嵌模块）──

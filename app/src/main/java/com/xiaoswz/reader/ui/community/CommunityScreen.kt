@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -644,7 +645,10 @@ private fun PostDetailSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp),
+                .padding(bottom = 16.dp)
+                // 0.15.4 修：当帖子带大图时，键盘弹起后底部评论输入框会被键盘盖住。
+                // 加 imePadding() 让 sheet 内容让出 IME 高度，输入框始终浮在键盘上方。
+                .imePadding(),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(

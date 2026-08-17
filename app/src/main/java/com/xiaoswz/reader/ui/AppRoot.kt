@@ -76,6 +76,7 @@ import com.xiaoswz.reader.ui.creator.CharacterAdminScreen
 import com.xiaoswz.reader.ui.creator.BookAdminScreen
 import com.xiaoswz.reader.ui.creator.AnnouncementAdminScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
+import com.xiaoswz.reader.ui.reader.SegmentCommentListScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
 import com.xiaoswz.reader.ui.settings.UserCenterScreen
 import com.xiaoswz.reader.ui.settings.AccountScreen
@@ -112,6 +113,7 @@ object Routes {
     const val CHARACTER_ADMIN = "character-admin/{src}/{bookId}" // 角色录入（指定书籍）
     const val BOOK_ADMIN = "book-admin" // 书籍元数据编辑
     const val ANNOUNCEMENT_ADMIN = "announcement-admin" // 公告管理
+    const val SEGMENT_COMMENTS = "segment-comments/{bookSlug}" // 0.15.3 段评独立全屏页（跨章聚合）
 
     // slug 可能含中文，必须 URL 编码后再拼路由
     fun detail(slug: String) = "detail/${Uri.encode(slug)}"
@@ -124,6 +126,7 @@ object Routes {
     fun announcementAdmin() = "announcement-admin"
     fun booklist(id: String) = "booklist/$id"
     fun user(id: String) = "user/$id"
+    fun segmentComments(slug: String) = "segment-comments/${Uri.encode(slug)}"
 }
 
 /** 顶层目标（显示底部导航栏），详情/阅读器为覆盖式全屏，不显示底栏 */
@@ -483,6 +486,22 @@ private fun AppShell() {
                     ReaderScreen(
                         bookSlug = bookSlug,
                         chapterId = chapterId,
+                        onBack = { navController.popBackStack() },
+                        onOpenAllSegments = { navController.navigate(Routes.segmentComments(bookSlug)) },
+                    )
+                }
+
+                composable(
+                    route = Routes.SEGMENT_COMMENTS,
+                    arguments = listOf(navArgument("bookSlug") { type = NavType.StringType }),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val segBookSlug = entry.arguments?.getString("bookSlug").orEmpty()
+                    SegmentCommentListScreen(
+                        bookSlug = segBookSlug,
                         onBack = { navController.popBackStack() },
                     )
                 }

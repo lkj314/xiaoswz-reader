@@ -135,6 +135,7 @@ fun ReaderScreen(
     bookSlug: String,
     chapterId: String,
     onBack: () -> Unit,
+    onOpenAllSegments: () -> Unit = {},
     viewModel: ReaderViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -1172,6 +1173,9 @@ fun ReaderScreen(
                                 if (segCount > 0) "段评 $segCount" else "段评",
                                 color = Color.White,
                             )
+                        }
+                        TextButton(onClick = onOpenAllSegments) {
+                            Text("全部段评 ›", color = Color.White)
                         }
                     }
                 }
