@@ -1411,20 +1411,29 @@ private fun SegmentMarkedText(
                 lineHeight = (fontSizeSp * lineSpacing).sp,
                 color = theme.text,
                 onTextLayout = { layoutResult = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 56.dp), // 右侧 56dp 永久给气泡预留，避免气泡盖住段末字
             )
         }
         if (showMarkers) {
+            val density = LocalDensity.current
             val bubbleW = with(density) { 46.dp.toPx() }
+            val bubbleH = with(density) { 22.dp.toPx() }
             val bubbles = remember(layoutResult, segmentSpans, text) {
                 layoutResult?.let { lo ->
                     val len = text.length
+                    val containerW = lo.size.width.toFloat()
                     segmentSpans.mapNotNull { span ->
                         if (span.end <= 0 || span.end > len) return@mapNotNull null
                         val idx = (span.end - 1).coerceIn(0, len - 1)
                         val box = lo.getBoundingBox(idx)
-                        val x = (box.right - bubbleW).coerceAtLeast(0f)
-                        BubbleInfo(x, box.top, span.paragraphIndex, span.quote, span.count)
+                        // 气泡锚在段评段落右外侧（Text 的 56dp end-padding 区域内），
+                        // 紧贴高亮段右边缘，垂直对齐末字符行中线，绝对不挡字
+                        val x = (containerW - bubbleW - with(density) { 4.dp.toPx() })
+                            .coerceAtLeast(0f)
+                        val y = box.top + (box.height / 2f) - (bubbleH / 2f)
+                        BubbleInfo(x, y, span.paragraphIndex, span.quote, span.count)
                     }
                 } ?: emptyList()
             }

@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 80
-        versionName = "0.15.4" // 0.15.4·书友圈评论框被图片压住修复：在 ModalBottomSheet 的 Column 上加 imePadding()，让 sheet 内容在键盘弹起时让出 IME 高度，评论输入框始终浮在键盘之上（带大图的动态不再被键盘遮挡）。同时打包 0.15.3 段评独立全屏页：阅读器章评/段评入口新增「全部段评 ›」，进入跨章节聚合的讨论流（起点/番茄风格），每条显示章节标题+引用快照+楼中楼数+相对时间；点开复用段评线程 sheet。
+        versionCode = 81
+        versionName = "0.15.5" // 0.15.5·段评气泡遮挡段末字修复：气泡 anchor 改为贴段评段落右外侧（Text end-padding 56dp 区域内），垂直对齐末字符行中线，强制不挡字（之前段末字符若恰好在行右边缘，气泡 anchor 落在末字符正中，盖住段末字）
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
