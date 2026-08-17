@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
@@ -93,6 +94,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onBack: () -> Unit,
     onUserCenterClick: () -> Unit = {},
+    onCreatorClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -260,6 +262,42 @@ fun SettingsScreen(
                         }
                     }
                     Icon(Icons.Default.ArrowForward, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            // ── 创作者中心（仅管理员可见：App 内嵌管理模块入口）──
+            if (accountRole == "admin") {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .whaleGlassCard()
+                        .clickable { onCreatorClick() },
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Edit, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(28.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    "创作者中心",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = GlassTokens.Label,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    "角色录入 · 书籍编辑 · 公告管理",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = GlassTokens.SecondaryLabel,
+                                )
+                            }
+                        }
+                        Icon(Icons.Default.ArrowForward, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
 

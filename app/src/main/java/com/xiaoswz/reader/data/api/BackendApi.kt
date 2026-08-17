@@ -13,6 +13,7 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -167,6 +168,53 @@ interface BackendApi {
         @Path("charId") charId: String,
         @Query("page") page: Int = 1,
     ): CommentListResponse
+
+    // ── 创作者 / 管理（admin，App 内嵌模块）──
+    /** 管理台：书籍列表（q 书名过滤） */
+    @GET("api/admin/books")
+    suspend fun adminListBooks(
+        @Query("q") q: String?,
+        @Query("page") page: Int,
+    ): AdminBookListResponse
+
+    /** 管理台：书籍元数据编辑（书名/作者/封面/隐藏） */
+    @PATCH("api/admin/books/{src}/{id}")
+    suspend fun adminPatchBook(
+        @Path("src") src: String,
+        @Path("id") id: String,
+        @Body body: AdminBookPatchBody,
+    ): AdminBookPatchResponse
+
+    /** 管理台：某书角色列表（按 bookId 过滤） */
+    @GET("api/admin/characters")
+    suspend fun adminListCharacters(@Query("bookId") bookId: String): AdminCharacterListResponse
+
+    /** 管理台：角色录入 / 更新（同名则更新） */
+    @POST("api/admin/characters")
+    suspend fun adminUpsertCharacter(@Body body: AdminCharacterUpsertBody): AdminCharacterUpsertResponse
+
+    /** 管理台：删除角色 */
+    @DELETE("api/admin/characters/{id}")
+    suspend fun adminDeleteCharacter(@Path("id") id: String): OkAck
+
+    /** 管理台：公告列表 */
+    @GET("api/admin/announcements")
+    suspend fun adminListAnnouncements(): AdminAnnouncementListResponse
+
+    /** 管理台：新建公告 */
+    @POST("api/admin/announcements")
+    suspend fun adminCreateAnnouncement(@Body body: AdminAnnouncementBody): AdminAnnouncementResponse
+
+    /** 管理台：编辑公告 */
+    @PATCH("api/admin/announcements/{id}")
+    suspend fun adminPatchAnnouncement(
+        @Path("id") id: String,
+        @Body body: AdminAnnouncementBody,
+    ): AdminAnnouncementResponse
+
+    /** 管理台：删除公告 */
+    @DELETE("api/admin/announcements/{id}")
+    suspend fun adminDeleteAnnouncement(@Path("id") id: String): OkAck
 
     /** 发角色讨论 */
     @POST("api/characters/{charId}/comments")
@@ -720,6 +768,107 @@ data class HeartResponse(
 data class TagVoteResponse(
     val voted: Boolean = false,
     val voteCount: Int = 0,
+)
+
+// ── 创作者 / 管理（admin，App 内嵌模块）──
+@Serializable
+data class AdminBookDto(
+    val bookSourceId: String,
+    val bookId: String,
+    val title: String? = null,
+    val author: String? = null,
+    val coverUrl: String? = null,
+    val voteCount: Int = 0,
+    val ratingCount: Int = 0,
+    val commentCount: Int = 0,
+    val viewCount: Int = 0,
+    val hidden: Boolean = false,
+)
+
+@Serializable
+data class AdminBookListResponse(
+    val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 30,
+    val books: List<AdminBookDto> = emptyList(),
+)
+
+@Serializable
+data class AdminBookPatchBody(
+    val title: String? = null,
+    val author: String? = null,
+    val coverUrl: String? = null,
+    val hidden: Boolean? = null,
+)
+
+@Serializable
+data class AdminBookPatchResponse(
+    val ok: Boolean = true,
+    val book: AdminBookDto? = null,
+)
+
+@Serializable
+data class AdminCharacterDto(
+    val id: String,
+    val bookSourceId: String = "main",
+    val bookId: String,
+    val name: String,
+    val roleType: String = "main", // main / supporting
+    val avatarUrl: String? = null,
+    val description: String? = null,
+    val order: Int = 0,
+    val heartCount: Int = 0,
+)
+
+@Serializable
+data class AdminCharacterListResponse(
+    val characters: List<AdminCharacterDto> = emptyList(),
+)
+
+@Serializable
+data class AdminCharacterUpsertBody(
+    val bookSourceId: String = BOOK_SOURCE_MAIN,
+    val bookId: String,
+    val name: String,
+    val roleType: String = "main",
+    val avatarUrl: String? = null,
+    val description: String? = null,
+    val order: Int = 0,
+)
+
+@Serializable
+data class AdminCharacterUpsertResponse(
+    val id: String,
+    val created: Boolean = false,
+    val updated: Boolean = false,
+)
+
+@Serializable
+data class AdminAnnouncementDto(
+    val id: String,
+    val title: String,
+    val body: String,
+    val level: String = "info", // info / warning / important
+    val publishedAt: Long = 0,
+    val expiresAt: Long? = null,
+)
+
+@Serializable
+data class AdminAnnouncementListResponse(
+    val announcements: List<AdminAnnouncementDto> = emptyList(),
+)
+
+@Serializable
+data class AdminAnnouncementBody(
+    val title: String,
+    val body: String,
+    val level: String = "info",
+)
+
+@Serializable
+data class AdminAnnouncementResponse(
+    val ok: Boolean = true,
+    val announcement: AdminAnnouncementDto? = null,
 )
 
 // ── P3 广告 / 归因 ──

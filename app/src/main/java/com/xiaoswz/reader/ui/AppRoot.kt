@@ -71,6 +71,10 @@ import com.xiaoswz.reader.ui.booklist.BooklistsScreen
 import com.xiaoswz.reader.ui.booklist.BooklistDetailScreen
 import com.xiaoswz.reader.ui.detail.BookDetailScreen
 import com.xiaoswz.reader.ui.detail.CharacterDetailScreen
+import com.xiaoswz.reader.ui.creator.CreatorHubScreen
+import com.xiaoswz.reader.ui.creator.CharacterAdminScreen
+import com.xiaoswz.reader.ui.creator.BookAdminScreen
+import com.xiaoswz.reader.ui.creator.AnnouncementAdminScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
 import com.xiaoswz.reader.ui.settings.UserCenterScreen
@@ -104,12 +108,20 @@ object Routes {
     const val READING_STATS = "reading-stats"
     const val USER_CENTER = "user-center"
     const val PLUGIN_PLAZA = "plugin-plaza" // 0.12.0 创意工坊 · 插件广场
+    const val CREATOR = "creator" // 0.14.1 创作者中心：App 内嵌管理模块（仅 admin）
+    const val CHARACTER_ADMIN = "character-admin/{src}/{bookId}" // 角色录入（指定书籍）
+    const val BOOK_ADMIN = "book-admin" // 书籍元数据编辑
+    const val ANNOUNCEMENT_ADMIN = "announcement-admin" // 公告管理
 
     // slug 可能含中文，必须 URL 编码后再拼路由
     fun detail(slug: String) = "detail/${Uri.encode(slug)}"
     fun reader(bookSlug: String, chapterId: String) =
         "reader/${Uri.encode(bookSlug)}/${Uri.encode(chapterId)}"
     fun character(characterId: String) = "character/${Uri.encode(characterId)}"
+    fun characterAdmin(src: String, bookId: String) =
+        "character-admin/${Uri.encode(src)}/${Uri.encode(bookId)}"
+    fun bookAdmin() = "book-admin"
+    fun announcementAdmin() = "announcement-admin"
     fun booklist(id: String) = "booklist/$id"
     fun user(id: String) = "user/$id"
 }
@@ -342,7 +354,60 @@ private fun AppShell() {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
                         onUserCenterClick = { navController.navigate(Routes.USER_CENTER) },
+                        onCreatorClick = { navController.navigate(Routes.CREATOR) },
                     )
+                }
+
+                composable(Routes.CREATOR) {
+                    CreatorHubScreen(
+                        onBack = { navController.popBackStack() },
+                        onCharacters = { navController.navigate(Routes.characterAdmin("", "")) },
+                        onBooks = { navController.navigate(Routes.bookAdmin()) },
+                        onAnnouncements = { navController.navigate(Routes.announcementAdmin()) },
+                    )
+                }
+
+                composable(
+                    route = Routes.CHARACTER_ADMIN,
+                    arguments = listOf(
+                        navArgument("src") { type = NavType.StringType },
+                        navArgument("bookId") { type = NavType.StringType },
+                    ),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val src = entry.arguments?.getString("src").orEmpty()
+                    val bookId = entry.arguments?.getString("bookId").orEmpty()
+                    CharacterAdminScreen(
+                        bookSourceId = src,
+                        bookId = bookId,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(
+                    route = Routes.BOOK_ADMIN,
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) {
+                    BookAdminScreen(
+                        onBack = { navController.popBackStack() },
+                        onManageCharacters = { src, id -> navController.navigate(Routes.characterAdmin(src, id)) },
+                    )
+                }
+
+                composable(
+                    route = Routes.ANNOUNCEMENT_ADMIN,
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) {
+                    AnnouncementAdminScreen(onBack = { navController.popBackStack() })
                 }
 
                 composable(Routes.PLUGIN_PLAZA) {

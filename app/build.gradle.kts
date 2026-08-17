@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 74
-        versionName = "0.14.0" // 0.14.0·角色互动：书籍详情页新增角色横滑卡片，点击进入角色详情（头像/简介/比心/标签墙/角色讨论）；借鉴起点角色栏与番茄章评，复用既有 User/Comment 底座，新增 BookCharacter 等模型由运营后端录入角色数据
+        versionCode = 75
+        versionName = "0.14.1" // 0.14.1·创作者中心：管理功能内嵌 App（仅 admin 可见）。设置页新增「创作者中心」入口，内含角色录入（增删改）、书籍元数据编辑、公告管理三大模块，直连后端 admin 接口，替代存在感低的独立网页后台
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

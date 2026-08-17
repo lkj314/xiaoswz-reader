@@ -23,6 +23,12 @@ import com.xiaoswz.reader.data.api.TagListResponse
 import com.xiaoswz.reader.data.api.TagResponse
 import com.xiaoswz.reader.data.api.TagBody
 import com.xiaoswz.reader.data.api.TagVoteResponse
+import com.xiaoswz.reader.data.api.AdminBookListResponse
+import com.xiaoswz.reader.data.api.AdminBookPatchResponse
+import com.xiaoswz.reader.data.api.AdminCharacterListResponse
+import com.xiaoswz.reader.data.api.AdminCharacterUpsertResponse
+import com.xiaoswz.reader.data.api.AdminAnnouncementListResponse
+import com.xiaoswz.reader.data.api.AdminAnnouncementResponse
 
 /**
  * 冲浪阅读独立后端的统一访问层。所有方法都包了 runCatching——
@@ -137,5 +143,83 @@ object BackendRepository {
     /** 发角色讨论（登录） */
     suspend fun postCharacterComment(characterId: String, content: String, parentId: String? = null): Result<Unit> = runCatching {
         api.postCharacterComment(characterId, CommentBody(content, parentId))
+    }
+
+    // ── 创作者 / 管理（admin，App 内嵌模块）──
+    /** 管理台：书籍列表（q 书名过滤） */
+    suspend fun adminListBooks(q: String?, page: Int): Result<AdminBookListResponse> = runCatching {
+        api.adminListBooks(q, page)
+    }
+
+    /** 管理台：书籍元数据编辑（书名/作者/封面/隐藏） */
+    suspend fun adminPatchBook(
+        src: String,
+        id: String,
+        title: String?,
+        author: String?,
+        coverUrl: String?,
+        hidden: Boolean?,
+    ): Result<AdminBookPatchResponse> = runCatching {
+        api.adminPatchBook(src, id, com.xiaoswz.reader.data.api.AdminBookPatchBody(title, author, coverUrl, hidden))
+    }
+
+    /** 管理台：某书角色列表（按 bookId 过滤） */
+    suspend fun adminListCharacters(bookId: String): Result<AdminCharacterListResponse> = runCatching {
+        api.adminListCharacters(bookId)
+    }
+
+    /** 管理台：角色录入 / 更新（同名则更新） */
+    suspend fun adminUpsertCharacter(
+        bookId: String,
+        name: String,
+        roleType: String,
+        avatarUrl: String?,
+        description: String?,
+        order: Int,
+    ): Result<AdminCharacterUpsertResponse> = runCatching {
+        api.adminUpsertCharacter(
+            com.xiaoswz.reader.data.api.AdminCharacterUpsertBody(
+                bookId = bookId,
+                name = name,
+                roleType = roleType,
+                avatarUrl = avatarUrl,
+                description = description,
+                order = order,
+            ),
+        )
+    }
+
+    /** 管理台：删除角色 */
+    suspend fun adminDeleteCharacter(id: String): Result<Unit> = runCatching {
+        api.adminDeleteCharacter(id)
+    }
+
+    /** 管理台：公告列表 */
+    suspend fun adminListAnnouncements(): Result<AdminAnnouncementListResponse> = runCatching {
+        api.adminListAnnouncements()
+    }
+
+    /** 管理台：新建公告 */
+    suspend fun adminCreateAnnouncement(
+        title: String,
+        body: String,
+        level: String,
+    ): Result<AdminAnnouncementResponse> = runCatching {
+        api.adminCreateAnnouncement(com.xiaoswz.reader.data.api.AdminAnnouncementBody(title, body, level))
+    }
+
+    /** 管理台：编辑公告 */
+    suspend fun adminPatchAnnouncement(
+        id: String,
+        title: String,
+        body: String,
+        level: String,
+    ): Result<AdminAnnouncementResponse> = runCatching {
+        api.adminPatchAnnouncement(id, com.xiaoswz.reader.data.api.AdminAnnouncementBody(title, body, level))
+    }
+
+    /** 管理台：删除公告 */
+    suspend fun adminDeleteAnnouncement(id: String): Result<Unit> = runCatching {
+        api.adminDeleteAnnouncement(id)
     }
 }
