@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 75
-        versionName = "0.14.1" // 0.14.1·创作者中心：管理功能内嵌 App（仅 admin 可见）。设置页新增「创作者中心」入口，内含角色录入（增删改）、书籍元数据编辑、公告管理三大模块，直连后端 admin 接口，替代存在感低的独立网页后台
+        versionCode = 76
+        versionName = "0.15.0" // 0.15.0·章评段评：章评（锚定章节）+ 段评（锚定段落+段内偏移，正文不入库，跨设备一致），含划词「评」入口、段评下划线、本段讨论线程、章评弹层
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

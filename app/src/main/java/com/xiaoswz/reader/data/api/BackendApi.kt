@@ -131,6 +131,42 @@ interface BackendApi {
     @POST("api/comments/{id}/report")
     suspend fun reportComment(@Path("id") id: String): OkAck
 
+    // ── v0.15 章评 / 段评（锚定到章节；正文不入库，只存位置 + 引用快照）──
+    /** 章评列表（锚定到章节） */
+    @GET("api/books/{src}/{id}/chapters/{chapterId}/comments")
+    suspend fun getChapterComments(
+        @Path("src") src: String,
+        @Path("id") id: String,
+        @Path("chapterId") chapterId: String,
+        @Query("page") page: Int = 1,
+    ): CommentListResponse
+
+    /** 发章评 */
+    @POST("api/books/{src}/{id}/chapters/{chapterId}/comments")
+    suspend fun postChapterComment(
+        @Path("src") src: String,
+        @Path("id") id: String,
+        @Path("chapterId") chapterId: String,
+        @Body body: CommentBody,
+    ): OkAck
+
+    /** 段评列表（按章节一次性拉取，客户端按 paragraphIndex 分组） */
+    @GET("api/books/{src}/{id}/chapters/{chapterId}/segments")
+    suspend fun getSegmentComments(
+        @Path("src") src: String,
+        @Path("id") id: String,
+        @Path("chapterId") chapterId: String,
+    ): SegmentCommentListResponse
+
+    /** 发段评（锚定到段落 + 段内偏移 + 引用快照） */
+    @POST("api/books/{src}/{id}/chapters/{chapterId}/segments")
+    suspend fun postSegmentComment(
+        @Path("src") src: String,
+        @Path("id") id: String,
+        @Path("chapterId") chapterId: String,
+        @Body body: SegmentCommentBody,
+    ): SegmentCommentItem
+
     // ── 0.14.0 书籍角色互动 ──
     /** 书籍角色列表（横滑卡片） */
     @GET("api/books/{src}/{id}/characters")
@@ -703,6 +739,38 @@ data class CommentItem(
 data class CommentBody(
     val content: String,
     val parentId: String? = null,
+)
+
+// ── v0.15 章评 / 段评 ──
+/** 发段评请求体：paragraphIndex 必填（Raw 坐标），start/endOffset 相对该段 trim 后正文，quotedText 为引用快照 */
+@Serializable
+data class SegmentCommentBody(
+    val content: String,
+    val parentId: String? = null,
+    val paragraphIndex: Int,
+    val startOffset: Int? = null,
+    val endOffset: Int? = null,
+    val quotedText: String? = null,
+)
+
+/** 段评条目：在 CommentItem 基础上携带段锚字段 */
+@Serializable
+data class SegmentCommentItem(
+    val id: String,
+    val parentId: String? = null,
+    val content: String,
+    val likeCount: Int = 0,
+    val createdAt: Long = 0,
+    val paragraphIndex: Int? = null,
+    val startOffset: Int? = null,
+    val endOffset: Int? = null,
+    val quotedText: String? = null,
+)
+
+/** 段评列表（按章节一次性返回，客户端按 paragraphIndex 分组） */
+@Serializable
+data class SegmentCommentListResponse(
+    val comments: List<SegmentCommentItem> = emptyList(),
 )
 
 // ── 0.14.0 书籍角色互动 ──

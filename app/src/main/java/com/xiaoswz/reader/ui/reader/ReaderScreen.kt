@@ -154,6 +154,14 @@ fun ReaderScreen(
     // 分享到书友圈（模块D）
     var showShare by remember { mutableStateOf(false) }
 
+    // ── 章评 / 段评（v0.15）UI 状态 ──
+    var showChapterComment by remember { mutableStateOf(false) }
+    var showSegmentList by remember { mutableStateOf(false) }
+    // 段评：当前打开的「本段讨论」线程（段落序号 + 引用快照）
+    var segThread by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    // 段评：当前正在发表的锚点（来自划词选区），非空即弹发表对话框
+    var segComposeAnchor by remember { mutableStateOf<SegmentAnchor?>(null) }
+
     // ── 听书 TTS 状态 ──
     val ttsEngine = remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsSpeaking by remember { mutableStateOf(false) }
@@ -306,6 +314,35 @@ fun ReaderScreen(
                     state.settings.indentFirstLine,
                     state.settings.paraSpacing,
                 )
+            }
+
+            // 段评锚点 → 预处理正文中的绝对字符区间（供下划线渲染）。
+            // 正文不在 DB，锚点仅在 Raw 坐标；按当前阅读设置映射回 processed 坐标，跨设备一致。
+            val segComments = state.segmentCommentsByChapter[state.currentChapterId] ?: emptyList()
+            val segSpans = remember(
+                processed, state.rawContent, state.settings.indentFirstLine,
+                state.settings.paraSpacing, segComments,
+            ) {
+                val ranges = mapParagraphRanges(
+                    state.rawContent,
+                    state.settings.indentFirstLine,
+                    state.settings.paraSpacing,
+                )
+                segComments.filter { it.paragraphIndex != null }
+                    .groupBy { it.paragraphIndex!! }
+                    .flatMap { (p, list) ->
+                        val range = ranges.getOrNull(p) ?: return@flatMap emptyList<Pair<Int, Int>>()
+                        val hasSpecific = list.any { it.startOffset != null && it.endOffset != null }
+                        if (hasSpecific) {
+                            list.mapNotNull { c ->
+                                val s = c.startOffset
+                                val e = c.endOffset
+                                if (s != null && e != null) segmentAbsoluteSpan(range, s, e) else null
+                            }
+                        } else {
+                            listOf(segmentAbsoluteSpan(range, 0, range.contentLength))
+                        }
+                    }
             }
 
             // 划词标注：进入/换章时同步只读文本字段（offset 相对预处理正文）
@@ -912,6 +949,7 @@ fun ReaderScreen(
                                             annotations = annoAnnotations,
                                             readingRange = if (isReadingChapter) readingRange else null,
                                             theme = theme,
+                                            segmentSpans = segSpans,
                                         ),
                                         OffsetMapping.Identity,
                                     )
@@ -937,6 +975,7 @@ fun ReaderScreen(
                                         annotations = annoAnnotations,
                                         readingRange = if (isReadingChapter) readingRange else null,
                                         theme = theme,
+                                        segmentSpans = segSpans,
                                     ),
                                     fontSize = state.settings.fontSize.sp,
                                     lineHeight = (state.settings.fontSize * state.settings.lineSpacing).sp,
@@ -1062,6 +1101,40 @@ fun ReaderScreen(
                 }
             }
 
+            // 章评 / 段评 入口（菜单可见时显示在底部栏上方，避免挤占图标行）
+            AnimatedVisibility(
+                visible = state.menuVisible,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 92.dp),
+                enter = fadeIn(animationSpec = tween(220)) +
+                    slideInVertically(initialOffsetY = { it }, animationSpec = tween(260, easing = FastOutSlowInEasing)),
+                exit = fadeOut(animationSpec = tween(180)) +
+                    slideOutVertically(targetOffsetY = { it }, animationSpec = tween(200, easing = FastOutSlowInEasing)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xCC14181D))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val segCount = (state.segmentCommentsByChapter[state.currentChapterId] ?: emptyList()).size
+                        TextButton(onClick = { showChapterComment = true }) {
+                            Text("章评", color = Color.White)
+                        }
+                        TextButton(onClick = { showSegmentList = true }) {
+                            Text(
+                                if (segCount > 0) "段评 $segCount" else "段评",
+                                color = Color.White,
+                            )
+                        }
+                    }
+                }
+            }
+
             // 创意工坊 v1：划词标注选区浮层（复制 + 动态插件动作）
             AnnoSelectionBar(
                 visible = annoActive &&
@@ -1089,6 +1162,32 @@ fun ReaderScreen(
                 onAnnotate = { plugin ->
                     val sel = annoTextField.value.selection
                     annotateFromSelection(plugin, sel.start, sel.end, state.currentChapterId)
+                },
+                onComment = {
+                    val sel = annoTextField.value.selection
+                    if (sel.start < sel.end) {
+                        val ranges = mapParagraphRanges(
+                            state.rawContent,
+                            state.settings.indentFirstLine,
+                            state.settings.paraSpacing,
+                        )
+                        val anchor = anchorFromSelection(ranges, sel.start, sel.end)
+                        if (anchor != null) {
+                            segComposeAnchor = anchor
+                        } else {
+                            android.widget.Toast.makeText(
+                                context,
+                                "无法定位到段落，请重试",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    } else {
+                        android.widget.Toast.makeText(
+                            context,
+                            "请先选中一段文字",
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
                 },
                 onClose = { annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero) },
             )
@@ -1129,6 +1228,63 @@ fun ReaderScreen(
                 ModalBottomSheet(onDismissRequest = { showShare = false }) {
                     ReaderShareSheet(initialText = shareInitial, onDismiss = { showShare = false })
                 }
+            }
+
+            // 章评（v0.15）：本章读者讨论，底部弹层
+            if (showChapterComment) {
+                ChapterCommentSheet(
+                    bookSlug = bookSlug,
+                    chapterId = state.currentChapterId,
+                    onDismiss = { showChapterComment = false },
+                )
+            }
+
+            // 段评列表（v0.15）：按段落归组，点开进入本段讨论
+            if (showSegmentList) {
+                val segList = state.segmentCommentsByChapter[state.currentChapterId] ?: emptyList()
+                SegmentCommentSheet(
+                    segmentComments = segList,
+                    onDismiss = { showSegmentList = false },
+                    onOpenThread = { pIdx, quote -> segThread = pIdx to quote },
+                )
+            }
+
+            // 本段讨论（v0.15）：单段落的段评线程 + 发表
+            segThread?.let { (pIdx, quote) ->
+                val segList = state.segmentCommentsByChapter[state.currentChapterId] ?: emptyList()
+                val thread = segList.filter { it.paragraphIndex == pIdx }
+                SegmentThreadSheet(
+                    chapterId = state.currentChapterId,
+                    paragraphIndex = pIdx,
+                    quote = quote,
+                    comments = thread,
+                    onDismiss = { segThread = null },
+                    onLike = { id -> viewModel.likeSegmentComment(state.currentChapterId, id) },
+                    onReport = { id -> viewModel.reportSegmentComment(id) },
+                    onPost = { content ->
+                        viewModel.postSegmentComment(state.currentChapterId, pIdx, null, null, quote, content, null)
+                    },
+                )
+            }
+
+            // 发表段评（v0.15）：划词选区 → 预填引用 → 输入内容
+            segComposeAnchor?.let { anchor ->
+                SegmentComposeDialog(
+                    anchor = anchor,
+                    onDismiss = { segComposeAnchor = null },
+                    onSend = { content ->
+                        viewModel.postSegmentComment(
+                            state.currentChapterId,
+                            anchor.paragraphIndex,
+                            anchor.startOffset,
+                            anchor.endOffset,
+                            anchor.quotedText,
+                            content,
+                            null,
+                        )
+                        segComposeAnchor = null
+                    },
+                )
             }
 
             // 休息提醒弹窗（护眼模块C）
@@ -1352,6 +1508,7 @@ private fun buildAnnotatedContent(
     annotations: List<AnnotationEntity>,
     readingRange: IntRange?,
     theme: ReaderTheme,
+    segmentSpans: List<Pair<Int, Int>> = emptyList(),
 ): AnnotatedString = buildAnnotatedString {
     append(content)
     for (a in annotations) {
@@ -1360,6 +1517,21 @@ private fun buildAnnotatedContent(
         if (e > s) {
             val c = a.color?.let { Color(it) } ?: Color(-14336)
             addStyle(SpanStyle(background = c.copy(alpha = 0.22f)), s, e)
+        }
+    }
+    // 段评标记：珊瑚底色（正文不入库，锚点仅在 Raw 坐标，已映射回 processed 坐标）。
+    // 注：当前离线编译环境的 Compose UI 产物未携带 TextDecoration，故用底色高亮而非下划线，
+    // 珊瑚色与标注高亮（青/绿）区分明显，仍能清晰提示「本段有段评」。
+    for ((s, e) in segmentSpans) {
+        val ss = s.coerceAtLeast(0)
+        val ee = e.coerceAtMost(content.length)
+        if (ee > ss) {
+            addStyle(
+                SpanStyle(
+                    background = Color(0xFFFF7043).copy(alpha = 0.18f),
+                ),
+                ss, ee,
+            )
         }
     }
     if (readingRange != null) {
@@ -1382,6 +1554,7 @@ private fun AnnoSelectionBar(
     onCopy: () -> Unit,
     onListen: () -> Unit,
     onAnnotate: (PluginManifest) -> Unit,
+    onComment: () -> Unit = {},
     onClose: () -> Unit,
 ) {
     if (!visible) return
@@ -1401,6 +1574,7 @@ private fun AnnoSelectionBar(
                 val cap = plugin.capabilities.annotation ?: continue
                 TextButton(onClick = { onAnnotate(plugin) }) { Text(cap.label) }
             }
+            TextButton(onClick = onComment) { Text("评") }
             TextButton(onClick = onClose) { Text("完成") }
         }
     }

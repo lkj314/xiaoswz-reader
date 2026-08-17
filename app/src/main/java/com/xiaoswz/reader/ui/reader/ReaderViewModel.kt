@@ -7,6 +7,9 @@ import com.xiaoswz.reader.data.BookRepository
 import com.xiaoswz.reader.data.annotation.ANNOTATION_TYPE_HIGHLIGHT
 import com.xiaoswz.reader.data.annotation.AnnotationEntity
 import com.xiaoswz.reader.data.annotation.AnnotationRepository
+import com.xiaoswz.reader.data.api.SegmentCommentItem
+import com.xiaoswz.reader.data.api.SegmentCommentListResponse
+import com.xiaoswz.reader.data.backend.BackendRepository
 import com.xiaoswz.reader.data.model.ChapterDto
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
@@ -63,6 +66,8 @@ data class ReaderUiState(
     val pendingScrollToChapterId: String? = null,
     /** 本书全部标注（高亮 + 书签），本地文件为权威，云端仅做跨设备合并 */
     val annotations: List<AnnotationEntity> = emptyList(),
+    /** 段评：按章节 id 分组的段评列表（正文不入库，仅锚定到段落 + 段内偏移） */
+    val segmentCommentsByChapter: Map<String, List<SegmentCommentItem>> = emptyMap(),
 ) {
     val currentIndex: Int get() = toc.indexOfFirst { it.id == currentChapterId }.let { if (it < 0) 0 else it }
     val totalChapters: Int get() = toc.size
@@ -170,6 +175,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                         )
                     }
                     prefetchAround(result.data.id ?: chapterId)
+                    loadSegmentComments(result.data.id ?: chapterId)
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -205,6 +211,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
                 prefetchAround(chapterId)
+                loadSegmentComments(chapterId)
                 // 立刻把下一章 append 进同一条滚动流，滚动即无缝
                 appendNextChapter()
             } ?: _uiState.update {
@@ -256,6 +263,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                     st.copy(blockAppendLoading = false) // 失败静默，下次滚动到底再试
                 }
             }
+            if (blk != null) loadSegmentComments(nid)
         }
     }
 
@@ -278,6 +286,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                     st.copy(blockPrependLoading = false)
                 }
             }
+            if (blk != null) loadSegmentComments(pid)
         }
     }
 
@@ -449,6 +458,58 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         AnnotationRepository.persist(ctx, bookSlug, list)
         _uiState.update { it.copy(annotations = list) }
         viewModelScope.launch { AnnotationRepository.pushOne(ctx, ann) }
+    }
+
+    // ── 模块 B：章评 / 段评（v0.15）──
+    // 正文由书源实时抓取，不入库；评论仅锚定到章节 + 段内位置 + 引用快照。
+
+    /** 加载某章段评（一次性拉取，失败静默，绝不阻断阅读）。 */
+    fun loadSegmentComments(chapterId: String) {
+        val s = _uiState.value
+        if (s.bookSlug.isBlank() || chapterId.isBlank()) return
+        viewModelScope.launch {
+            BackendRepository.getSegmentComments(s.bookSlug, chapterId)
+                .onSuccess { resp ->
+                    _uiState.update { st ->
+                        st.copy(segmentCommentsByChapter = st.segmentCommentsByChapter + (chapterId to resp.comments))
+                    }
+                }
+                .onFailure { /* 静默降级：段评加载失败不影响阅读 */ }
+        }
+    }
+
+    /** 发段评（登录）。成功后刷新该章段评。失败由调用方 Toast 提示。 */
+    fun postSegmentComment(
+        chapterId: String,
+        paragraphIndex: Int,
+        startOffset: Int?,
+        endOffset: Int?,
+        quotedText: String,
+        content: String,
+        parentId: String? = null,
+    ) {
+        val s = _uiState.value
+        if (s.bookSlug.isBlank()) return
+        viewModelScope.launch {
+            BackendRepository.postSegmentComment(
+                s.bookSlug, chapterId, content, paragraphIndex, startOffset, endOffset, quotedText, parentId,
+            ).onSuccess { loadSegmentComments(chapterId) }
+        }
+    }
+
+    /** 段评点赞（乐观本地 + 后台自增，不计重）。 */
+    fun likeSegmentComment(chapterId: String, id: String) {
+        val list = _uiState.value.segmentCommentsByChapter[chapterId] ?: return
+        val updated = list.map { if (it.id == id) it.copy(likeCount = it.likeCount + 1) else it }
+        _uiState.update { st ->
+            st.copy(segmentCommentsByChapter = st.segmentCommentsByChapter + (chapterId to updated))
+        }
+        viewModelScope.launch { BackendRepository.likeComment(id) }
+    }
+
+    /** 段评举报（基础风控，自增 reportCount，审核后台预留）。 */
+    fun reportSegmentComment(id: String) {
+        viewModelScope.launch { BackendRepository.reportComment(id) }
     }
 
     /** 当前章预处理后的正文（供听书 TTS 朗读）。连续模式取当前章块；单章模式预处理 rawContent。 */

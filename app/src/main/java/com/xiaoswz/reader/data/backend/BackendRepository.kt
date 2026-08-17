@@ -11,6 +11,9 @@ import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
 import com.xiaoswz.reader.data.api.CommentBody
 import com.xiaoswz.reader.data.api.CommentItem
 import com.xiaoswz.reader.data.api.CommentListResponse
+import com.xiaoswz.reader.data.api.SegmentCommentBody
+import com.xiaoswz.reader.data.api.SegmentCommentItem
+import com.xiaoswz.reader.data.api.SegmentCommentListResponse
 import com.xiaoswz.reader.data.api.LeaderboardResponse
 import com.xiaoswz.reader.data.api.RatingResponse
 import com.xiaoswz.reader.data.api.VoteBalance
@@ -143,6 +146,41 @@ object BackendRepository {
     /** 发角色讨论（登录） */
     suspend fun postCharacterComment(characterId: String, content: String, parentId: String? = null): Result<Unit> = runCatching {
         api.postCharacterComment(characterId, CommentBody(content, parentId))
+    }
+
+    // ── v0.15 章评 / 段评 ──
+    /** 章评列表（锚定到章节） */
+    suspend fun getChapterComments(bookId: String, chapterId: String, page: Int = 1): Result<CommentListResponse> = runCatching {
+        api.getChapterComments(BOOK_SOURCE_MAIN, bookId, chapterId, page)
+    }
+
+    /** 发章评（登录） */
+    suspend fun postChapterComment(bookId: String, chapterId: String, content: String, parentId: String? = null): Result<Unit> = runCatching {
+        api.postChapterComment(BOOK_SOURCE_MAIN, bookId, chapterId, CommentBody(content, parentId))
+    }
+
+    /** 段评列表（按章节一次性拉取） */
+    suspend fun getSegmentComments(bookId: String, chapterId: String): Result<SegmentCommentListResponse> = runCatching {
+        api.getSegmentComments(BOOK_SOURCE_MAIN, bookId, chapterId)
+    }
+
+    /** 发段评（登录）：paragraphIndex 必填，偏移相对该段 trim 正文，quotedText 引用快照 */
+    suspend fun postSegmentComment(
+        bookId: String,
+        chapterId: String,
+        content: String,
+        paragraphIndex: Int,
+        startOffset: Int?,
+        endOffset: Int?,
+        quotedText: String?,
+        parentId: String? = null,
+    ): Result<SegmentCommentItem> = runCatching {
+        api.postSegmentComment(
+            BOOK_SOURCE_MAIN,
+            bookId,
+            chapterId,
+            SegmentCommentBody(content, parentId, paragraphIndex, startOffset, endOffset, quotedText),
+        )
     }
 
     // ── 创作者 / 管理（admin，App 内嵌模块）──
