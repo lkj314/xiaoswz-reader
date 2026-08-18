@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 84
-        versionName = "0.15.8" // 0.15.8·书友圈修复：① 帖子详情页评论输入框在带图帖子弹起键盘时被遮挡——评论列表改 weight(1f,fill=false) 吸收高度收缩、输入框作固定页脚由 imePadding 顶起；② 管理账号(role=admin)进入书友圈，帖子卡与详情页加「删除动态」「删除评论」按钮（带确认弹窗），后端新增 admin/posts/[id] 硬删与 admin/community/posts/[postId]/comments/[commentId] 删评（级联楼中楼+重算评论数），仅 admin 可调。
+        versionCode = 85
+        versionName = "0.16.0" // 0.16.0·基础增强：① 书友圈自删自改+关注流+话题筛选 ② 书架状态筛选(全部/在读/读完/想读)+阅读进度条 ③ 书单创建/编辑/收藏闭环(自改/自删/条目备注/排序) ④ 阅读缓存管理页(章节/元数据分项清空)+仅WiFi预加载；Room 书架表迁移 v1→v2(status/progress_percent 字段)。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

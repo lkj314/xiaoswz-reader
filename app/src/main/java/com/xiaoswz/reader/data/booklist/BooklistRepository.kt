@@ -3,8 +3,10 @@ package com.xiaoswz.reader.data.booklist
 import com.xiaoswz.reader.data.api.BackendClient
 import com.xiaoswz.reader.data.api.BooklistCreateBody
 import com.xiaoswz.reader.data.api.BooklistItemBody
+import com.xiaoswz.reader.data.api.BooklistItemUpdateBody
 import com.xiaoswz.reader.data.api.BooklistListResponse
 import com.xiaoswz.reader.data.api.BooklistDetail
+import com.xiaoswz.reader.data.api.BooklistUpdateBody
 import com.xiaoswz.reader.data.api.CollectResponse
 import com.xiaoswz.reader.data.api.HomeResponse
 import com.xiaoswz.reader.data.api.HotBooklistsResponse
@@ -68,6 +70,31 @@ object BooklistRepository {
 
     suspend fun collect(id: String): Result<CollectResponse> = runCatching {
         BackendClient.api.collectBooklist(id)
+    }.fold(onSuccess = { Result.success(it) }, onFailure = { mapError(it) })
+
+    /** 编辑书单（标题/简介/封面）。仅 owner/admin。 */
+    suspend fun editBooklist(
+        id: String,
+        title: String? = null,
+        description: String? = null,
+        coverUrl: String? = null,
+    ): Result<Boolean> = runCatching {
+        BackendClient.api.updateBooklist(id, BooklistUpdateBody(title, description, coverUrl)).ok
+    }.fold(onSuccess = { Result.success(it) }, onFailure = { mapError(it) })
+
+    /** 删除书单（软删 status=hidden）。仅 owner/admin。 */
+    suspend fun deleteBooklist(id: String): Result<Boolean> = runCatching {
+        BackendClient.api.deleteBooklist(id).ok
+    }.fold(onSuccess = { Result.success(it) }, onFailure = { mapError(it) })
+
+    /** 更新书单项（编辑推荐语 / 调整排序）。仅 owner/admin。 */
+    suspend fun updateBooklistItem(
+        id: String,
+        itemId: String,
+        note: String? = null,
+        position: Int? = null,
+    ): Result<Boolean> = runCatching {
+        BackendClient.api.updateBooklistItem(id, itemId, BooklistItemUpdateBody(note, position)).ok
     }.fold(onSuccess = { Result.success(it) }, onFailure = { mapError(it) })
 
     suspend fun getHotBooklists(): Result<HotBooklistsResponse> = runCatching {

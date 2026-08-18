@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,8 +20,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -55,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.api.BooklistSummary
+import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.launch
@@ -71,8 +76,14 @@ fun BooklistsScreen(
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var showCreate by remember { mutableStateOf(false) }
+    var editBooklistId by remember { mutableStateOf<String?>(null) }
+    var deleteTarget by remember { mutableStateOf<BooklistSummary?>(null) }
 
-    LaunchedEffect(Unit) { viewModel.load(refresh = true) }
+    val settingsRepo = remember { AppSettingsRepository(context.applicationContext) }
+    LaunchedEffect(Unit) {
+        viewModel.load(refresh = true)
+        settingsRepo.accountIdFlow.collect { viewModel.setAccountId(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -129,7 +140,14 @@ fun BooklistsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(state.lists, key = { it.id }) { bl ->
-                        BooklistRow(bl = bl, onClick = { onBooklistClick(bl.id) })
+                        val isOwner = bl.owner.id == state.accountId
+                        BooklistRow(
+                            bl = bl,
+                            isOwner = isOwner,
+                            onClick = { onBooklistClick(bl.id) },
+                            onEdit = { editBooklistId = bl.id },
+                            onDelete = { deleteTarget = bl },
+                        )
                     }
                     if (state.isLoadingMore) {
                         item { Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -152,10 +170,68 @@ fun BooklistsScreen(
             },
         )
     }
+
+    // ── 编辑书单 ──
+    editBooklistId?.let { id ->
+        val target = state.lists.firstOrNull { it.id == id }
+        if (target == null) {
+            editBooklistId = null
+        } else {
+            EditBooklistSheet(
+                initialTitle = target.title,
+                initialDescription = target.description ?: "",
+                initialCover = target.coverUrl ?: "",
+                onDismiss = { editBooklistId = null },
+                onSave = { title, desc, cover ->
+                    viewModel.editBooklist(id, title, desc, cover) { res ->
+                        res.onSuccess { editBooklistId = null }
+                            .onFailure { e ->
+                                android.widget.Toast.makeText(context, e.message ?: "保存失败", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                },
+            )
+        }
+    }
+
+    // ── 删除书单（owner 二次确认）──
+    deleteTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    val id = target.id
+                    deleteTarget = null
+                    viewModel.deleteBooklist(id) { res ->
+                        res.onFailure { e ->
+                            android.widget.Toast.makeText(context, e.message ?: "删除失败", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) { Text("删除", color = GlassTokens.SystemRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) { Text("取消") }
+            },
+            title = { Text("删除书单", color = GlassTokens.Label) },
+            text = {
+                Text(
+                    "确定要删除「${target.title}」吗？删除后该书单对其他用户不可见。",
+                    color = GlassTokens.SecondaryLabel,
+                )
+            },
+            containerColor = GlassTokens.GroupedBackground,
+        )
+    }
 }
 
 @Composable
-private fun BooklistRow(bl: BooklistSummary, onClick: () -> Unit) {
+private fun BooklistRow(
+    bl: BooklistSummary,
+    isOwner: Boolean,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -214,6 +290,15 @@ private fun BooklistRow(bl: BooklistSummary, onClick: () -> Unit) {
                 Text("${bl.itemCount} 本", style = MaterialTheme.typography.labelSmall, color = GlassTokens.TertiaryLabel)
             }
         }
+        if (isOwner) {
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.Edit, contentDescription = "编辑书单", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(18.dp))
+            }
+            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = "删除书单", tint = GlassTokens.SystemRed, modifier = Modifier.size(18.dp))
+            }
+        }
     }
 }
 
@@ -230,7 +315,7 @@ private fun CreateBooklistSheet(
     val enabled = title.trim().length in 1..60
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp).imePadding()) {
             Text("新建书单", style = MaterialTheme.typography.titleLarge, color = GlassTokens.Label, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
@@ -263,6 +348,61 @@ private fun CreateBooklistSheet(
                 shape = RoundedCornerShape(GlassTokens.RadiusMD),
             ) {
                 Text("创建")
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun EditBooklistSheet(
+    initialTitle: String,
+    initialDescription: String,
+    initialCover: String,
+    onDismiss: () -> Unit,
+    onSave: (String, String?, String?) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var title by remember { mutableStateOf(initialTitle) }
+    var desc by remember { mutableStateOf(initialDescription) }
+    var cover by remember { mutableStateOf(initialCover) }
+    val enabled = title.trim().length in 1..60
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp).imePadding()) {
+            Text("编辑书单", style = MaterialTheme.typography.titleLarge, color = GlassTokens.Label, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("标题（必填）") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = desc,
+                onValueChange = { if (it.length <= 500) desc = it },
+                label = { Text("简介（可选）") },
+                modifier = Modifier.fillMaxWidth().height(96.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = cover,
+                onValueChange = { cover = it },
+                label = { Text("封面图链接（可选，http(s)）") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(18.dp))
+            androidx.compose.material3.Button(
+                onClick = { onSave(title.trim(), desc.trim().ifBlank { null }, cover.trim().ifBlank { null }) },
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(GlassTokens.RadiusMD),
+            ) {
+                Text("保存")
             }
             Spacer(Modifier.height(12.dp))
         }

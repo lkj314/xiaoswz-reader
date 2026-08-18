@@ -3,6 +3,7 @@ package com.xiaoswz.reader.ui.community
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xiaoswz.reader.data.api.PostItem
+import com.xiaoswz.reader.data.api.PostTopic
 import com.xiaoswz.reader.data.community.CommunityRepository
 import com.xiaoswz.reader.data.social.SocialRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +14,10 @@ import kotlinx.coroutines.launch
 
 data class CommunityUiState(
     val feed: String = "square", // square | following | hot
+    val topics: List<PostTopic> = emptyList(),
+    val selectedTopicId: String? = null,
+    val keyword: String? = null,
+    val accountId: String? = null,
     val posts: List<PostItem> = emptyList(),
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
@@ -30,6 +35,7 @@ class CommunityViewModel : ViewModel() {
 
     init {
         refresh()
+        loadTopics()
     }
 
     /** 刷新第一页（切换流 / 下拉刷新 / 发帖后调用） */
@@ -38,6 +44,35 @@ class CommunityViewModel : ViewModel() {
         if (state.isLoading) return
         _uiState.update { it.copy(isLoading = true, error = null) }
         fetchPage(1)
+    }
+
+    /** 拉取话题标签（话题筛选用） */
+    fun loadTopics() {
+        viewModelScope.launch {
+            CommunityRepository.getTopics()
+                .onSuccess { resp -> _uiState.update { it.copy(topics = resp.topics) } }
+                .onFailure { /* 话题为非关键功能，失败静默 */ }
+        }
+    }
+
+    /** 设置当前登录账号 id（owner 判别） */
+    fun setAccountId(id: String?) {
+        _uiState.update { it.copy(accountId = id) }
+    }
+
+    /** 选择 / 取消话题筛选（重置并重新加载） */
+    fun selectTopic(topicId: String?) {
+        if (_uiState.value.selectedTopicId == topicId) return
+        _uiState.update { it.copy(selectedTopicId = topicId, posts = emptyList(), page = 1, totalPages = 1) }
+        refresh()
+    }
+
+    /** 关键词搜索（空字符串 = 清除搜索） */
+    fun setKeyword(kw: String?) {
+        val trimmed = kw?.trim()?.takeIf { it.isNotEmpty() }
+        if (_uiState.value.keyword == trimmed) return
+        _uiState.update { it.copy(keyword = trimmed, posts = emptyList(), page = 1, totalPages = 1) }
+        refresh()
     }
 
     /** 加载下一页 */
@@ -56,7 +91,10 @@ class CommunityViewModel : ViewModel() {
     }
 
     private fun fetchPage(page: Int, append: Boolean = false) {
-        val feed = _uiState.value.feed
+        val state = _uiState.value
+        val feed = state.feed
+        val topicId = state.selectedTopicId
+        val keyword = state.keyword
         viewModelScope.launch {
             if (feed == "hot") {
                 // 热门榜（0.7.7）：拉热门动态，无分页
@@ -71,7 +109,7 @@ class CommunityViewModel : ViewModel() {
                     }
                 return@launch
             }
-            CommunityRepository.getPosts(feed, page)
+            CommunityRepository.getPosts(feed, page, topicId, keyword)
                 .onSuccess { resp ->
                     val pageSize = resp.pageSize.coerceAtLeast(1)
                     val totalPages = ((resp.total + pageSize - 1) / pageSize).coerceAtLeast(1)

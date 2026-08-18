@@ -21,16 +21,22 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,7 +76,12 @@ fun BookshelfScreen(
         repo.repairCovers { slug -> ApiClient.api.getBookDetail(bookId = slug).coverUrl }
     }
 
-    val sorted = books.sortedByDescending { it.lastReadAt }
+    // 状态筛选（0.16.0）：全部 / 在读 / 读完 / 想读
+    var filter by remember { mutableStateOf("all") }
+    var statusTarget by remember { mutableStateOf<BookEntity?>(null) }
+
+    val shown = if (filter == "all") books else books.filter { it.status == filter }
+    val sorted = shown.sortedByDescending { it.lastReadAt }
     val hero = sorted.firstOrNull()
     val rest = sorted.drop(1)
 
@@ -111,6 +122,21 @@ fun BookshelfScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                // 状态筛选（0.16.0）：全部 / 在读 / 读完 / 想读
+                item(span = { GridItemSpan(3) }) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(selected = filter == "all", onClick = { filter = "all" }, label = { Text("全部") })
+                        FilterChip(selected = filter == "reading", onClick = { filter = "reading" }, label = { Text("在读") })
+                        FilterChip(selected = filter == "finished", onClick = { filter = "finished" }, label = { Text("读完") })
+                        FilterChip(selected = filter == "plan", onClick = { filter = "plan" }, label = { Text("想读") })
+                    }
+                }
+
                 // 欢迎头：iOS 玻璃风小卡片
                 item(span = { GridItemSpan(3) }) {
                     LiquidGlassCard(
@@ -134,6 +160,8 @@ fun BookshelfScreen(
                         HeroBookCard(
                             book = hero,
                             hasUpdate = BookUpdateStore.getHasUpdate(hero.slug),
+                            progress = hero.progressPercent,
+                            statusLabel = statusLabelOf(hero.status),
                             onClick = { openBook(hero) },
                         )
                     }
@@ -150,6 +178,9 @@ fun BookshelfScreen(
                         title = book.title,
                         author = book.author,
                         onClick = { openBook(book) },
+                        progress = book.progressPercent.takeIf { it > 0 },
+                        statusLabel = statusLabelOf(book.status),
+                        onLongClick = { statusTarget = book },
                         badge = if (BookUpdateStore.getHasUpdate(book.slug)) {
                             { StatusPill(text = "有更新", containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) }
                         } else null,
@@ -159,12 +190,34 @@ fun BookshelfScreen(
             }
         }
     }
+
+    // 长按卡片 → 设置阅读状态（0.16.0）
+    statusTarget?.let { book ->
+        AlertDialog(
+            onDismissRequest = { statusTarget = null },
+            confirmButton = { },
+            title = { Text("设置阅读状态", color = GlassTokens.Label) },
+            text = {
+                Column {
+                    listOf("reading" to "在读", "finished" to "读完", "plan" to "想读").forEach { (value, label) ->
+                        TextButton(onClick = {
+                            statusTarget = null
+                            scope.launch { repo.setStatus(book.slug, value) }
+                        }) { Text(label, color = GlassTokens.Label) }
+                    }
+                }
+            },
+            containerColor = GlassTokens.GroupedBackground,
+        )
+    }
 }
 
 @Composable
 private fun HeroBookCard(
     book: BookEntity,
     hasUpdate: Boolean,
+    progress: Int,
+    statusLabel: String?,
     onClick: () -> Unit,
 ) {
     Box(
@@ -201,14 +254,20 @@ private fun HeroBookCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(8.dp))
-                if (hasUpdate) {
-                    StatusPill(
-                        text = "● 有更新",
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                    Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (hasUpdate) {
+                        StatusPill(
+                            text = "● 有更新",
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    if (statusLabel != null) {
+                        StatusPill(text = statusLabel)
+                    }
                 }
+                if (hasUpdate || statusLabel != null) Spacer(Modifier.height(8.dp))
                 Text(
                     text = book.lastChapterTitle ?: "未开始阅读",
                     style = MaterialTheme.typography.bodySmall,
@@ -216,6 +275,18 @@ private fun HeroBookCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (progress > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { progress / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = "已读 $progress%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Spacer(Modifier.weight(1f))
                 Button(onClick = onClick) {
                     Text("继续阅读")
@@ -223,4 +294,11 @@ private fun HeroBookCard(
             }
         }
     }
+}
+
+/** 状态角标文字：在读不显示（避免网格噪音），读完/想读显示；未知状态返回 null。 */
+private fun statusLabelOf(status: String): String? = when (status) {
+    "finished" -> "读完"
+    "plan" -> "想读"
+    else -> null
 }

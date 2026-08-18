@@ -11,20 +11,27 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -58,6 +65,8 @@ import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.api.BooklistItemDto
 import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
 import com.xiaoswz.reader.data.booklist.BooklistRepository
+import com.xiaoswz.reader.data.settings.AppSettingsRepository
+import com.xiaoswz.reader.ui.booklist.EditBooklistSheet
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.ReportSheet
 import com.xiaoswz.reader.ui.theme.GlassTokens
@@ -77,10 +86,19 @@ fun BooklistDetailScreen(
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var showReport by remember { mutableStateOf(false) }
     var showPicker by remember { mutableStateOf(false) }
+    var editBooklist by remember { mutableStateOf(false) }
+    var deleteConfirm by remember { mutableStateOf(false) }
+    var editItem by remember { mutableStateOf<BooklistItemDto?>(null) }
     var justShared by remember { mutableStateOf(false) }
     var justCollected by remember { mutableStateOf(false) }
 
-    LaunchedEffect(booklistId) { viewModel.load(booklistId) }
+    val isOwner = state.detail?.owner?.id == state.accountId
+
+    val settingsRepo = remember { AppSettingsRepository(context.applicationContext) }
+    LaunchedEffect(booklistId) {
+        viewModel.load(booklistId)
+        settingsRepo.accountIdFlow.collect { viewModel.setAccountId(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -89,8 +107,17 @@ fun BooklistDetailScreen(
                 onBack = onBack,
                 showLogo = false,
                 actions = {
-                    IconButton(onClick = { showReport = true }) {
-                        Icon(Icons.Default.Warning, contentDescription = "举报", tint = GlassTokens.Label)
+                    if (isOwner) {
+                        IconButton(onClick = { editBooklist = true }) {
+                            Icon(Icons.Default.Edit, contentDescription = "编辑书单", tint = GlassTokens.Label)
+                        }
+                        IconButton(onClick = { deleteConfirm = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "删除书单", tint = GlassTokens.SystemRed)
+                        }
+                    } else {
+                        IconButton(onClick = { showReport = true }) {
+                            Icon(Icons.Default.Warning, contentDescription = "举报", tint = GlassTokens.Label)
+                        }
                     }
                 },
             )
@@ -264,10 +291,28 @@ fun BooklistDetailScreen(
                     Text("这本书单还没有收录书籍", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.SecondaryLabel)
                 }
             } else {
-                items(detail.items, key = { it.id }) { item ->
+                itemsIndexed(detail.items, key = { _, it -> it.id }) { index, item ->
                     BooklistItemRow(
                         item = item,
+                        isOwner = isOwner,
+                        canMoveUp = index > 0,
+                        canMoveDown = index < detail.items.lastIndex,
                         onClick = { onBookClick(item.bookId) },
+                        onEditNote = { editItem = item },
+                        onMoveUp = {
+                            val above = detail.items[index - 1]
+                            scope.launch {
+                                viewModel.updateItem(booklistId, item.id, position = above.position)
+                                viewModel.updateItem(booklistId, above.id, position = item.position)
+                            }
+                        },
+                        onMoveDown = {
+                            val below = detail.items[index + 1]
+                            scope.launch {
+                                viewModel.updateItem(booklistId, item.id, position = below.position)
+                                viewModel.updateItem(booklistId, below.id, position = item.position)
+                            }
+                        },
                         onDelete = {
                             scope.launch {
                                 viewModel.deleteItem(booklistId, item.id) { res ->
@@ -326,12 +371,80 @@ fun BooklistDetailScreen(
             },
         )
     }
+
+    // ── 编辑书单（owner）──
+    if (editBooklist) {
+        val detail = state.detail
+        if (detail != null) {
+            EditBooklistSheet(
+                initialTitle = detail.title,
+                initialDescription = detail.description ?: "",
+                initialCover = detail.coverUrl ?: "",
+                onDismiss = { editBooklist = false },
+                onSave = { title, desc, cover ->
+                    viewModel.editBooklist(booklistId, title, desc, cover) { res ->
+                        res.onSuccess { editBooklist = false }
+                            .onFailure { e ->
+                                android.widget.Toast.makeText(context, e.message ?: "保存失败", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                },
+            )
+        }
+    }
+
+    // ── 删除书单二次确认（owner）──
+    if (deleteConfirm) {
+        val detail = state.detail
+        if (detail != null) {
+            AlertDialog(
+                onDismissRequest = { deleteConfirm = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        deleteConfirm = false
+                        viewModel.deleteBooklist(booklistId) { res ->
+                            res.onSuccess { onBack() }
+                                .onFailure { e ->
+                                    android.widget.Toast.makeText(context, e.message ?: "删除失败", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                        }
+                    }) { Text("删除", color = GlassTokens.SystemRed) }
+                },
+                dismissButton = { TextButton(onClick = { deleteConfirm = false }) { Text("取消") } },
+                title = { Text("删除书单", color = GlassTokens.Label) },
+                text = { Text("确定要删除「${detail.title}」吗？删除后该书单对其他用户不可见。", color = GlassTokens.SecondaryLabel) },
+                containerColor = GlassTokens.GroupedBackground,
+            )
+        }
+    }
+
+    // ── 编辑书单项备注（owner）──
+    editItem?.let { item ->
+        EditItemNoteSheet(
+            initialNote = item.note ?: "",
+            onDismiss = { editItem = null },
+            onSave = { note ->
+                viewModel.updateItem(booklistId, item.id, note = note.ifBlank { null }) { res ->
+                    res.onSuccess { editItem = null }
+                        .onFailure { e ->
+                            android.widget.Toast.makeText(context, e.message ?: "保存失败", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                }
+            },
+        )
+    }
 }
 
 @Composable
 private fun BooklistItemRow(
     item: BooklistItemDto,
+    isOwner: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
     onClick: () -> Unit,
+    onEditNote: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(
@@ -366,8 +479,56 @@ private fun BooklistItemRow(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = GlassTokens.TertiaryLabel, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Warning, contentDescription = "从书单移除", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(18.dp))
+        if (isOwner) {
+            IconButton(onClick = onEditNote, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Edit, contentDescription = "编辑备注", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(16.dp))
+            }
+            IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移", tint = if (canMoveUp) GlassTokens.SecondaryLabel else GlassTokens.TertiaryLabel, modifier = Modifier.size(16.dp))
+            }
+            IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移", tint = if (canMoveDown) GlassTokens.SecondaryLabel else GlassTokens.TertiaryLabel, modifier = Modifier.size(16.dp))
+            }
+            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = "从书单移除", tint = GlassTokens.SystemRed, modifier = Modifier.size(16.dp))
+            }
+        } else {
+            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = "从书单移除", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditItemNoteSheet(
+    initialNote: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var note by remember { mutableStateOf(initialNote) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp).imePadding()) {
+            Text("编辑推荐语", style = MaterialTheme.typography.titleLarge, color = GlassTokens.Label, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(
+                value = note,
+                onValueChange = { if (it.length <= 300) note = it },
+                label = { Text("为什么推荐这本书？（可选）") },
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+            )
+            Spacer(Modifier.height(18.dp))
+            androidx.compose.material3.Button(
+                onClick = { onSave(note) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(GlassTokens.RadiusMD),
+            ) {
+                Text("保存")
+            }
+            Spacer(Modifier.height(12.dp))
         }
     }
 }

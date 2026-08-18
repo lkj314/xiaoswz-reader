@@ -37,6 +37,31 @@ interface BookDao {
         ts: Long,
     )
 
+    /** 更新阅读进度并同步进度百分比（0.16.0） */
+    @Query(
+        "UPDATE bookshelf SET last_chapter_id = :chapterId, " +
+            "last_chapter_title = :chapterTitle, last_read_at = :ts, " +
+            "progress_percent = :progressPercent WHERE slug = :slug",
+    )
+    suspend fun updateProgressWithPercent(
+        slug: String,
+        chapterId: String,
+        chapterTitle: String?,
+        progressPercent: Int,
+        ts: Long,
+    )
+
+    /** 设置阅读状态；finished 时进度置 100，其余状态保留已有进度（0.16.0） */
+    @Query(
+        "UPDATE bookshelf SET status = :status, " +
+            "progress_percent = :progressPercent WHERE slug = :slug",
+    )
+    suspend fun updateStatus(
+        slug: String,
+        status: String,
+        progressPercent: Int,
+    )
+
     @Query("DELETE FROM bookshelf WHERE slug = :slug")
     suspend fun deleteBySlug(slug: String)
 }

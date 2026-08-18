@@ -285,12 +285,29 @@ interface BackendApi {
     suspend fun reportAttribution(@Body body: AttributionBody): OkAck
 
     // ── P4 书友圈（社区）──
-    /** 动态流：广场 / 关注（page 分页）。匿名可浏览广场 */
+    /** 动态流：广场 / 关注 / 关键词搜索 / 话题筛选（page 分页）。匿名可浏览广场 */
     @GET("api/community/posts")
     suspend fun getPosts(
         @Query("feed") feed: String = "square",
         @Query("page") page: Int = 1,
+        @Query("topic") topic: String? = null,
+        @Query("keyword") keyword: String? = null,
     ): PostListResponse
+
+    /** 话题标签列表（书友圈话题筛选用） */
+    @GET("api/community/topics")
+    suspend fun getTopics(): TopicListResponse
+
+    /** 作者编辑自己的动态（content / imageUrls / topicId）。管理员亦可。 */
+    @PATCH("api/community/posts/{id}")
+    suspend fun updatePost(
+        @Path("id") id: String,
+        @Body body: PostUpdateBody,
+    ): OkAck
+
+    /** 作者删除自己的动态（软删）。管理员亦可。 */
+    @DELETE("api/community/posts/{id}")
+    suspend fun deleteOwnPost(@Path("id") id: String): OkAck
 
     /** 发帖（需登录；content 必填，imageUrls 仅存 http(s) URL，最多 9 张） */
     @POST("api/community/posts")
@@ -357,6 +374,25 @@ interface BackendApi {
 
     @POST("api/booklists/{id}/collect")
     suspend fun collectBooklist(@Path("id") id: String): CollectResponse
+
+    /** 编辑书单（标题/简介/封面）。仅 owner/admin。 */
+    @PUT("api/booklists/{id}")
+    suspend fun updateBooklist(
+        @Path("id") id: String,
+        @Body body: BooklistUpdateBody,
+    ): OkAck
+
+    /** 删除书单（软删 status=hidden）。仅 owner/admin。 */
+    @DELETE("api/booklists/{id}")
+    suspend fun deleteBooklist(@Path("id") id: String): OkAck
+
+    /** 更新书单项（编辑推荐语 / 调整排序）。仅 owner/admin。 */
+    @PATCH("api/booklists/{id}/items/{itemId}")
+    suspend fun updateBooklistItem(
+        @Path("id") id: String,
+        @Path("itemId") itemId: String,
+        @Body body: BooklistItemUpdateBody,
+    ): OkAck
 
     // ── 0.7.5 用户主页 & 互动 ──
     @GET("api/users/{id}")
@@ -1114,6 +1150,16 @@ data class PostCommentBody(
 )
 
 @Serializable
+data class TopicListResponse(val topics: List<PostTopic> = emptyList())
+
+@Serializable
+data class PostUpdateBody(
+    val content: String? = null,
+    val imageUrls: List<String>? = null,
+    val topicId: String? = null, // null 表示清除话题
+)
+
+@Serializable
 data class LikeResponse(
     val ok: Boolean = true,
     val liked: Boolean = false,
@@ -1205,6 +1251,19 @@ data class CollectResponse(
     val ok: Boolean = true,
     val collected: Boolean = false,
     val collectCount: Int = 0,
+)
+
+@Serializable
+data class BooklistUpdateBody(
+    val title: String? = null,
+    val description: String? = null,
+    val coverUrl: String? = null,
+)
+
+@Serializable
+data class BooklistItemUpdateBody(
+    val note: String? = null,
+    val position: Int? = null,
 )
 
 @Serializable

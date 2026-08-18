@@ -17,6 +17,7 @@ data class BooklistsUiState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val error: String? = null,
+    val accountId: String? = null,
 )
 
 class BooklistsViewModel : ViewModel() {
@@ -65,6 +66,35 @@ class BooklistsViewModel : ViewModel() {
                 onResult(Result.success(id))
                 load(refresh = true)
             }.onFailure { e -> onResult(Result.failure(e)) }
+        }
+    }
+
+    fun setAccountId(id: String?) {
+        if (_uiState.value.accountId == id) return
+        _uiState.value = _uiState.value.copy(accountId = id)
+    }
+
+    /** 编辑书单（标题/简介/封面）。owner/admin。 */
+    fun editBooklist(
+        id: String,
+        title: String,
+        description: String?,
+        coverUrl: String?,
+        onResult: (Result<Boolean>) -> Unit,
+    ) {
+        viewModelScope.launch {
+            BooklistRepository.editBooklist(id, title, description, coverUrl)
+                .onSuccess { ok -> onResult(Result.success(ok)); load(refresh = true) }
+                .onFailure { e -> onResult(Result.failure(e)) }
+        }
+    }
+
+    /** 删除书单（软删）。owner/admin。 */
+    fun deleteBooklist(id: String, onResult: (Result<Boolean>) -> Unit) {
+        viewModelScope.launch {
+            BooklistRepository.deleteBooklist(id)
+                .onSuccess { ok -> onResult(Result.success(ok)); load(refresh = true) }
+                .onFailure { e -> onResult(Result.failure(e)) }
         }
     }
 }

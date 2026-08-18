@@ -9,6 +9,8 @@ import com.xiaoswz.reader.data.api.PostCreateBody
 import com.xiaoswz.reader.data.api.PostCreateResponse
 import com.xiaoswz.reader.data.api.PostDetail
 import com.xiaoswz.reader.data.api.PostListResponse
+import com.xiaoswz.reader.data.api.PostUpdateBody
+import com.xiaoswz.reader.data.api.TopicListResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -39,9 +41,14 @@ object CommunityRepository {
         }
     }
 
-    /** 动态流（square / following） */
-    suspend fun getPosts(feed: String, page: Int): Result<PostListResponse> =
-        runCommunity { BackendClient.api.getPosts(feed, page) }
+    /** 动态流（square / following / 话题筛选 / 关键词搜索） */
+    suspend fun getPosts(
+        feed: String,
+        page: Int,
+        topicId: String? = null,
+        keyword: String? = null,
+    ): Result<PostListResponse> =
+        runCommunity { BackendClient.api.getPosts(feed, page, topicId, keyword) }
 
     /** 发帖 */
     suspend fun createPost(
@@ -86,6 +93,24 @@ object CommunityRepository {
     /** 管理台：删除动态评论（硬删，级联楼中楼；重算帖子评论数）。仅 admin 账号可调。 */
     suspend fun deletePostComment(postId: String, commentId: String): Result<OkAck> =
         runCommunity { BackendClient.api.adminDeletePostComment(postId, commentId) }
+
+    /** 话题标签列表（话题筛选用） */
+    suspend fun getTopics(): Result<TopicListResponse> =
+        runCommunity { BackendClient.api.getTopics() }
+
+    /** 作者编辑自己的动态（自改闭环）。管理员亦可。 */
+    suspend fun editPost(
+        id: String,
+        content: String? = null,
+        imageUrls: List<String>? = null,
+        topicId: String? = null,
+    ): Result<OkAck> = runCommunity {
+        BackendClient.api.updatePost(id, PostUpdateBody(content = content, imageUrls = imageUrls, topicId = topicId))
+    }
+
+    /** 作者删除自己的动态（自删闭环）。管理员亦可。 */
+    suspend fun deleteOwnPost(id: String): Result<OkAck> =
+        runCommunity { BackendClient.api.deleteOwnPost(id) }
 
     private fun mapCommunityError(e: HttpException): Exception {
         val errCode = try {

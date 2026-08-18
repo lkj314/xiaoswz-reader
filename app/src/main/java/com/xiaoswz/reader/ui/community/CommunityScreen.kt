@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +36,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -102,12 +105,15 @@ fun CommunityScreen(
     val scope = rememberCoroutineScope()
     val settingsRepo = remember { AppSettingsRepository(context.applicationContext) }
     val accountRole by settingsRepo.accountRoleFlow.collectAsState(initial = "guest")
+    val accountId by settingsRepo.accountIdFlow.collectAsState(initial = null)
     val isLoggedIn = accountRole != "guest"
     val isAdmin = accountRole == "admin"
+    LaunchedEffect(accountId) { viewModel.setAccountId(accountId) }
 
     val listState = rememberLazyListState()
     var showPublish by remember { mutableStateOf(false) }
     var detailPostId by remember { mutableStateOf<String?>(null) }
+    var editPostId by remember { mutableStateOf<String?>(null) }
 
     // 滚动接近底部自动加载更多
     val shouldLoadMore by remember {
@@ -176,6 +182,57 @@ fun CommunityScreen(
                 )
             }
 
+            // 话题筛选（0.16.0）：横向滚动 chips
+            if (state.topics.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = state.selectedTopicId == null,
+                        onClick = { viewModel.selectTopic(null) },
+                        label = { Text("全部话题") },
+                    )
+                    state.topics.forEach { t ->
+                        FilterChip(
+                            selected = state.selectedTopicId == t.id,
+                            onClick = { viewModel.selectTopic(t.id) },
+                            label = { Text("#${t.name}") },
+                        )
+                    }
+                }
+            }
+
+            // 关键词搜索（0.16.0）
+            var keyword by remember { mutableStateOf(state.keyword ?: "") }
+            OutlinedTextField(
+                value = keyword,
+                onValueChange = { keyword = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                placeholder = { Text("搜索动态正文…", color = GlassTokens.SecondaryLabel) },
+                singleLine = true,
+                trailingIcon = {
+                    IconButton(onClick = { viewModel.setKeyword(keyword) }) {
+                        Icon(Icons.Default.Send, contentDescription = "搜索", tint = GlassTokens.Label)
+                    }
+                },
+                shape = RoundedCornerShape(GlassTokens.RadiusPill),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = GlassTokens.GlassFill,
+                    unfocusedContainerColor = GlassTokens.GlassFill,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = GlassTokens.SystemBlue,
+                    focusedTextColor = GlassTokens.Label,
+                    unfocusedTextColor = GlassTokens.Label,
+                ),
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -212,9 +269,11 @@ fun CommunityScreen(
                                 }
                             }
                             items(state.posts, key = { it.id }) { post ->
+                                val isOwner = post.author.id == accountId
                                 PostCard(
                                     post = post,
                                     isAdmin = isAdmin,
+                                    isOwner = isOwner,
                                     onClick = { detailPostId = post.id },
                                     onUserClick = onUserClick,
                                     onBooklistClick = onBooklistClick,
@@ -230,17 +289,22 @@ fun CommunityScreen(
                                             viewModel.toggleLike(post.id)
                                         }
                                     },
+                                    onEditPost = { editPostId = post.id },
                                     onDeletePost = { pid ->
                                         scope.launch {
-                                            CommunityRepository.deletePost(pid)
-                                                .onSuccess {
-                                                    viewModel.removePost(pid)
-                                                    android.widget.Toast.makeText(
-                                                        context,
-                                                        "已删除动态",
-                                                        android.widget.Toast.LENGTH_SHORT,
-                                                    ).show()
-                                                }
+                                            val result = if (isOwner) {
+                                                CommunityRepository.deleteOwnPost(pid)
+                                            } else {
+                                                CommunityRepository.deletePost(pid)
+                                            }
+                                            result.onSuccess {
+                                                viewModel.removePost(pid)
+                                                android.widget.Toast.makeText(
+                                                    context,
+                                                    "已删除动态",
+                                                    android.widget.Toast.LENGTH_SHORT,
+                                                ).show()
+                                            }
                                                 .onFailure {
                                                     android.widget.Toast.makeText(
                                                         context,
@@ -296,31 +360,30 @@ fun CommunityScreen(
         PostDetailSheet(
             postId = id,
             isAdmin = isAdmin,
+            accountId = accountId,
             viewModel = viewModel,
             onDismiss = { detailPostId = null },
-            onDeletePost = {
-                scope.launch {
-                    CommunityRepository.deletePost(id)
-                        .onSuccess {
-                            viewModel.removePost(id)
-                            detailPostId = null
-                            android.widget.Toast.makeText(
-                                context,
-                                "已删除动态",
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
-                        }
-                        .onFailure {
-                            android.widget.Toast.makeText(
-                                context,
-                                it.message ?: "删除失败",
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
-                        }
-                }
+            onEditPost = { editPostId = id },
+            onDeleted = {
+                viewModel.removePost(id)
+                detailPostId = null
+                android.widget.Toast.makeText(context, "已删除动态", android.widget.Toast.LENGTH_SHORT).show()
             },
             onUserClick = onUserClick,
             onBooklistClick = onBooklistClick,
+        )
+    }
+
+    // 编辑动态底部弹层
+    editPostId?.let { id ->
+        EditPostSheet(
+            postId = id,
+            onDismiss = { editPostId = null },
+            onSaved = {
+                editPostId = null
+                viewModel.refresh()
+                android.widget.Toast.makeText(context, "已保存", android.widget.Toast.LENGTH_SHORT).show()
+            },
         )
     }
 }
@@ -332,10 +395,12 @@ fun CommunityScreen(
 private fun PostCard(
     post: PostItem,
     isAdmin: Boolean,
+    isOwner: Boolean = false,
     onClick: () -> Unit,
     onUserClick: (String) -> Unit,
     onBooklistClick: (String) -> Unit,
     onLike: () -> Unit,
+    onEditPost: (String) -> Unit = {},
     onDeletePost: (String) -> Unit,
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -443,7 +508,29 @@ private fun PostCard(
                     color = GlassTokens.SecondaryLabel,
                 )
             }
-            if (isAdmin) {
+            if (isOwner) {
+                Spacer(Modifier.width(16.dp))
+                Row(
+                    modifier = Modifier
+                        .clickable { onEditPost(post.id) }
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "编辑动态",
+                        tint = GlassTokens.Label,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "编辑",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GlassTokens.Label,
+                    )
+                }
+            }
+            if (isAdmin || isOwner) {
                 Spacer(Modifier.width(16.dp))
                 Row(
                     modifier = Modifier
@@ -699,6 +786,141 @@ private fun PublishSheet(
 }
 
 // ════════════════════════════════════════════════════════════════
+//  编辑动态底部弹层（0.16.0 作者自改闭环）
+// ════════════════════════════════════════════════════════════════
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditPostSheet(
+    postId: String,
+    onDismiss: () -> Unit,
+    onSaved: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var content by remember { mutableStateOf("") }
+    var imageText by remember { mutableStateOf("") }
+    var saving by remember { mutableStateOf(false) }
+    var loaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(postId) {
+        CommunityRepository.getPostDetail(postId)
+            .onSuccess { d ->
+                content = d.content
+                imageText = d.imageUrls.joinToString("\n")
+                loaded = true
+            }
+            .onFailure {
+                android.widget.Toast.makeText(context, "加载失败", android.widget.Toast.LENGTH_SHORT).show()
+                onDismiss()
+            }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(bottom = 24.dp)
+                .imePadding(),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "编辑动态",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = GlassTokens.Label,
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "关闭", tint = GlassTokens.Label)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            if (!loaded) {
+                Box(Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = WhaleColors.WhaleBlue)
+                }
+            } else {
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { if (it.length <= 2000) content = it },
+                    modifier = Modifier.fillMaxWidth().height(140.dp),
+                    placeholder = { Text("分享你的读书心得…", color = GlassTokens.SecondaryLabel) },
+                    label = { Text("正文") },
+                    singleLine = false,
+                    shape = RoundedCornerShape(GlassTokens.RadiusMD),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = GlassTokens.GlassFill,
+                        unfocusedContainerColor = GlassTokens.GlassFill,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = GlassTokens.SystemBlue,
+                        focusedTextColor = GlassTokens.Label,
+                        unfocusedTextColor = GlassTokens.Label,
+                    ),
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = imageText,
+                    onValueChange = { imageText = it },
+                    modifier = Modifier.fillMaxWidth().height(90.dp),
+                    placeholder = { Text("可选，每行一个图片链接(http/https)", color = GlassTokens.SecondaryLabel) },
+                    label = { Text("配图链接") },
+                    singleLine = false,
+                    shape = RoundedCornerShape(GlassTokens.RadiusMD),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = GlassTokens.GlassFill,
+                        unfocusedContainerColor = GlassTokens.GlassFill,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = GlassTokens.SystemBlue,
+                        focusedTextColor = GlassTokens.Label,
+                        unfocusedTextColor = GlassTokens.Label,
+                    ),
+                )
+                Spacer(Modifier.height(14.dp))
+                val saveEnabled = content.isBlank().not() && !saving
+                val saveBrush: Brush = if (saveEnabled) GlassTokens.GradientButton else SolidColor(GlassTokens.TertiaryLabel)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(GlassTokens.RadiusPill))
+                        .background(saveBrush)
+                        .clickable(enabled = saveEnabled) {
+                            val urls = imageText.split("\n").map { it.trim() }
+                                .filter { it.startsWith("http", ignoreCase = true) }.take(9)
+                            saving = true
+                            scope.launch {
+                                CommunityRepository.editPost(postId, content.trim(), urls)
+                                    .onSuccess { onSaved() }
+                                    .onFailure {
+                                        saving = false
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            it.message ?: "保存失败",
+                                            android.widget.Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                            }
+                        }
+                        .padding(vertical = 13.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (saving) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Text("保存", color = Color.White, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
 //  详情 / 评论底部弹层
 // ════════════════════════════════════════════════════════════════
 @OptIn(ExperimentalMaterial3Api::class)
@@ -706,9 +928,11 @@ private fun PublishSheet(
 private fun PostDetailSheet(
     postId: String,
     isAdmin: Boolean = false,
+    accountId: String? = null,
     viewModel: CommunityViewModel,
     onDismiss: () -> Unit,
-    onDeletePost: () -> Unit = {},
+    onEditPost: () -> Unit = {},
+    onDeleted: () -> Unit = {},
     onUserClick: (String) -> Unit = {},
     onBooklistClick: (String) -> Unit = {},
 ) {
@@ -751,9 +975,33 @@ private fun PostDetailSheet(
                     color = GlassTokens.Label,
                 )
                 Spacer(Modifier.weight(1f))
-                if (isAdmin) {
-                    IconButton(onClick = { onDeletePost() }) {
-                        Icon(Icons.Default.Delete, contentDescription = "删除动态", tint = GlassTokens.Rose)
+                detail?.let { d ->
+                    val isOwner = d.author.id == accountId
+                    if (isOwner) {
+                        IconButton(onClick = onEditPost) {
+                            Icon(Icons.Default.Edit, contentDescription = "编辑动态", tint = GlassTokens.Label)
+                        }
+                    }
+                    if (isOwner || isAdmin) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                val result = if (isOwner) {
+                                    CommunityRepository.deleteOwnPost(d.id)
+                                } else {
+                                    CommunityRepository.deletePost(d.id)
+                                }
+                                result.onSuccess { onDeleted() }
+                                    .onFailure {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            it.message ?: "删除失败",
+                                            android.widget.Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                            }
+                        }) {
+                            Icon(Icons.Default.Delete, contentDescription = "删除动态", tint = GlassTokens.Rose)
+                        }
                     }
                 }
                 IconButton(onClick = { showReport = true }) {

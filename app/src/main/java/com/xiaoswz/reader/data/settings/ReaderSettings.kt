@@ -41,6 +41,8 @@ data class ReaderSettings(
     val prefetchPrev: Int = 1,
     /** 滚动模式触底自动续读下一章（下一章已预读，切换无感） */
     val continuousScroll: Boolean = true,
+    /** 仅 WiFi 下预读：开启后移动网络不再预取章节，避免消耗流量（0.16.0） */
+    val prefetchWifiOnly: Boolean = false,
     /** 听书语音语速 0.5~2.0，默认 1.0 */
     val ttsRate: Float = 1.0f,
     /** 护眼蓝光过滤：叠加暖色滤镜降低蓝光 */
@@ -87,6 +89,7 @@ class ReaderSettingsRepository(private val context: Context) {
         val UPDATE_SERVER = stringPreferencesKey("update_server_url")
         val PREFETCH_NEXT = intPreferencesKey("prefetch_next")
         val PREFETCH_PREV = intPreferencesKey("prefetch_prev")
+        val PREFETCH_WIFI_ONLY = booleanPreferencesKey("prefetch_wifi_only")
         val CONTINUOUS = booleanPreferencesKey("continuous_scroll")
         val TTS_RATE = floatPreferencesKey("tts_rate")
         val BLUE_LIGHT = booleanPreferencesKey("blue_light_filter")
@@ -112,6 +115,7 @@ class ReaderSettingsRepository(private val context: Context) {
                 prefetchNext = prefs[Keys.PREFETCH_NEXT] ?: defaults.prefetchNext,
                 prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: defaults.prefetchPrev,
                 continuousScroll = prefs[Keys.CONTINUOUS] ?: defaults.continuousScroll,
+                prefetchWifiOnly = prefs[Keys.PREFETCH_WIFI_ONLY] ?: defaults.prefetchWifiOnly,
                 ttsRate = prefs[Keys.TTS_RATE] ?: defaults.ttsRate,
                 blueLightFilter = prefs[Keys.BLUE_LIGHT] ?: defaults.blueLightFilter,
                 restReminderEnabled = prefs[Keys.REST_REMINDER] ?: defaults.restReminderEnabled,
@@ -136,6 +140,7 @@ class ReaderSettingsRepository(private val context: Context) {
                 prefetchNext = prefs[Keys.PREFETCH_NEXT] ?: 3,
                 prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: 1,
                 continuousScroll = prefs[Keys.CONTINUOUS] ?: true,
+                prefetchWifiOnly = prefs[Keys.PREFETCH_WIFI_ONLY] ?: false,
                 ttsRate = prefs[Keys.TTS_RATE] ?: 1.0f,
                 blueLightFilter = prefs[Keys.BLUE_LIGHT] ?: false,
                 restReminderEnabled = prefs[Keys.REST_REMINDER] ?: false,
@@ -160,6 +165,7 @@ class ReaderSettingsRepository(private val context: Context) {
             prefs[Keys.PREFETCH_NEXT] = next.prefetchNext.coerceIn(0, 8)
             prefs[Keys.PREFETCH_PREV] = next.prefetchPrev.coerceIn(0, 4)
             prefs[Keys.CONTINUOUS] = next.continuousScroll
+            prefs[Keys.PREFETCH_WIFI_ONLY] = next.prefetchWifiOnly
             prefs[Keys.TTS_RATE] = next.ttsRate.coerceIn(
                 ReaderSettings.MIN_TTS_RATE, ReaderSettings.MAX_TTS_RATE,
             )

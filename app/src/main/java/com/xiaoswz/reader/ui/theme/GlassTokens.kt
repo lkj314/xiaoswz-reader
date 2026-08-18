@@ -20,6 +20,7 @@ object GlassTokens {
     // ── iOS 系统强调色 ──
     val SystemBlue = Color(0xFF007AFF)
     val SystemBlueDark = Color(0xFF0A5CCC)
+    val SystemRed = Color(0xFFFF3B30) // iOS 系统红，用于删除等危险操作
 
     // ── 文字层级（iOS label 体系）──
     val Label = Color(0xFF1C1C1E)        // 主文字

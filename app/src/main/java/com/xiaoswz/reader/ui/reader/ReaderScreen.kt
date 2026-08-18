@@ -208,7 +208,13 @@ fun ReaderScreen(
         val cid = state.currentChapterId
         if (!cid.isNullOrBlank()) {
             try {
-                bookshelfRepo.updateProgress(bookSlug, cid, state.chapterTitle)
+                bookshelfRepo.updateReadingProgress(
+                    bookSlug,
+                    cid,
+                    state.chapterTitle,
+                    state.currentIndex,
+                    state.totalChapters,
+                )
             } catch (e: Exception) {
                 CrashLogger.report(context, e)
             }

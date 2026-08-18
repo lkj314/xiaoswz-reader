@@ -183,4 +183,9 @@ class AppSettingsRepository(private val context: Context) {
     val accountEmailFlow: Flow<String?> = context.appSettingsStore.data.map {
         it[Keys.ACCOUNT_EMAIL]
     }
+
+    /** 当前登录账号 id（owner 判别用：作者本人可自改/自删动态与书单） */
+    val accountIdFlow: Flow<String?> = context.appSettingsStore.data.map {
+        it[Keys.ACCOUNT_ID]
+    }
 }

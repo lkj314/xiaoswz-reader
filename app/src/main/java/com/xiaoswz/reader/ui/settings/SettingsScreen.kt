@@ -81,6 +81,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.CrashLogger
 import com.xiaoswz.reader.data.cache.ChapterCacheManager
+import com.xiaoswz.reader.data.cache.BookMetaCache
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.data.settings.AppThemeMode
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
@@ -118,6 +119,9 @@ fun SettingsScreen(
     var updateAutoCheck by remember { mutableStateOf(false) }
 
     var cacheSizeText by remember { mutableStateOf(formatCacheSize(ChapterCacheManager.sizeBytes())) }
+    var chapterCount by remember { mutableStateOf(ChapterCacheManager.entryCount()) }
+    var metaCacheSizeText by remember { mutableStateOf(formatCacheSize(BookMetaCache.sizeBytes())) }
+    var prefetchWifiOnly by remember { mutableStateOf(false) }
     var themeIndex by remember { mutableStateOf(ReaderSettings.THEME_DAY) }
     val themeNames = listOf("米纸日间", "护眼绿", "夜间模式", "纯黑 OLED")
     // 预读 / 连续阅读开关（0.9.2 / 0.9.3）
@@ -142,6 +146,7 @@ fun SettingsScreen(
         prefetchNext = s.prefetchNext
         prefetchPrev = s.prefetchPrev
         continuousScroll = s.continuousScroll
+        prefetchWifiOnly = s.prefetchWifiOnly
         crashLog = CrashLogger.getLog(context)
     }
 
@@ -404,18 +409,60 @@ fun SettingsScreen(
             SettingsCard(
                 icon = Icons.Default.Storage,
                 title = "离线缓存",
-                subtitle = "已缓存章节正文：$cacheSizeText（断网可读，随卸载清除）",
+                subtitle = "章节正文：$cacheSizeText（$chapterCount 章）· 书籍元数据：$metaCacheSizeText（断网可读，随卸载清除）",
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                ChapterCacheManager.clear()
+                                cacheSizeText = formatCacheSize(ChapterCacheManager.sizeBytes())
+                                chapterCount = ChapterCacheManager.entryCount()
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("清空章节缓存") }
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                BookMetaCache.clear()
+                                metaCacheSizeText = formatCacheSize(BookMetaCache.sizeBytes())
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("清空书籍元数据") }
+                }
+                Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = {
                         scope.launch {
                             ChapterCacheManager.clear()
+                            BookMetaCache.clear()
                             cacheSizeText = formatCacheSize(ChapterCacheManager.sizeBytes())
+                            chapterCount = ChapterCacheManager.entryCount()
+                            metaCacheSizeText = formatCacheSize(BookMetaCache.sizeBytes())
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
+                ) { Text("清空全部离线缓存") }
+                Spacer(Modifier.height(12.dp))
+                // 仅 WiFi 预加载（流量敏感）
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("清空离线缓存")
+                    Text("仅 WiFi 预加载", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = prefetchWifiOnly,
+                        onCheckedChange = {
+                            prefetchWifiOnly = it
+                            scope.launch { repo.update { s -> s.copy(prefetchWifiOnly = it) } }
+                        },
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
                 // 向后预读深度（0=关闭）

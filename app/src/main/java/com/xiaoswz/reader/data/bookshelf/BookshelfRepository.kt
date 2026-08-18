@@ -40,6 +40,33 @@ class BookshelfRepository(context: Context) {
     ) = dao.updateProgress(slug, chapterId, chapterTitle, ts)
 
     /**
+     * 阅读器记录进度时一并写入进度百分比（0.16.0）。
+     * 百分比由 currentIndex/totalChapters 推算；totalChapters<=0（未知）时记为 0。
+     */
+    suspend fun updateReadingProgress(
+        slug: String,
+        chapterId: String,
+        chapterTitle: String? = null,
+        currentIndex: Int = 0,
+        totalChapters: Int = 0,
+        ts: Long = System.currentTimeMillis(),
+    ) {
+        val pct = if (totalChapters > 0) {
+            ((currentIndex + 1) * 100 / totalChapters).coerceIn(0, 100)
+        } else 0
+        dao.updateProgressWithPercent(slug, chapterId, chapterTitle, pct, ts)
+    }
+
+    /**
+     * 设置阅读状态（0.16.0）。finished 时进度置 100；切换回在读/想读时保留已有进度百分比。
+     */
+    suspend fun setStatus(slug: String, status: String) {
+        val cur = dao.getBySlug(slug)
+        val pct = if (status == "finished") 100 else (cur?.progressPercent ?: 0)
+        dao.updateStatus(slug, status, pct)
+    }
+
+    /**
      * 一次性恢复：把过大的 data: 封面清空，避免 CursorWindow 溢出导致书架整体崩溃。
      * 仅清空封面列，书籍元信息（slug/标题/进度）全部保留 —— 不丢书。
      * UPDATE 语句不返回游标窗口，故即使某行巨大也不会触发 SQLiteBlobTooBigException。

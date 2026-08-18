@@ -34,6 +34,14 @@ data class BookEntity(
     @ColumnInfo(name = "last_chapter_title")
     val lastChapterTitle: String?,
 
+    /** 阅读状态：reading=在读 / finished=读完 / plan=想读。默认在读（0.16.0 新增） */
+    @ColumnInfo(name = "status", defaultValue = "reading")
+    val status: String = "reading",
+
+    /** 阅读进度百分比 0..100（阅读器按 currentIndex/totalChapters 推算；未知则为 0）（0.16.0 新增） */
+    @ColumnInfo(name = "progress_percent", defaultValue = "0")
+    val progressPercent: Int = 0,
+
     @ColumnInfo(name = "added_at")
     val addedAt: Long,
 

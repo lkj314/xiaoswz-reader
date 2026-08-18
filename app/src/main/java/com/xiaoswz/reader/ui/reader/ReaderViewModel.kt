@@ -390,6 +390,11 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     /** 读章后后台预取周围的章节（下 N + 上 1），命中文件缓存则跳过 */
     private fun prefetchAround(currentChapterId: String) {
         val state = _uiState.value
+        // 仅 WiFi 预读取：`prefetchWifiOnly` 开启且当前非 WiFi 时跳过，避免消耗移动流量
+        if (state.settings.prefetchWifiOnly && !com.xiaoswz.reader.util.NetworkUtils.isWifi(
+                getApplication<android.app.Application>().applicationContext,
+            )
+        ) return
         val toc = state.toc
         if (toc.isEmpty()) return
         val idx = toc.indexOfFirst { it.id == currentChapterId }.takeIf { it >= 0 } ?: return
