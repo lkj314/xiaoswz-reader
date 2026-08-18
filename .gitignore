@@ -43,5 +43,32 @@ lan-update/*.apk
 插件制作教程.md
 0.12.0创意工坊v1地基设计.md
 
+# 内部文档（严禁入库 · 用户铁律：绝不进公开仓，仅本地保留）
+# 英文规划/设计文档
+ANIBUZZ-FRAMEWORK-DESIGN.md
+BACKEND-PLAN.md
+DEVELOPMENT-LOG.md
+HEALTH-REPORT-*.html
+M2.5-PLAN.md
+PHASE1-OVERVIEW.md
+PHASE2-OVERVIEW.md
+PLAN-0.4.0.md
+PRODUCT-BLUEPRINT.md
+ROADMAP.md
+TOPBAR-POSTMORTEM.md
+VISUAL-SPEC-v2.0.md
+# 中文内部文档（含敏感运维信息·绝不外泄）
+冲浪阅读项目交接文档.txt
+冲浪阅读版本日志.md
+冲浪阅读阅读器功能蓝图.md
+冲浪阅读技术债清单.md
+冲浪阅读更新蓝图.md
+冲浪阅读产品定位与后端战略蓝图.md
+知识库-冲浪阅读项目.md
+知识库-冲浪阅读项目-v0.3.0.md
+阶段总结报告-v0.2.8.md
+阶段总结报告.txt
+项目交接文档.txt
+
 # 构建/诊断日志（不入库）
 build_log.txt
