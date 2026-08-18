@@ -120,12 +120,15 @@ class SyncRepository(context: Context) {
                     ),
                 )
             } else if (rb.updatedAt >= local.lastReadAt) {
-                // 云端较新：覆盖元数据；封面仅当云端为 http 时采用，否则保留本地
+                // 云端较新：覆盖元数据；封面策略（0.16.2 修正）：
+                // 云端为 null/blank 或 data: 时**保留本地封面**（保护本地缩略图缓存，
+                // 否则云端 null 会把本地已缓存的 data: 缩略图覆盖清空，导致每次启动重拉）；
+                // 云端为 http(s) 时采用（跨设备一致、Coil 可缓存）。
                 shelf.update(
                     local.copy(
                         title = rb.title,
                         author = rb.author,
-                        coverUrl = if (rb.coverUrl?.startsWith("data:") == true) local.coverUrl else rb.coverUrl,
+                        coverUrl = if (rb.coverUrl.isNullOrBlank() || rb.coverUrl.startsWith("data:", ignoreCase = true)) local.coverUrl else rb.coverUrl,
                         lastReadAt = rb.updatedAt,
                     ),
                 )

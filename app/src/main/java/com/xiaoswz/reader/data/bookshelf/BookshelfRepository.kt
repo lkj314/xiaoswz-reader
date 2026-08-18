@@ -2,8 +2,13 @@ package com.xiaoswz.reader.data.bookshelf
 
 import android.content.Context
 import com.xiaoswz.reader.data.model.shrinkCover
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 /**
  * 本地书架仓库：封装 Room，对外提供收藏与阅读进度的读写。
@@ -67,14 +72,20 @@ class BookshelfRepository(context: Context) {
     }
 
     /**
-     * 一次性恢复：把过大的 data: 封面清空，避免 CursorWindow 溢出导致书架整体崩溃。
+     * 一次性恢复：只把**过大**的 data: 封面清空，避免 CursorWindow 溢出导致书架整体崩溃。
      * 仅清空封面列，书籍元信息（slug/标题/进度）全部保留 —— 不丢书。
+     *
+     * ⚠️ 历史坑（0.16.2 修正）：旧逻辑是 `WHERE cover_url LIKE 'data:%'`（清空*所有* data 封面），
+     * 但 repairCovers 写回的缩略图本身也是 `data:image/jpeg;base64,...`，于是每次启动/打开书架
+     * 都被这里清空、又被 repairCovers 重新联网拉取，缓存永远失效 —— 这就是「每次登录封面加载
+     * 十几秒」的根因。现改为只清空超过 256KB 的 data 封面（原始未压缩的几 MB 大图才会超限），
+     * 已压缩的缩略图（通常 < 56KB）永久保留，缓存命中、本地秒开。
      * UPDATE 语句不返回游标窗口，故即使某行巨大也不会触发 SQLiteBlobTooBigException。
      */
     fun blankOversizedCovers() {
         try {
             db.openHelper.writableDatabase
-                .execSQL("UPDATE bookshelf SET cover_url = '' WHERE cover_url LIKE 'data:%'")
+                .execSQL("UPDATE bookshelf SET cover_url = '' WHERE cover_url LIKE 'data:%' AND LENGTH(cover_url) > 262144")
         } catch (_: Throwable) {
             // 表不存在等极端情况忽略
         }
@@ -82,21 +93,30 @@ class BookshelfRepository(context: Context) {
 
     /**
      * 重新拉取封面（按 slug）并压缩成缩略图写回，恢复书架封面显示。
-     * 先 blank 一遍确保大封面已清空，使下方 observeAll() 不会崩溃；
+     * 先 blank 一遍确保过大的 data 封面已清空，使下方 observeAll() 不会崩溃；
      * 之后只对封面为空的书籍生效（已正常的不会重复拉取）。需联网；离线时跳过，下次再试。
+     *
+     * 改进（0.16.2）：并发限制为 4，避免一次性对几十本书各发 getBookDetail
+     * （每本响应含几 MB 的 data URI 封面）打爆书源 API、造成首页卡死；
+     * 且只在确实有缺失封面时动手，缓存命中时（绝大多数情况）几乎零开销。
      */
     suspend fun repairCovers(fetchCover: suspend (slug: String) -> String?) {
         blankOversizedCovers()
         try {
             val books = dao.observeAll().first()
-            for (b in books) {
-                if (b.coverUrl.isNullOrBlank()) {
-                    val remote = try { fetchCover(b.slug) } catch (_: Throwable) { null }
-                    val small = shrinkCover(remote)
-                    if (!small.isNullOrBlank()) {
-                        dao.update(b.copy(coverUrl = small))
+            val missing = books.filter { it.coverUrl.isNullOrBlank() }
+            if (missing.isEmpty()) return
+            val sem = Semaphore(4)
+            coroutineScope {
+                missing.map { b ->
+                    async {
+                        sem.withPermit {
+                            val remote = try { fetchCover(b.slug) } catch (_: Throwable) { null }
+                            val small = shrinkCover(remote)
+                            if (!small.isNullOrBlank()) dao.update(b.copy(coverUrl = small))
+                        }
                     }
-                }
+                }.awaitAll()
             }
         } catch (_: Throwable) {
             // 忽略单次修复失败
