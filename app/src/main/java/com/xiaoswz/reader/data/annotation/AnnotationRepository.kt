@@ -130,4 +130,18 @@ object AnnotationRepository {
             persist(ctx, bookId, list)
         }
     }
+
+    /**
+     * 更新单条标注的备注（书签插件 withNote 能力）：本地重写 + 返回更新后的实体，
+     * 便于调用方同步内存列表并推云端。找不到则返回 null。
+     */
+    fun setNote(ctx: Context, bookId: String, clientId: String, note: String?): AnnotationEntity? {
+        val list = loadLocal(ctx, bookId).toMutableList()
+        val idx = list.indexOfFirst { it.clientId == clientId }
+        if (idx < 0) return null
+        val updated = list[idx].copy(note = note, updatedAt = System.currentTimeMillis())
+        list[idx] = updated
+        persist(ctx, bookId, list)
+        return updated
+    }
 }

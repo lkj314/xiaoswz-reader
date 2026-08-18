@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.ui.theme.ReaderBodyFont
+import com.xiaoswz.reader.ui.theme.ReaderTheme
 import com.xiaoswz.reader.ui.theme.ReaderThemes
 
 /**
@@ -59,8 +60,11 @@ import com.xiaoswz.reader.ui.theme.ReaderThemes
 fun ReaderSettingsSheet(
     settings: ReaderSettings,
     onChange: ((ReaderSettings) -> ReaderSettings) -> Unit,
+    // 创意工坊主题槽（3.3）：插件贡献的阅读主题，追加到内置主题之后。
+    pluginThemes: List<ReaderTheme> = emptyList(),
 ) {
-    val theme = ReaderThemes.getOrElse(settings.themeIndex) { ReaderThemes[0] }
+    val allThemes = ReaderThemes + pluginThemes
+    val theme = allThemes.getOrElse(settings.themeIndex) { ReaderThemes[0] }
 
     Column(
         modifier = Modifier
@@ -72,7 +76,7 @@ fun ReaderSettingsSheet(
         SectionTitle("阅读主题")
         Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            ReaderThemes.forEachIndexed { index, t ->
+            allThemes.forEachIndexed { index, t ->
                 val selected = settings.themeIndex == index
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(

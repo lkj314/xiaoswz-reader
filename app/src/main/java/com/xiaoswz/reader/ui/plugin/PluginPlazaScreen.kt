@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -236,11 +237,27 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit) {
                             PluginRepository.installFromNetwork(context, item.pluginId)
                                 .onSuccess {
                                     Toast.makeText(context, "已安装：${item.name}", Toast.LENGTH_SHORT).show()
+                                    // 安装计数（best-effort，失败不影响本地安装）
+                                    runCatching { BackendClient.api.installPlugin(item.pluginId) }
+                                        .onSuccess { ack ->
+                                            items = items.map { if (it.pluginId == item.pluginId) it.copy(installs = ack.installs) else it }
+                                        }
                                 }
                                 .onFailure { e ->
                                     Toast.makeText(context, "安装失败：${e.message ?: "网络错误"}", Toast.LENGTH_SHORT).show()
                                 }
                             installingId = null
+                        }
+                    },
+                    likeLabel = "赞 ${item.likes}",
+                    onLike = {
+                        // 点赞计数（best-effort + 乐观更新显示）
+                        items = items.map { if (it.pluginId == item.pluginId) it.copy(likes = it.likes + 1) else it }
+                        scope.launch {
+                            runCatching { BackendClient.api.likePlugin(item.pluginId) }
+                                .onSuccess { ack ->
+                                    items = items.map { if (it.pluginId == item.pluginId) it.copy(likes = ack.likes) else it }
+                                }
                         }
                     },
                     onClick = { onOpenPlugin(manifest) },
@@ -272,6 +289,8 @@ private fun PluginCard(
     enabled: Boolean = true,
     onAction: () -> Unit,
     onClick: () -> Unit = {},
+    likeLabel: String? = null,
+    onLike: (() -> Unit)? = null,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
@@ -304,6 +323,10 @@ private fun PluginCard(
             if (actionLabel != null) {
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = onAction, enabled = enabled) { Text(actionLabel) }
+            }
+            if (likeLabel != null && onLike != null) {
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = onLike) { Text(likeLabel) }
             }
         }
     }
@@ -501,6 +524,48 @@ private fun MakeTab(editing: PluginManifest?, onDone: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         ) { Text(if (saving) "保存中…" else if (editing != null) "更新本机插件" else "保存到本机") }
 
+        // 提交到广场（UGC 闭环）：登录用户提交后落 pending，admin 审核通过才公开上架。
+        Button(
+            onClick = {
+                if (name.isBlank() || label.isBlank()) {
+                    Toast.makeText(context, "名称和显示名不能为空", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+                scope.launch {
+                    val manifest = PluginManifest(
+                        id = editing?.id ?: slugOf(name),
+                        name = name.trim(),
+                        version = (editing?.version ?: 0) + 1,
+                        author = "本机用户",
+                        description = "本地 DIY 插件",
+                        icon = "🛠️",
+                        minAppVersion = 67,
+                        type = "annotation",
+                        capabilities = com.xiaoswz.reader.data.plugin.Capabilities(
+                            annotation = com.xiaoswz.reader.data.plugin.AnnotationCap(
+                                annotationType = effectiveType,
+                                label = label.trim(),
+                                defaultColor = color,
+                                withNote = note,
+                            ),
+                        ),
+                    )
+                    runCatching { BackendClient.api.submitPlugin(manifest) }
+                        .onSuccess { ack ->
+                            Toast.makeText(
+                                context,
+                                if (ack.status == "published") "已发布到广场" else "已提交，待审核",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                        .onFailure { e ->
+                            Toast.makeText(context, "提交失败：${e.message ?: "网络错误"}", Toast.LENGTH_SHORT).show()
+                        }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("提交到广场") }
+
         Spacer(Modifier.height(8.dp))
         Text("预览清单（JSON）", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         // 预览仅在输入变化时重算，绝不在组合期写 state（避免无限重组合 / 重测崩溃）。
@@ -584,7 +649,7 @@ private fun TutorialTab() {
         二、你能做什么插件
         · 选区动作（annotation）：选中一段文字后，在系统选区菜单里追加你的动作，
           比如「划线」「摘抄」「加书签」。点击即写入标注，登录后跨设备同步。
-        · 主题 / 工具栏 / 渲染等能力槽将在后续版本开放。
+        · 主题 / 工具栏 / 侧栏弹层等能力槽已开放（需安装对应类型插件才会生效）。
 
         三、最小可用清单
         {
@@ -610,8 +675,8 @@ private fun TutorialTab() {
         · annotation.withNote：是否允许顺手写备注。
 
         五、发布到广场
-        当前广场数据为示例；后端 Plugin 表就绪后，你将可以在 App 内提交插件，
-        经官方审核（pending → published）后上架，供所有读者安装。
+        现在即可在 App 内「制作」一个插件并提交到广场，经官方审核
+        （pending → published）后上架，供所有读者安装。
 
         六、隔离说明
         创意工坊只围绕 APP 自身资源（标注 / 主题 / 工具栏 / 选区）扩展，
@@ -802,7 +867,7 @@ private fun TutorialBody() {
         Text(
             "不用写代码，会改 JSON 就能做插件。\n\n" +
                 "· 选区动作（annotation）：选中文字后在选区条追加你的动作（划线 / 摘抄 / 加书签），点击即写入标注，登录后跨设备同步。\n" +
-                "· 主题 / 工具栏 / 渲染等能力槽将在后续版本开放。\n\n" +
+                "· 主题 / 工具栏 / 侧栏弹层等能力槽已开放（需安装对应类型插件才会生效）。\n\n" +
                 "最小清单：{ \"id\": \"local.myhl\", \"type\": \"annotation\", \"capabilities\": { \"annotation\": { \"annotationType\": \"highlight\", \"label\": \"划线\", \"defaultColor\": -14336, \"withNote\": false } } }\n\n" +
                 "隔离说明：创意工坊只围绕 APP 自身资源扩展，与站点主程序完全独立。",
             style = MaterialTheme.typography.bodyMedium,

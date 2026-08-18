@@ -2,6 +2,7 @@ package com.xiaoswz.reader.data.api
 
 import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.data.annotation.AnnotationListResponse
+import com.xiaoswz.reader.data.plugin.PluginManifest
 import com.xiaoswz.reader.data.annotation.AnnotationPushBody
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -493,6 +494,19 @@ interface BackendApi {
     /** 单插件完整清单：安装时拉取 */
     @GET("api/plugins/{pluginId}")
     suspend fun getPluginManifest(@Path("pluginId") pluginId: String): PluginManifestResponse
+
+    // ── 0.16.1 创意工坊 · UGC 闭环（提交 / 安装计数 / 点赞计数）──
+    /** 提交插件到广场：普通用户落 pending，admin 直发 published。请求体即完整清单。 */
+    @POST("api/plugins")
+    suspend fun submitPlugin(@Body manifest: PluginManifest): SubmitPluginAck
+
+    /** 安装计数 +1（仅 published 生效） */
+    @POST("api/plugins/{pluginId}/install")
+    suspend fun installPlugin(@Path("pluginId") pluginId: String): PluginCounterAck
+
+    /** 点赞计数 +1（仅 published 生效） */
+    @POST("api/plugins/{pluginId}/like")
+    suspend fun likePlugin(@Path("pluginId") pluginId: String): PluginCounterAck
 }
 
 // ── 请求体 ──
@@ -1485,4 +1499,18 @@ data class PluginDecoratorCapDto(
     val targetType: String,
     val style: String = "background",
     val color: Int? = null,
+)
+
+// ── 0.16.1 创意工坊 · UGC 闭环应答 ──
+@Serializable
+data class SubmitPluginAck(
+    val ok: Boolean = true,
+    val status: String = "",
+    val pluginId: String = "",
+)
+
+@Serializable
+data class PluginCounterAck(
+    val installs: Int = 0,
+    val likes: Int = 0,
 )

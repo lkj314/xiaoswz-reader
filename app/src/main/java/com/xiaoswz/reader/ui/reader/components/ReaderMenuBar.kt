@@ -1,11 +1,14 @@
 package com.xiaoswz.reader.ui.reader.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.xiaoswz.reader.data.plugin.PluginManifest
 
 // 菜单遮罩底色（所有阅读主题下都可读）
 private val OverlayBg = Color(0xCC14181D)
@@ -107,6 +112,9 @@ fun ReaderBottomBar(
     annoActive: Boolean = false,
     annoAvailable: Boolean = true,
     onAnnoToggle: () -> Unit = {},
+    // 创意工坊工具栏槽（3.4）：插件在顶/底栏注入的动作按钮（默认 bottom）。
+    toolbarPlugins: List<PluginManifest> = emptyList(),
+    onToolbarAction: (PluginManifest) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -162,6 +170,22 @@ fun ReaderBottomBar(
                     contentDescription = "划词标注",
                     tint = if (annoActive) MaterialTheme.colorScheme.primary else OverlayText,
                 )
+            }
+            // 工具栏槽（3.4）：position=bottom（默认）的插件动作按钮，emoji 图标 + 点击回调。
+            for (p in toolbarPlugins.filter { it.capabilities.toolbar?.position != "top" }) {
+                val label = p.capabilities.toolbar?.label ?: p.name
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clickable { onToolbarAction(p) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        p.icon.ifBlank { "🧩" },
+                        fontSize = 20.sp,
+                        color = OverlayText,
+                    )
+                }
             }
         }
     }

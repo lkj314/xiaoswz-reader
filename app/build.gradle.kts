@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 85
-        versionName = "0.16.0" // 0.16.0·基础增强：① 书友圈自删自改+关注流+话题筛选 ② 书架状态筛选(全部/在读/读完/想读)+阅读进度条 ③ 书单创建/编辑/收藏闭环(自改/自删/条目备注/排序) ④ 阅读缓存管理页(章节/元数据分项清空)+仅WiFi预加载；Room 书架表迁移 v1→v2(status/progress_percent 字段)。
+        versionCode = 86
+        versionName = "0.16.1" // 0.16.1·创意工坊「更新」：① 阅读器端到端打通划词标注(官方高亮/书签，书签蓝下划线区分+可写备注，跨设备同步) ② 插件广场 UGC 闭环(DIY 提交→admin 审核上架、安装/点赞计数) ③ 新增能力槽：主题槽(插件配色进主题选择器)、工具栏槽(底栏插件按钮)、侧栏弹层槽(open_sheet)。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

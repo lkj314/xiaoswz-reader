@@ -10,6 +10,7 @@ import android.view.KeyEvent
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
@@ -45,6 +46,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -101,6 +103,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
@@ -191,9 +194,20 @@ fun ReaderScreen(
     // 当前生效的「选区动作」类插件（官方高亮/书签 + 用户安装），驱动选区菜单动态追加项。
     val annoPlugins by PluginRepository.annotationPlugins(context)
         .collectAsState(initial = emptyList())
+    // 当前生效的「主题」类插件：注入阅读主题选择器（能力槽 3.3）。
+    val themePlugins by PluginRepository.themePlugins(context)
+        .collectAsState(initial = emptyList())
+    // 当前生效的「工具栏动作」类插件：注入顶/底栏按钮（能力槽 3.4）。
+    val toolbarPlugins by PluginRepository.toolbarPlugins(context)
+        .collectAsState(initial = emptyList())
     // 划词标注模式开关 + 只读文本字段（承载选区状态，offset 相对预处理正文）
     var annoActive by remember { mutableStateOf(false) }
     val annoTextField = remember { mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero)) }
+    // 书签类插件（withNote=true）标注后弹出备注输入框：entity 非空即展示弹窗
+    var noteDialogEntity by remember { mutableStateOf<AnnotationEntity?>(null) }
+    var noteDraft by remember { mutableStateOf("") }
+    // 工具栏槽「open_sheet」动作打开的插件侧栏弹层（能力槽 3.5）：非空即展示。
+    var sheetPlugin by remember { mutableStateOf<PluginManifest?>(null) }
 
     // ── 听书：选中文字起点（自定义选区菜单 + 公开 API 拿选中文字）──
     // 默认 SelectionContainer 的选区菜单只有「复制/全选」，没有「听书」入口；
@@ -277,7 +291,14 @@ fun ReaderScreen(
         }
     }
 
-    val theme = ReaderThemes.getOrElse(state.settings.themeIndex) { ReaderThemes[0] }
+    // 主题槽（3.3）：内置主题 + 插件主题合并，themeIndex 仍为合并后下标（插件卸载后越界自动回退内置）。
+    val pluginThemes = remember(themePlugins) {
+        themePlugins.mapNotNull { m ->
+            m.capabilities.theme?.let { c -> ReaderTheme(c.name, Color(c.background), Color(c.text)) }
+        }
+    }
+    val allThemes = remember(ReaderThemes, pluginThemes) { ReaderThemes + pluginThemes }
+    val theme = allThemes.getOrElse(state.settings.themeIndex) { ReaderThemes[0] }
     val hMarginDp = MarginDpOptions[state.settings.marginIndex.coerceIn(0, 2)]
 
     ModalNavigationDrawer(
@@ -364,6 +385,11 @@ fun ReaderScreen(
                 if (annotations.none { it.clientId == entity.clientId }) annotations.add(entity)
                 annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero)
                 android.widget.Toast.makeText(context, "已添加「${cap.label}」", android.widget.Toast.LENGTH_SHORT).show()
+                // 书签类（允许备注）：标注后顺手弹备注框，落盘 + 推云端
+                if (cap.withNote) {
+                    noteDraft = ""
+                    noteDialogEntity = entity
+                }
             }
 
             // 跳转到某章（搜索结果命中）
@@ -1109,6 +1135,20 @@ fun ReaderScreen(
                                 ).show()
                             }
                         },
+                        toolbarPlugins = toolbarPlugins,
+                        onToolbarAction = { plugin ->
+                            when (plugin.capabilities.toolbar?.action) {
+                                "share" -> showShare = true
+                                "copy_page" -> {
+                                    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                                        as android.content.ClipboardManager
+                                    cm.setPrimaryClip(android.content.ClipData.newPlainText("当前章", processed))
+                                    android.widget.Toast.makeText(context, "已复制本章正文", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                                "open_sheet" -> sheetPlugin = plugin
+                                else -> android.widget.Toast.makeText(context, plugin.name, android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
                     )
                 }
             }
@@ -1207,13 +1247,66 @@ fun ReaderScreen(
                 onClose = { annoTextField.value = annoTextField.value.copy(selection = TextRange.Zero) },
             )
 
+            // 书签备注弹窗：withNote 插件标注后顺手记录备注（本地落盘 + 推云端）
+            if (noteDialogEntity != null) {
+                val noteEntity = noteDialogEntity!!
+                AlertDialog(
+                    onDismissRequest = { noteDialogEntity = null },
+                    title = { Text("书签备注") },
+                    text = {
+                        OutlinedTextField(
+                            value = noteDraft,
+                            onValueChange = { noteDraft = it },
+                            label = { Text("给这段加个备注（可选）") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = false,
+                            maxLines = 4,
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val note = noteDraft.trim().ifBlank { null }
+                            val updated = AnnotationRepository.setNote(context, bookSlug, noteEntity.clientId, note)
+                            if (updated != null) {
+                                val i = annotations.indexOfFirst { it.clientId == noteEntity.clientId }
+                                if (i >= 0) annotations[i] = updated
+                                scope.launch { runCatching { AnnotationRepository.pushOne(context, updated) } }
+                            }
+                            noteDialogEntity = null
+                        }) { Text("保存") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { noteDialogEntity = null }) { Text("跳过") }
+                    },
+                )
+            }
+
             // 设置面板
             if (state.settingsVisible) {
                 ModalBottomSheet(onDismissRequest = viewModel::hideSettings) {
                     ReaderSettingsSheet(
                         settings = state.settings,
                         onChange = viewModel::updateSettings,
+                        pluginThemes = pluginThemes,
                     )
+                }
+            }
+
+            // 创意工坊侧栏弹层（能力槽 3.5）：工具栏插件「open_sheet」动作触发，展示插件说明。
+            if (sheetPlugin != null) {
+                val sp = sheetPlugin!!
+                ModalBottomSheet(onDismissRequest = { sheetPlugin = null }) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(sp.icon.ifBlank { "🧩" }, fontSize = 28.sp, modifier = Modifier.size(40.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(sp.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("by ${sp.author}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(sp.description.ifBlank { "（该插件未提供说明）" }, style = MaterialTheme.typography.bodyMedium, lineHeight = 22.sp)
+                    }
                 }
             }
 
@@ -1562,8 +1655,26 @@ private fun buildAnnotatedContent(
         val s = a.startOffset.coerceAtLeast(0)
         val e = a.endOffset.coerceAtMost(content.length)
         if (e > s) {
-            val c = a.color?.let { Color(it) } ?: Color(-14336)
-            addStyle(SpanStyle(background = c.copy(alpha = 0.22f)), s, e)
+            when (a.type) {
+                // 书签：冷色下划线 + 极淡底，与「高亮」（暖色块）明确区分，避免二者混淆
+                "bookmark" -> {
+                    val c = a.color?.let { Color(it) } ?: Color(0xFF3B82F6)
+                    addStyle(
+                        SpanStyle(
+                            textDecoration = TextDecoration.Underline,
+                            color = c,
+                            background = c.copy(alpha = 0.08f),
+                        ),
+                        s,
+                        e,
+                    )
+                }
+                // 高亮（及其余未知类型）：暖色块背景，沿用既有观感
+                else -> {
+                    val c = a.color?.let { Color(it) } ?: Color(-14336)
+                    addStyle(SpanStyle(background = c.copy(alpha = 0.22f)), s, e)
+                }
+            }
         }
     }
     if (readingRange != null) {
