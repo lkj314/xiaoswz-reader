@@ -1,6 +1,7 @@
 package com.xiaoswz.reader.data.plugin
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 /**
  * 创意工坊插件清单（v1 声明式，无动态代码）。
@@ -26,7 +27,15 @@ data class PluginManifest(
     /** 插件家族，决定主能力槽：annotation | theme | toolbar | decorator */
     val type: String,
     val capabilities: Capabilities = Capabilities(),
-)
+) {
+    companion object {
+        private val jsonParser = Json { ignoreUnknownKeys = true }
+
+        /** 从 manifest JSON 文本解析（容错：未知字段忽略）。返回 null 表示解析失败或字段缺失。用于「导入插件」。 */
+        fun fromJson(text: String): PluginManifest? =
+            runCatching { jsonParser.decodeFromString<PluginManifest>(text) }.getOrNull()
+    }
+}
 
 /** 按 [PluginManifest.type] 填充对应能力对象；未知能力忽略 */
 @Serializable

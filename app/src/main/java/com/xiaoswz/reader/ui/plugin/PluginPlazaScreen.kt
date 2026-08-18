@@ -1,6 +1,8 @@
 package com.xiaoswz.reader.ui.plugin
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,7 +28,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.Button
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,6 +41,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,42 +64,56 @@ import com.xiaoswz.reader.data.annotation.AnnotationEntity
 import com.xiaoswz.reader.data.annotation.AnnotationRepository
 import com.xiaoswz.reader.data.api.BackendClient
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
-import com.xiaoswz.reader.data.plugin.BundledPlugins
 import com.xiaoswz.reader.data.plugin.PluginManifest
 import com.xiaoswz.reader.data.plugin.PluginRepository
 import com.xiaoswz.reader.data.plugin.PluginStateStore
 import kotlinx.coroutines.launch
 
 /**
- * 创意工坊 · 插件广场（0.12.0 v1）。
+ * 创意工坊（0.16.3 重设计）。
  *
- * 内部四 Tab：
- * - 广场：从冲浪阅读自有后端拉取插件列表（当前 mock，DB 批准后接真实 Plugin 表），可一键安装；
- *         官方内置插件在此标「已内置」。
- * - 我的：管理已装 / 内置插件（停用 / 卸载 DIY 插件）。
- * - 制作：可视化生成一个本地 DIY 插件（只本机生效，不可发布），无需写代码。
- * - 教程：内置《插件制作教程》要点 + 示例清单（与本地 .md 教程同源，不入库）。
+ * 对齐 Obsidian（核心插件 vs 社区插件分离）/ VS Code（编辑器核心 vs Marketplace 扩展）的成熟范式：
+ * - 高亮/书签已解耦为阅读器内置能力，不再是「插件」，不在此出现；
+ * - 广场 = 干净的社区市场（仅用户发布的 published 插件）+ 发布入口；
+ * - 我的 = 已导入/安装的插件管理（启用/禁用/卸载）+ 导入入口（URL/文件）；
+ * - 教程 = 纯文档（怎么做插件、怎么导入、怎么发布），不再是插件卡片。
  *
- * 严格遵守隔离铁律：仅消费 APP 自身资源与冲浪阅读独立后端，不碰主站 novel-site。
+ * 创作去中心化：不在 App 内做 DIY 模板生成器，改为开放「导入」（从文件/https 链接），
+ * 用户在外部做好清单后导入本机；要分享则经广场「发布插件」提交审核。
+ *
+ * 隔离铁律：仅消费 APP 自身资源与冲浪阅读独立后端，不碰主站 novel-site。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginPlazaScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("广场", "我的", "制作", "教程")
-    // 选中某个插件后进入其内部页（不再「嵌死」为死卡片）
+    val tabs = listOf("广场", "我的", "教程")
+    // 选中某个插件后进入其内部页
     var selectedPlugin by remember { mutableStateOf<PluginManifest?>(null) }
-    // 从插件详情「编辑」进入制作 Tab 时，携带待编辑的 DIY 清单
-    var editingManifest by remember { mutableStateOf<PluginManifest?>(null) }
+    // 导入/发布流程的模态（null | "install" | "publish"）
+    var importMode by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(selectedPlugin?.name ?: "创意工坊", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        when {
+                            importMode != null -> if (importMode == "publish") "发布插件" else "导入插件"
+                            selectedPlugin != null -> selectedPlugin!!.name
+                            else -> "创意工坊"
+                        },
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = {
-                        if (selectedPlugin != null) selectedPlugin = null else onBack()
+                        when {
+                            importMode != null -> importMode = null
+                            selectedPlugin != null -> selectedPlugin = null
+                            else -> onBack()
+                        }
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
@@ -110,53 +126,43 @@ fun PluginPlazaScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            if (selectedPlugin != null) {
-                // 插件内部页：头部（启用/停用）+ 正文（书签/划线集合 / 教程 / 清单）
-                PluginDetailContent(manifest = selectedPlugin!!, onEdit = {
-                    editingManifest = selectedPlugin
-                    selectedPlugin = null
-                    selectedTab = 2
-                })
+            if (importMode != null) {
+                ImportPublishContent(mode = importMode!!, onBack = { importMode = null })
+            } else if (selectedPlugin != null) {
+                PluginDetailContent(manifest = selectedPlugin!!)
             } else {
-            TabRow(selectedTabIndex = selectedTab) {
-                tabs.forEachIndexed { index, label ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(label) },
-                        icon = if (index == 0) {
-                            { Icon(Icons.Default.Extension, contentDescription = null) }
-                        } else null,
-                    )
+                TabRow(selectedTabIndex = selectedTab) {
+                    tabs.forEachIndexed { index, label ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = { Text(label) },
+                            icon = if (index == 0) {
+                                { Icon(Icons.Default.Extension, contentDescription = null) }
+                            } else null,
+                        )
+                    }
+                }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (selectedTab) {
+                        0 -> PlazaTab(onOpenPlugin = { selectedPlugin = it }, onPublish = { importMode = "publish" })
+                        1 -> MineTab(onOpenPlugin = { selectedPlugin = it }, onImport = { importMode = "install" })
+                        2 -> TutorialTab()
+                    }
                 }
             }
-            // 内容区用 Box(fillMaxSize) 框住：给内部 LazyColumn / 滚动容器一个有限、确定的高度，
-            // 避免「滚动容器 fillMaxSize 直接挂在外层 Column」引发的约束成环 / 重测崩溃。
-            Box(
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                when (selectedTab) {
-                    0 -> PlazaTab(onOpenPlugin = { selectedPlugin = it })
-                    1 -> MineTab(onOpenPlugin = { selectedPlugin = it })
-                    2 -> MakeTab(editing = editingManifest) { editingManifest = null }
-                    3 -> TutorialTab()
-                }
-            }
-            } // else
         }
     }
 }
 
-// ───────────────────────── 广场 ─────────────────────────
+// ───────────────────────── 广场（Discover） ─────────────────────────
 @Composable
-private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit) {
+private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit, onPublish: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var items by remember { mutableStateOf<List<PlazaItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var installingId by remember { mutableStateOf<String?>(null) }
-    // 内置插件 id 集合：广场里已内置的插件不再作为「安装」项重复出现，也避免 key 冲突。
-    val bundledIds = remember { BundledPlugins.all.map { it.id }.toSet() }
 
     LaunchedEffect(Unit) {
         runCatching { BackendClient.api.getPlugins(pinned = true) }
@@ -165,9 +171,7 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit) {
                     PlazaItem(it.pluginId, it.name, it.author, it.description, it.icon, it.installs, it.likes, it.pinned)
                 }
             }
-            .onFailure {
-                // mock 接口失败不影响内置插件展示
-            }
+            .onFailure { /* 网络失败时广场为空，不影响本机插件 */ }
         loading = false
     }
 
@@ -175,26 +179,14 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit) {
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // 官方内置插件（离线可用，已生效）
+        // 发布入口（干净的门户顶部，不与用户内容争 C 位）
         item {
-            Text("官方内置", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
-        }
-        items(BundledPlugins.all.distinctBy { it.id }, key = { "bundled:${it.id}" }) { manifest ->
-            PluginCard(
-                icon = manifest.icon,
-                name = manifest.name,
-                author = manifest.author,
-                description = manifest.description,
-                badge = "已内置",
-                actionLabel = null,
-                onAction = {},
-                onClick = { onOpenPlugin(manifest) },
-            )
+            Button(onClick = onPublish, modifier = Modifier.fillMaxWidth()) {
+                Text("+ 发布我的插件")
+            }
         }
 
         item {
-            Spacer(Modifier.height(8.dp))
             Text("广场精选", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
         }
@@ -207,12 +199,11 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit) {
         } else if (items.isEmpty()) {
             item {
                 Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("暂无广场插件，先试试官方内置~", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("广场还没有插件。你做好后可以点上方「发布我的插件」分享给大家~", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
-            items(items.filter { it.pluginId !in bundledIds }, key = { "plaza:${it.pluginId}" }) { item ->
-                // 用 plaza 拉来的清单构造临时 manifest，供点开详情 / 安装
+            items(items, key = { "plaza:${it.pluginId}" }) { item ->
                 val manifest = PluginManifest(
                     id = item.pluginId,
                     name = item.name,
@@ -237,7 +228,6 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit) {
                             PluginRepository.installFromNetwork(context, item.pluginId)
                                 .onSuccess {
                                     Toast.makeText(context, "已安装：${item.name}", Toast.LENGTH_SHORT).show()
-                                    // 安装计数（best-effort，失败不影响本地安装）
                                     runCatching { BackendClient.api.installPlugin(item.pluginId) }
                                         .onSuccess { ack ->
                                             items = items.map { if (it.pluginId == item.pluginId) it.copy(installs = ack.installs) else it }
@@ -251,7 +241,6 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit) {
                     },
                     likeLabel = "赞 ${item.likes}",
                     onLike = {
-                        // 点赞计数（best-effort + 乐观更新显示）
                         items = items.map { if (it.pluginId == item.pluginId) it.copy(likes = it.likes + 1) else it }
                         scope.launch {
                             runCatching { BackendClient.api.likePlugin(item.pluginId) }
@@ -332,45 +321,32 @@ private fun PluginCard(
     }
 }
 
-// ───────────────────────── 我的 ─────────────────────────
+// ───────────────────────── 我的（Installed / Manage） ─────────────────────────
 @Composable
-private fun MineTab(onOpenPlugin: (PluginManifest) -> Unit) {
+private fun MineTab(onOpenPlugin: (PluginManifest) -> Unit, onImport: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val installed by PluginStateStore.installedFlow(context).collectAsStateWithLifecycle(initialValue = emptyList())
-    val disabledBundled by PluginStateStore.disabledBundledFlow(context).collectAsStateWithLifecycle(initialValue = emptySet())
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // 导入入口：对应 Obsidian 手动放入插件目录 / VS Code 从 VSIX 安装
         item {
-            Text("内置插件（不可卸载，可停用）", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
-        }
-        items(BundledPlugins.all.distinctBy { it.id }, key = { "bundled:${it.id}" }) { manifest ->
-            val enabled = manifest.id !in disabledBundled
-            PluginCard(
-                icon = manifest.icon,
-                name = manifest.name,
-                author = manifest.author,
-                description = manifest.description,
-                badge = if (enabled) "内置" else "已停用",
-                actionLabel = null,
-                onAction = {},
-                onClick = { onOpenPlugin(manifest) },
-            )
+            Button(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
+                Text("+ 导入插件（文件 / https 链接）")
+            }
         }
 
         item {
-            Spacer(Modifier.height(8.dp))
-            Text("已安装（DIY / 广场）", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Text("已安装（导入 / 广场）", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
         }
         if (installed.isEmpty()) {
             item {
                 Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("还没有安装任何插件，去广场看看吧~", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("还没有安装任何插件。去广场看看，或点上方「导入插件」把外部做好的清单装进来~", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
@@ -406,252 +382,138 @@ private fun MineTab(onOpenPlugin: (PluginManifest) -> Unit) {
     }
 }
 
-// ───────────────────────── 制作 ─────────────────────────
+// ───────────────────────── 导入 / 发布（去中心化创作入口） ─────────────────────────
 @Composable
-private fun MakeTab(editing: PluginManifest?, onDone: () -> Unit) {
+private fun ImportPublishContent(mode: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var name by remember { mutableStateOf("") }
-    var label by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf(false) }
-    var typePreset by remember { mutableStateOf("highlight") } // highlight / bookmark / custom
-    var customType by remember { mutableStateOf("") }
-    var color by remember { mutableStateOf<Int?>(null) }
-    var saving by remember { mutableStateOf(false) }
+    var json by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    var preview by remember { mutableStateOf<PluginManifest?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
 
-    // 进入编辑态：一次性回填待编辑 DIY 插件的字段
-    LaunchedEffect(editing) {
-        if (editing != null) {
-            name = editing.name
-            label = editing.capabilities.annotation?.label ?: ""
-            note = editing.capabilities.annotation?.withNote ?: false
-            val at = editing.capabilities.annotation?.annotationType ?: "highlight"
-            if (at == "highlight" || at == "bookmark") { typePreset = at; customType = "" }
-            else { typePreset = "custom"; customType = at }
-            color = editing.capabilities.annotation?.defaultColor
-        }
+    val docLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+        }.onSuccess { text ->
+            if (text != null) { json = text; preview = null; error = null }
+        }.onFailure { error = "读取文件失败：${it.message}" }
     }
 
-    fun slugOf(input: String): String {
-        val base = input.trim().replace(Regex("\\s+"), "_").lowercase()
-        return if (base.isBlank()) "diy" else "local.$base"
+    fun tryPreview() {
+        preview = PluginManifest.fromJson(json)
+        error = if (preview == null) "清单解析失败：需为合法 JSON 且含 id / name / type" else null
     }
-    val effectiveType = if (typePreset == "custom") customType.trim().ifBlank { "highlight" } else typePreset
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (editing != null) {
-            Text("正在编辑：${editing.name}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        } else {
-            Text("做一个本地 DIY 插件", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        }
         Text(
-            "无需写代码：选好动作类型、挑个颜色、填好名称，就能生成一个「划词动作」插件。只在本机生效，不能发布到广场。",
+            if (mode == "publish") "发布插件到广场" else "导入插件到本机",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            if (mode == "publish") {
+                "把你在外部做好的清单提交到广场，经官方审核（pending → published）后上架，供所有读者安装。提交即进入待审核。"
+            } else {
+                "把外部做好的清单导入本机立即生效（只本机，不发布）。可粘贴 JSON、从文件选择、或填 https 链接（如 GitHub raw）。"
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        // 动作类型
-        Text("动作类型", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        Text("清单 JSON", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        OutlinedTextField(
+            value = json,
+            onValueChange = { json = it; preview = null },
+            label = { Text("粘贴 manifest JSON") },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+            maxLines = 12,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChipSelected("划线", typePreset == "highlight") { typePreset = "highlight" }
-            FilterChipSelected("书签", typePreset == "bookmark") { typePreset = "bookmark" }
-            FilterChipSelected("自定义", typePreset == "custom") { typePreset = "custom" }
-        }
-        if (typePreset == "custom") {
-            OutlinedTextField(value = customType, onValueChange = { customType = it }, label = { Text("自定义类型标识（如 excerpt）") }, modifier = Modifier.fillMaxWidth())
+            Button(onClick = { docLauncher.launch(arrayOf("application/json", "text/plain")) }) { Text("从文件选择") }
+            Button(onClick = { tryPreview() }) { Text("预览") }
         }
 
-        // 颜色
-        Text("颜色（书签默认无底色）", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        Text("或从 https 链接导入", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val presets = listOf<Pair<Int?, String>>(
-                null to "无",
-                (-14336) to "黄",
-                (-65536) to "红",
-                (-16711936) to "绿",
-                (-16776961) to "蓝",
-                (-7650020) to "紫",
+            OutlinedTextField(
+                value = url,
+                onValueChange = { url = it },
+                label = { Text("https 链接（如 GitHub raw）") },
+                modifier = Modifier.weight(1f),
             )
-            for ((c, name2) in presets) {
-                ColorChip(c, name2, color == c) { color = c }
-            }
-        }
-
-        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("插件名称") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = label, onValueChange = { label = it }, label = { Text("选区菜单显示名（如「划线」「摘抄」）") }, modifier = Modifier.fillMaxWidth())
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("划线时允许顺手写备注", style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.weight(1f))
-            Switch(checked = note, onCheckedChange = { note = it })
-        }
-
-        Button(
-            onClick = {
-                if (name.isBlank() || label.isBlank()) {
-                    Toast.makeText(context, "名称和显示名不能为空", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-                saving = true
+            Button(onClick = {
+                if (!url.startsWith("https://")) { error = "仅支持 https 链接（明文 http 已被系统拦截）"; return@Button }
+                busy = true; error = null
                 scope.launch {
-                    val manifest = PluginManifest(
-                        id = editing?.id ?: slugOf(name),
-                        name = name.trim(),
-                        version = (editing?.version ?: 0) + 1,
-                        author = "本机用户",
-                        description = "本地 DIY 插件",
-                        icon = "🛠️",
-                        minAppVersion = 67,
-                        type = "annotation",
-                        capabilities = com.xiaoswz.reader.data.plugin.Capabilities(
-                            annotation = com.xiaoswz.reader.data.plugin.AnnotationCap(
-                                annotationType = effectiveType,
-                                label = label.trim(),
-                                defaultColor = color,
-                                withNote = note,
-                            ),
-                        ),
-                    )
-                    PluginRepository.installLocal(context, manifest)
-                    Toast.makeText(context, if (editing != null) "已更新：${manifest.name}" else "已保存到本机：${manifest.name}", Toast.LENGTH_SHORT).show()
-                    saving = false
-                    onDone()
+                    PluginRepository.importFromUrl(context, url)
+                        .onSuccess { m -> json = ""; preview = m; Toast.makeText(context, "已读取清单：${m.name}", Toast.LENGTH_SHORT).show() }
+                        .onFailure { e -> error = "读取失败：${e.message}" }
+                    busy = false
                 }
-            },
-            enabled = !saving,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (saving) "保存中…" else if (editing != null) "更新本机插件" else "保存到本机") }
+            }, enabled = !busy) { Text("读取") }
+        }
 
-        // 提交到广场（UGC 闭环）：登录用户提交后落 pending，admin 审核通过才公开上架。
-        Button(
-            onClick = {
-                if (name.isBlank() || label.isBlank()) {
-                    Toast.makeText(context, "名称和显示名不能为空", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-                scope.launch {
-                    val manifest = PluginManifest(
-                        id = editing?.id ?: slugOf(name),
-                        name = name.trim(),
-                        version = (editing?.version ?: 0) + 1,
-                        author = "本机用户",
-                        description = "本地 DIY 插件",
-                        icon = "🛠️",
-                        minAppVersion = 67,
-                        type = "annotation",
-                        capabilities = com.xiaoswz.reader.data.plugin.Capabilities(
-                            annotation = com.xiaoswz.reader.data.plugin.AnnotationCap(
-                                annotationType = effectiveType,
-                                label = label.trim(),
-                                defaultColor = color,
-                                withNote = note,
-                            ),
-                        ),
-                    )
-                    runCatching { BackendClient.api.submitPlugin(manifest) }
-                        .onSuccess { ack ->
-                            Toast.makeText(
-                                context,
-                                if (ack.status == "published") "已发布到广场" else "已提交，待审核",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
-                        .onFailure { e ->
-                            Toast.makeText(context, "提交失败：${e.message ?: "网络错误"}", Toast.LENGTH_SHORT).show()
-                        }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("提交到广场") }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
-        Spacer(Modifier.height(8.dp))
-        Text("预览清单（JSON）", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-        // 预览仅在输入变化时重算，绝不在组合期写 state（避免无限重组合 / 重测崩溃）。
-        val preview = remember(name, label, note, typePreset, customType, color) {
-            buildString {
-                append("{\n")
-                append("  \"id\": \"${(editing?.id ?: slugOf(name)).ifBlank { "local.diy" }}\",\n")
-                append("  \"name\": \"${name.ifBlank { "我的插件" }}\",\n")
-                append("  \"type\": \"annotation\",\n")
-                append("  \"capabilities\": {\n")
-                append("    \"annotation\": {\n")
-                append("      \"annotationType\": \"$effectiveType\",\n")
-                append("      \"label\": \"${label.ifBlank { "划线" }}\",\n")
-                append("      \"defaultColor\": ${color ?: "null"},\n")
-                append("      \"withNote\": $note\n")
-                append("    }\n")
-                append("  }\n")
-                append("}")
+        preview?.let { m ->
+            Spacer(Modifier.height(8.dp))
+            Text("预览：${m.name}（${m.type}） by ${m.author}", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Card(Modifier.fillMaxWidth()) {
+                Text(json.ifBlank { "（已从链接读取）" }, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        }
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                preview,
-                modifier = Modifier.padding(12.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Button(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        if (mode == "publish") {
+                            runCatching { BackendClient.api.submitPlugin(m) }
+                                .onSuccess { ack ->
+                                    Toast.makeText(context, if (ack.status == "published") "已发布到广场" else "已提交，待审核", Toast.LENGTH_SHORT).show()
+                                    onBack()
+                                }
+                                .onFailure { e -> error = "提交失败：${e.message}"; busy = false }
+                        } else {
+                            PluginRepository.installLocal(context, m)
+                            Toast.makeText(context, "已导入到本机：${m.name}", Toast.LENGTH_SHORT).show()
+                            onBack()
+                        }
+                        busy = false
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (busy) "处理中…" else if (mode == "publish") "提交到广场" else "安装到本机") }
         }
     }
 }
 
-@Composable
-private fun FilterChipSelected(text: String, selected: Boolean, onClick: () -> Unit) {
-    val colors = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-    ) {
-        Text(text, color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun ColorChip(color: Int?, name: String, selected: Boolean, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    color?.let { Color(it) } ?: MaterialTheme.colorScheme.surfaceVariant,
-                )
-                .clickable { onClick() }
-                .then(
-                    if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
-                    else Modifier
-                ),
-        ) {
-            if (color == null) {
-                Text("∅", modifier = Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Spacer(Modifier.height(2.dp))
-        Text(name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-// ───────────────────────── 教程 ─────────────────────────
+// ───────────────────────── 教程（纯文档，不再作为插件卡片） ─────────────────────────
 @Composable
 private fun TutorialTab() {
     val tutorial = """
-        冲浪阅读 · 插件制作教程（要点）
+        冲浪阅读 · 插件制作教程
 
-        一、什么是插件
-        插件是一份 JSON 清单（数据，不是代码），由 APP 内置的「能力槽」解释执行。
+        一、插件是什么
+        插件是一份 JSON 清单（纯数据，不是代码），由 APP 内置的「能力槽」解释执行。
         它不会加载任何动态代码，所以永远不会拖垮或劫持你的阅读体验。
 
         二、你能做什么插件
-        · 选区动作（annotation）：选中一段文字后，在系统选区菜单里追加你的动作，
-          比如「划线」「摘抄」「加书签」。点击即写入标注，登录后跨设备同步。
-        · 主题 / 工具栏 / 侧栏弹层等能力槽已开放（需安装对应类型插件才会生效）。
+        · 选区动作（annotation）：选中文字后在选区菜单追加你的动作（划线 / 摘抄 / 加书签等），
+          点击即写入标注，登录后跨设备同步。
+        · 主题 / 工具栏 / 侧栏弹层等能力槽已开放（安装对应类型插件即生效）。
 
-        三、最小可用清单
+        三、怎么做（去中心化，不在 App 内拖拽生成）
+        1. 从下方「最小可用清单」复制一份，本地改 JSON 即可，零环境依赖。
+        2. 在 App 内「我的 → 导入插件」粘贴 JSON、选文件、或填 https 链接（如 GitHub raw）即可安装到本机。
+        3. 想分享给别人：在「广场 → 发布插件」粘贴清单提交，经官方审核后上架，所有人都能装。
+
+        四、最小可用清单
         {
           "id": "local.myhl",
           "name": "我的划线",
@@ -666,17 +528,13 @@ private fun TutorialTab() {
           }
         }
 
-        四、字段说明
-        · id：反向域名，全局唯一；本地 DIY 建议以 local. 开头。
-        · type：决定主能力槽，当前支持 annotation。
+        五、字段说明
+        · id：反向域名，全局唯一；本地建议 local. 开头。
+        · type：决定主能力槽，当前支持 annotation（后续 theme / toolbar / open_sheet / decorator）。
         · annotation.annotationType：写入标注的类型（开放字符串）。
-        · annotation.label：选区菜单里显示的名字。
+        · annotation.label：选区菜单显示名。
         · annotation.defaultColor：ARGB 颜色整数（如 -14336 为黄色）。
         · annotation.withNote：是否允许顺手写备注。
-
-        五、发布到广场
-        现在即可在 App 内「制作」一个插件并提交到广场，经官方审核
-        （pending → published）后上架，供所有读者安装。
 
         六、隔离说明
         创意工坊只围绕 APP 自身资源（标注 / 主题 / 工具栏 / 选区）扩展，
@@ -693,9 +551,8 @@ private fun TutorialTab() {
 }
 
 // ════════════════════════════════════════════════════════════════
-//  插件内部页（0.13.0）：点开插件不再「嵌死」为死卡片，
-//  头部含启用/停用开关，正文按类型呈现：标注类 → 收藏段落合集；
-//  doc 类 → 教程；其余 → 清单 JSON。
+//  插件内部页：头部含启用/停用开关，正文按类型呈现：标注类 → 收藏段落合集；
+//  其余 → 清单 JSON。
 // ════════════════════════════════════════════════════════════════
 
 /** 一条标注的展示模型（含解析出的书名） */
@@ -707,22 +564,15 @@ private data class AnnoDisplay(
 )
 
 @Composable
-private fun PluginDetailContent(
-    manifest: PluginManifest,
-    onEdit: () -> Unit,
-) {
+private fun PluginDetailContent(manifest: PluginManifest) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val disabledBundled by PluginStateStore.disabledBundledFlow(context)
-        .collectAsStateWithLifecycle(initialValue = emptySet())
     val installed by PluginStateStore.installedFlow(context)
         .collectAsStateWithLifecycle(initialValue = emptyList())
-    val isBundled = BundledPlugins.all.any { it.id == manifest.id }
-    val isEnabled = if (isBundled) manifest.id !in disabledBundled
-    else (installed.find { it.manifest.id == manifest.id }?.enabled ?: false)
+    val install = installed.find { it.manifest.id == manifest.id }
+    val isEnabled = install?.enabled ?: false
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        // 头部
         Card(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
@@ -750,16 +600,12 @@ private fun PluginDetailContent(
                     scope.launch { PluginRepository.setEnabled(context, manifest.id, on) }
                 })
                 Spacer(Modifier.weight(1f))
-                if (!isBundled) {
-                    Button(onClick = onEdit) { Text("编辑") }
-                }
+                Button(onClick = { scope.launch { PluginRepository.uninstall(context, manifest.id) } }) { Text("卸载") }
             }
         }
 
-        // 正文
         when (manifest.type) {
             "annotation" -> AnnotationCollectionContent(context, manifest, scope)
-            "doc" -> TutorialBody()
             else -> ManifestJsonContent(manifest)
         }
     }
@@ -858,26 +704,7 @@ private fun AnnotationCollectionContent(
     }
 }
 
-/** doc 类插件正文：复用教程文本 */
-@Composable
-private fun TutorialBody() {
-    Column(Modifier.fillMaxWidth().padding(16.dp)) {
-        Text("插件制作教程", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "不用写代码，会改 JSON 就能做插件。\n\n" +
-                "· 选区动作（annotation）：选中文字后在选区条追加你的动作（划线 / 摘抄 / 加书签），点击即写入标注，登录后跨设备同步。\n" +
-                "· 主题 / 工具栏 / 侧栏弹层等能力槽已开放（需安装对应类型插件才会生效）。\n\n" +
-                "最小清单：{ \"id\": \"local.myhl\", \"type\": \"annotation\", \"capabilities\": { \"annotation\": { \"annotationType\": \"highlight\", \"label\": \"划线\", \"defaultColor\": -14336, \"withNote\": false } } }\n\n" +
-                "隔离说明：创意工坊只围绕 APP 自身资源扩展，与站点主程序完全独立。",
-            style = MaterialTheme.typography.bodyMedium,
-            lineHeight = 22.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-/** 其余类型插件正文：直接展示清单 JSON（DIY 插件可在此查看/核对） */
+/** 其余类型插件正文：直接展示清单 JSON */
 @Composable
 private fun ManifestJsonContent(manifest: PluginManifest) {
     Column(Modifier.fillMaxWidth().padding(16.dp)) {

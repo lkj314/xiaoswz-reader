@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 87
-        versionName = "0.16.2" // 0.16.2·封面加载卡顿治本：修复书架封面本地缩略图缓存被两处逻辑反复清空(blankOversizedCovers 无差别清空 data 封面 + 云同步把本地封面覆盖为 null)，导致每次启动/打开书架都重拉几 MB 的 data URI 详情(十几~几十秒)。现只清空>256KB 原始大图、云同步保留本地封面、repairCovers 加并发限流；书架封面本地秒开、零网络。
+        versionCode = 88
+        versionName = "0.16.3" // 0.16.3·创意工坊重设计（对齐 Obsidian/VS Code 成熟可扩展范式）：① 官方高亮/书签从「插件实体」解耦为阅读器内置标注能力（非插件，始终可用、不进插件体系）；② 删除 DIY 本地模板插件生成器；③ 插件广场回归纯门户展示（只列后端 published 用户插件 + 发布入口），我的插件回归纯管理（只列已装可启用/禁用/卸载 + 导入入口(文件/https)）；④ 制作 Tab 改为文档化教程；⑤ 新增 importFromText/importFromUrl 导入能力。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
