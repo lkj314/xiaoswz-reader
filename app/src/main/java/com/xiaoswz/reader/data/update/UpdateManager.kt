@@ -34,20 +34,56 @@ class UpdateManager(private val context: Context) {
     private val json = Json { ignoreUnknownKeys = true }
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
+        .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
         .build()
+
+    companion object {
+        // 更新通道候选（按优先级）：用户手填 > 硬编码 raw > jsDelivr CDN 镜像
+        // 任一通道可达即可完成检查+下载，避免 raw 国内偶发超时导致整段更新失败
+        private val FALLBACK_SERVERS = listOf(
+            BuildConfig.DEFAULT_UPDATE_SERVER,
+            "https://cdn.jsdelivr.net/gh/lkj314/xiaoswz-reader@main/lan-update",
+        )
+    }
+
+    // check 成功时记录实际命中的服务器，downloadApk 复用同一通道（apkUrl 相对路径自动跟随）
+    @Volatile
+    private var lastCheckServer: String? = null
+
+    private fun fetchInfo(serverUrl: String): UpdateInfo? {
+        val url = serverUrl.trim().trimEnd('/') + "/version.json"
+        client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+            if (!response.isSuccessful) return null
+            val body = response.body ?: return null
+            return json.decodeFromString<UpdateInfo>(body.string())
+        }
+    }
 
     /** 检查更新：有更新返回 UpdateInfo，已最新返回 null，失败抛异常（包在 Result 里） */
     suspend fun check(serverUrl: String): Result<UpdateInfo?> = withContext(Dispatchers.IO) {
         runCatching {
-            val url = serverUrl.trim().trimEnd('/') + "/version.json"
-            client.newCall(Request.Builder().url(url).build()).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-                val body = response.body ?: return@use null
-                val info = json.decodeFromString<UpdateInfo>(body.string())
-                if (info.versionCode > BuildConfig.VERSION_CODE) info else null
+            val userUrl = serverUrl.trim().trimEnd('/')
+            // 候选顺序：用户手填 -> 内置 fallback 通道（去重）
+            val candidates = linkedSetOf(userUrl).apply {
+                addAll(FALLBACK_SERVERS)
             }
+            val errors = mutableListOf<String>()
+            for (url in candidates) {
+                // 每个通道快速重试 2 次：raw 国内偶发丢包，重试可显著提高成功率
+                repeat(2) { attempt ->
+                    try {
+                        val info = fetchInfo(url)
+                        if (info != null) {
+                            lastCheckServer = url
+                            return@runCatching if (info.versionCode > BuildConfig.VERSION_CODE) info else null
+                        }
+                    } catch (e: Exception) {
+                        if (attempt == 1) errors.add("$url: ${e.javaClass.simpleName}")
+                    }
+                }
+            }
+            error("所有更新通道均不可用（请检查网络或在设置页手动填写更新服务器）。\n详情：${errors.joinToString(", ")}")
         }
     }
 
@@ -58,10 +94,12 @@ class UpdateManager(private val context: Context) {
         onProgress: (Int) -> Unit,
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
+            // 优先用 check 命中的通道（与 apkUrl 同源）；否则退回调用方传入的地址
+            val base = (lastCheckServer ?: serverUrl).trim().trimEnd('/')
             val url = if (info.apkUrl.startsWith("http")) {
                 info.apkUrl
             } else {
-                serverUrl.trim().trimEnd('/') + "/" + info.apkUrl.trimStart('/')
+                base + "/" + info.apkUrl.trimStart('/')
             }
             val dir = File(context.getExternalFilesDir(null), "updates")
             dir.mkdirs()

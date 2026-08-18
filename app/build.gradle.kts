@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 81
-        versionName = "0.15.5" // 0.15.5·段评气泡遮挡段末字修复：气泡 anchor 改为贴段评段落右外侧（Text end-padding 56dp 区域内），垂直对齐末字符行中线，强制不挡字（之前段末字符若恰好在行右边缘，气泡 anchor 落在末字符正中，盖住段末字）
+        versionCode = 83
+        versionName = "0.15.7" // 0.15.7·彻底废除段评气泡系统：移除段落末尾 💬N 气泡、右侧 56dp 预留 padding 与段评下划线，正文恢复完整填充；段评入口收敛到阅读器菜单「段评/全部段评」与长按选区「评」工具条。UpdateManager 缩短连接超时并增加每通道 2 次重试，fallback 更积极。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

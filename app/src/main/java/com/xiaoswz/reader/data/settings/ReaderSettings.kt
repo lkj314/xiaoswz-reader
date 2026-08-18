@@ -49,8 +49,8 @@ data class ReaderSettings(
     val restReminderEnabled: Boolean = false,
     /** 休息提醒间隔（分钟） */
     val restReminderMinutes: Int = 20,
-    /** 段评标记（段落末尾气泡 + 下划线）：关掉 = 沉浸式阅读（不显示任何段评提示） */
-    val showSegmentMarkers: Boolean = true,
+    /** 段评标记：v0.15.7 起段评气泡系统已彻底废除，本字段保留仅作数据兼容，实际不再读取 */
+    val showSegmentMarkers: Boolean = false,
 ) {
     companion object {
         const val THEME_DAY = 0

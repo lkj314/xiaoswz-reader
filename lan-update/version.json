@@ -1,6 +1,6 @@
 {
-  "versionCode": 81,
-  "versionName": "0.15.5",
-  "apkUrl": "surf-reader-0.15.5.apk",
-  "notes": "0.15.5·段评气泡遮挡段末字修复：之前气泡 anchor 落在段评段末字符的 bounding box 上，末字符若刚好在行右边缘，气泡会盖在段末字上（如截图『妙』被气泡挡住）。修复方案：Text 容器加 56dp end-padding 永久给气泡预留右侧空间；气泡 anchor 改为贴 padding 区域右侧 + 4dp 间距，垂直对齐末字符行中线，气泡始终落在段评段落右外侧，绝对不挡字。0.15.4 的书友圈评论框 + 0.15.3 段评全屏页同步保留。"
+  "versionCode": 83,
+  "versionName": "0.15.7",
+  "apkUrl": "surf-reader-0.15.7.apk",
+  "notes": "0.15.7·彻底废除段评气泡系统：移除段落末尾 💬N 气泡、右侧 56dp 预留 padding 与段评下划线，正文恢复完整填充；段评入口收敛到阅读器菜单「段评/全部段评」与长按选区「评」工具条。UpdateManager 缩短连接超时并增加每通道 2 次重试，fallback 更积极。"
 }

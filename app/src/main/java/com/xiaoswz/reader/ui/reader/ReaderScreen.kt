@@ -100,7 +100,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -320,34 +319,6 @@ fun ReaderScreen(
                     state.settings.indentFirstLine,
                     state.settings.paraSpacing,
                 )
-            }
-
-            // 段评锚点 → 预处理正文中的绝对字符区间（供下划线渲染）。
-            // 正文不在 DB，锚点仅在 Raw 坐标；按当前阅读设置映射回 processed 坐标，跨设备一致。
-            // 连续模式下逐 block 用其 rawContent 计算（state.rawContent 在连续模式为空），
-            // 单章模式用 state.rawContent；均按章节 id 分组成 Map，供对应块渲染高亮。
-            val segSpansByChapter = remember(
-                state.rawContent, state.chapterBlocks, state.settings.indentFirstLine,
-                state.settings.paraSpacing, state.segmentCommentsByChapter,
-            ) {
-                val indent = state.settings.indentFirstLine
-                val paraSpacing = state.settings.paraSpacing
-                val byChapter = state.segmentCommentsByChapter
-                if (!state.isContinuous) {
-                    mapOf(
-                        state.currentChapterId to computeSegSpans(
-                            state.rawContent, byChapter[state.currentChapterId] ?: emptyList(),
-                            indent, paraSpacing,
-                        ),
-                    )
-                } else {
-                    state.chapterBlocks.associate { blk ->
-                        blk.id to computeSegSpans(
-                            blk.rawContent, byChapter[blk.id] ?: emptyList(),
-                            indent, paraSpacing,
-                        )
-                    }
-                }
             }
 
             // 划词标注：进入/换章时同步只读文本字段（offset 相对预处理正文）
@@ -911,9 +882,6 @@ fun ReaderScreen(
                                 isReadingChapter = isReadingChapter,
                                 readingRange = readingRange,
                                 annotations = annotations.filter { it.chapterId == block.id },
-                                segmentSpans = segSpansByChapter[block.id] ?: emptyList(),
-                                showMarkers = state.settings.showSegmentMarkers,
-                                onOpenSeg = { pIdx, quote -> segThread = pIdx to quote },
                             )
                         }
                         item {
@@ -992,8 +960,6 @@ fun ReaderScreen(
                                             annotations = annoAnnotations,
                                             readingRange = if (isReadingChapter) readingRange else null,
                                             theme = theme,
-                                            segmentSpans = segSpansByChapter[state.currentChapterId]
-                                                ?: emptyList(),
                                         ),
                                         OffsetMapping.Identity,
                                     )
@@ -1017,9 +983,6 @@ fun ReaderScreen(
                                 annotations = annoAnnotations,
                                 readingRange = if (isReadingChapter) readingRange else null,
                                 theme = theme,
-                                segmentSpans = segSpansByChapter[state.currentChapterId] ?: emptyList(),
-                                showMarkers = state.settings.showSegmentMarkers,
-                                onOpenSeg = { pIdx, quote -> segThread = pIdx to quote },
                                 fontSizeSp = state.settings.fontSize,
                                 lineSpacing = state.settings.lineSpacing,
                                 modifier = Modifier.fillMaxWidth(),
@@ -1371,19 +1334,11 @@ fun ReaderScreen(
  * 连续滚动流中的单个章节块：标题 + 正文 + 章节分隔留白。
  * 正文为纯文本渲染；划线/书签等增强能力未来以「创意工坊插件」形式提供，不进入核心。
  */
-/** 段评气泡定位信息（段落末尾，点击进段线程） */
-private data class BubbleInfo(
-    val x: Float,
-    val y: Float,
-    val paragraphIndex: Int,
-    val quote: String,
-    val count: Int,
-)
-
 /**
- * 正文 + 段评下划线 + 段落末尾气泡（可点进段线程）。
- * 选区由内部 SelectionContainer 保留；气泡层叠加在 Text 之上（绝对定位），不干扰选区。
- * showMarkers=false（沉浸式设置）时只保留下划线、完全不渲染气泡。
+ * 正文渲染：带标注高亮与听书朗读锚点。
+ * v0.15.7 起彻底移除段评气泡系统（段落末尾气泡 + 右侧预留 padding + 下划线标记），
+ * 段评入口统一收敛到阅读器菜单「段评/全部段评」与长按选区「评」工具条，
+ * 正文区域不再有任何覆盖或缩进，保证排版完整填充。
  */
 @Composable
 private fun SegmentMarkedText(
@@ -1391,71 +1346,21 @@ private fun SegmentMarkedText(
     annotations: List<AnnotationEntity>,
     readingRange: IntRange?,
     theme: ReaderTheme,
-    segmentSpans: List<SegSpan>,
-    showMarkers: Boolean,
-    onOpenSeg: (Int, String) -> Unit,
     fontSizeSp: Int,
     lineSpacing: Float,
     modifier: Modifier = Modifier,
 ) {
-    val density = LocalDensity.current
-    var layoutResult by remember(text) { mutableStateOf<TextLayoutResult?>(null) }
-    val annotated = remember(text, annotations, readingRange, theme, segmentSpans) {
-        buildAnnotatedContent(text, annotations, readingRange, theme, segmentSpans)
+    val annotated = remember(text, annotations, readingRange, theme) {
+        buildAnnotatedContent(text, annotations, readingRange, theme)
     }
-    Box(modifier) {
-        SelectionContainer {
-            Text(
-                text = annotated,
-                fontSize = fontSizeSp.sp,
-                lineHeight = (fontSizeSp * lineSpacing).sp,
-                color = theme.text,
-                onTextLayout = { layoutResult = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = 56.dp), // 右侧 56dp 永久给气泡预留，避免气泡盖住段末字
-            )
-        }
-        if (showMarkers) {
-            val density = LocalDensity.current
-            val bubbleW = with(density) { 46.dp.toPx() }
-            val bubbleH = with(density) { 22.dp.toPx() }
-            val bubbles = remember(layoutResult, segmentSpans, text) {
-                layoutResult?.let { lo ->
-                    val len = text.length
-                    val containerW = lo.size.width.toFloat()
-                    segmentSpans.mapNotNull { span ->
-                        if (span.end <= 0 || span.end > len) return@mapNotNull null
-                        val idx = (span.end - 1).coerceIn(0, len - 1)
-                        val box = lo.getBoundingBox(idx)
-                        // 气泡锚在段评段落右外侧（Text 的 56dp end-padding 区域内），
-                        // 紧贴高亮段右边缘，垂直对齐末字符行中线，绝对不挡字
-                        val x = (containerW - bubbleW - with(density) { 4.dp.toPx() })
-                            .coerceAtLeast(0f)
-                        val y = box.top + (box.height / 2f) - (bubbleH / 2f)
-                        BubbleInfo(x, y, span.paragraphIndex, span.quote, span.count)
-                    }
-                } ?: emptyList()
-            }
-            bubbles.forEach { b ->
-                Box(
-                    modifier = Modifier
-                        .offset { androidx.compose.ui.unit.IntOffset(b.x.toInt(), b.y.toInt()) }
-                        .width(46.dp)
-                        .height(22.dp)
-                        .clip(RoundedCornerShape(11.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable { onOpenSeg(b.paragraphIndex, b.quote) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "💬 ${b.count}",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
-        }
+    SelectionContainer {
+        Text(
+            text = annotated,
+            fontSize = fontSizeSp.sp,
+            lineHeight = (fontSizeSp * lineSpacing).sp,
+            color = theme.text,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
@@ -1467,9 +1372,6 @@ private fun ChapterBlockView(
     isReadingChapter: Boolean = false,
     readingRange: IntRange? = null,
     annotations: List<AnnotationEntity> = emptyList(),
-    segmentSpans: List<SegSpan> = emptyList(),
-    showMarkers: Boolean = true,
-    onOpenSeg: (Int, String) -> Unit = { _, _ -> },
 ) {
     Column(
         modifier = Modifier
@@ -1495,9 +1397,6 @@ private fun ChapterBlockView(
             annotations = annotations,
             readingRange = if (isReadingChapter) readingRange else null,
             theme = theme,
-            segmentSpans = segmentSpans,
-            showMarkers = showMarkers,
-            onOpenSeg = onOpenSeg,
             fontSizeSp = settings.fontSize,
             lineSpacing = settings.lineSpacing,
             modifier = Modifier.fillMaxWidth(),
@@ -1643,50 +1542,6 @@ private fun ReaderShareSheet(
 private data class SentenceRange(val text: String, val start: Int, val end: Int)
 
 /**
- * 段评锚点（供下划线渲染 + 段落末尾气泡）。每段一条：含该段在预处理正文中的绝对区间、
- * Raw 段落号、引用快照与段评数。正文不在 DB，锚点仅在 Raw 坐标，按阅读设置映射回 processed 坐标。
- */
-private data class SegSpan(
-    val start: Int,
-    val end: Int,
-    val paragraphIndex: Int,
-    val quote: String,
-    val count: Int,
-)
-
-private fun computeSegSpans(
-    raw: String,
-    list: List<SegmentCommentItem>,
-    indent: Boolean,
-    paraSpacing: Int,
-): List<SegSpan> {
-    if (raw.isBlank()) return emptyList()
-    val ranges = mapParagraphRanges(raw, indent, paraSpacing)
-    return list.filter { it.paragraphIndex != null }
-        .groupBy { it.paragraphIndex!! }
-        .mapNotNull { (p, clist) ->
-            val range = ranges.getOrNull(p) ?: return@mapNotNull null
-            val hasSpecific = clist.any { it.startOffset != null && it.endOffset != null }
-            val span = if (hasSpecific) {
-                clist.mapNotNull { c ->
-                    val s = c.startOffset
-                    val e = c.endOffset
-                    if (s != null && e != null) segmentAbsoluteSpan(range, s, e) else null
-                }.firstOrNull() ?: segmentAbsoluteSpan(range, 0, range.contentLength)
-            } else {
-                segmentAbsoluteSpan(range, 0, range.contentLength)
-            }
-            SegSpan(
-                start = span.first,
-                end = span.second,
-                paragraphIndex = p,
-                quote = clist.firstOrNull()?.quotedText ?: clist.firstOrNull()?.content ?: "",
-                count = clist.size,
-            )
-        }
-}
-
-/**
  * 将正文 + 既有标注 + TTS 朗读区间合并为带背景样式的 AnnotatedString。
  * 标注锚点（decorator 槽）与听书高亮同源渲染，互不干扰；标注偏移相对预处理正文。
  */
@@ -1695,7 +1550,6 @@ private fun buildAnnotatedContent(
     annotations: List<AnnotationEntity>,
     readingRange: IntRange?,
     theme: ReaderTheme,
-    segmentSpans: List<SegSpan> = emptyList(),
 ): AnnotatedString = buildAnnotatedString {
     append(content)
     for (a in annotations) {
@@ -1704,22 +1558,6 @@ private fun buildAnnotatedContent(
         if (e > s) {
             val c = a.color?.let { Color(it) } ?: Color(-14336)
             addStyle(SpanStyle(background = c.copy(alpha = 0.22f)), s, e)
-        }
-    }
-    // 段评标记：极淡珊瑚底色 + 下划线（正文不入库，锚点仅在 Raw 坐标，已映射回 processed 坐标）。
-    // 用 6% 底色而非 18%，避免与 Compose 选区高亮（深色块）混淆造成「始终被选中」的错觉；
-    // 下划线由 TextDecoration 提供，珊瑚色与标注高亮（青/绿）区分明显，仍清晰提示「本段有段评」。
-    for (span in segmentSpans) {
-        val ss = span.start.coerceAtLeast(0)
-        val ee = span.end.coerceAtMost(content.length)
-        if (ee > ss) {
-            addStyle(
-                SpanStyle(
-                    background = Color(0xFFFF7043).copy(alpha = 0.06f),
-                    textDecoration = TextDecoration.Underline,
-                ),
-                ss, ee,
-            )
         }
     }
     if (readingRange != null) {
