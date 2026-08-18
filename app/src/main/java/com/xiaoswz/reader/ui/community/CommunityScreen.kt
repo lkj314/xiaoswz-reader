@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +47,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -100,6 +103,7 @@ fun CommunityScreen(
     val settingsRepo = remember { AppSettingsRepository(context.applicationContext) }
     val accountRole by settingsRepo.accountRoleFlow.collectAsState(initial = "guest")
     val isLoggedIn = accountRole != "guest"
+    val isAdmin = accountRole == "admin"
 
     val listState = rememberLazyListState()
     var showPublish by remember { mutableStateOf(false) }
@@ -210,6 +214,7 @@ fun CommunityScreen(
                             items(state.posts, key = { it.id }) { post ->
                                 PostCard(
                                     post = post,
+                                    isAdmin = isAdmin,
                                     onClick = { detailPostId = post.id },
                                     onUserClick = onUserClick,
                                     onBooklistClick = onBooklistClick,
@@ -223,6 +228,26 @@ fun CommunityScreen(
                                             onAccountClick()
                                         } else {
                                             viewModel.toggleLike(post.id)
+                                        }
+                                    },
+                                    onDeletePost = { pid ->
+                                        scope.launch {
+                                            CommunityRepository.deletePost(pid)
+                                                .onSuccess {
+                                                    viewModel.removePost(pid)
+                                                    android.widget.Toast.makeText(
+                                                        context,
+                                                        "已删除动态",
+                                                        android.widget.Toast.LENGTH_SHORT,
+                                                    ).show()
+                                                }
+                                                .onFailure {
+                                                    android.widget.Toast.makeText(
+                                                        context,
+                                                        it.message ?: "删除失败",
+                                                        android.widget.Toast.LENGTH_SHORT,
+                                                    ).show()
+                                                }
                                         }
                                     },
                                 )
@@ -270,8 +295,30 @@ fun CommunityScreen(
     detailPostId?.let { id ->
         PostDetailSheet(
             postId = id,
+            isAdmin = isAdmin,
             viewModel = viewModel,
             onDismiss = { detailPostId = null },
+            onDeletePost = {
+                scope.launch {
+                    CommunityRepository.deletePost(id)
+                        .onSuccess {
+                            viewModel.removePost(id)
+                            detailPostId = null
+                            android.widget.Toast.makeText(
+                                context,
+                                "已删除动态",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                        .onFailure {
+                            android.widget.Toast.makeText(
+                                context,
+                                it.message ?: "删除失败",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                }
+            },
             onUserClick = onUserClick,
             onBooklistClick = onBooklistClick,
         )
@@ -284,11 +331,14 @@ fun CommunityScreen(
 @Composable
 private fun PostCard(
     post: PostItem,
+    isAdmin: Boolean,
     onClick: () -> Unit,
     onUserClick: (String) -> Unit,
     onBooklistClick: (String) -> Unit,
     onLike: () -> Unit,
+    onDeletePost: (String) -> Unit,
 ) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -393,7 +443,48 @@ private fun PostCard(
                     color = GlassTokens.SecondaryLabel,
                 )
             }
+            if (isAdmin) {
+                Spacer(Modifier.width(16.dp))
+                Row(
+                    modifier = Modifier
+                        .clickable { showDeleteConfirm = true }
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "删除动态",
+                        tint = GlassTokens.Rose,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "删除",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GlassTokens.Rose,
+                    )
+                }
+            }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDeletePost(post.id)
+                    },
+                ) { Text("删除", color = GlassTokens.Rose) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("取消") }
+            },
+            title = { Text("删除动态", color = GlassTokens.Label) },
+            text = { Text("确定删除这条动态吗？此操作不可恢复（含其全部评论）。", color = GlassTokens.SecondaryLabel) },
+        )
     }
 }
 
@@ -614,8 +705,10 @@ private fun PublishSheet(
 @Composable
 private fun PostDetailSheet(
     postId: String,
+    isAdmin: Boolean = false,
     viewModel: CommunityViewModel,
     onDismiss: () -> Unit,
+    onDeletePost: () -> Unit = {},
     onUserClick: (String) -> Unit = {},
     onBooklistClick: (String) -> Unit = {},
 ) {
@@ -658,6 +751,11 @@ private fun PostDetailSheet(
                     color = GlassTokens.Label,
                 )
                 Spacer(Modifier.weight(1f))
+                if (isAdmin) {
+                    IconButton(onClick = { onDeletePost() }) {
+                        Icon(Icons.Default.Delete, contentDescription = "删除动态", tint = GlassTokens.Rose)
+                    }
+                }
                 IconButton(onClick = { showReport = true }) {
                     Icon(Icons.Default.Warning, contentDescription = "举报", tint = GlassTokens.Label)
                 }
@@ -675,10 +773,14 @@ private fun PostDetailSheet(
             }
 
             detail?.let { d ->
+                // 列表用 weight 吸收键盘弹起后的高度收缩（与 BookDetailScreen 一致）；
+                // fill=false + heightIn(max) 让短内容保持紧凑、长内容（带图帖子）在键盘弹出时收缩，
+                // 底部评论输入框作为固定页脚由 imePadding() 顶起，始终浮在键盘上方。
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp),
+                        .weight(1f, fill = false)
+                        .heightIn(max = 460.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     item {
@@ -784,7 +886,25 @@ private fun PostDetailSheet(
                             )
                         }
                     } else {
-                        items(d.comments, key = { it.id }) { c -> CommentRow(c) }
+                        items(d.comments, key = { it.id }) { c ->
+                            CommentRow(
+                                c = c,
+                                isAdmin = isAdmin,
+                                onDelete = {
+                                    scope.launch {
+                                        CommunityRepository.deletePostComment(d.id, c.id)
+                                            .onSuccess { refreshDetail() }
+                                            .onFailure {
+                                                android.widget.Toast.makeText(
+                                                    context,
+                                                    it.message ?: "删除失败",
+                                                    android.widget.Toast.LENGTH_SHORT,
+                                                ).show()
+                                            }
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
 
@@ -869,7 +989,12 @@ private fun PostDetailSheet(
 }
 
 @Composable
-private fun CommentRow(c: PostCommentItem) {
+private fun CommentRow(
+    c: PostCommentItem,
+    isAdmin: Boolean = false,
+    onDelete: () -> Unit = {},
+) {
+    var showConfirm by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Avatar(url = c.author.avatarUrl, size = 30)
         Spacer(Modifier.width(8.dp))
@@ -886,12 +1011,44 @@ private fun CommentRow(c: PostCommentItem) {
                 color = GlassTokens.Label,
                 lineHeight = 20.sp,
             )
-            Text(
-                formatRelativeTime(c.createdAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = GlassTokens.SecondaryLabel,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    formatRelativeTime(c.createdAt),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = GlassTokens.SecondaryLabel,
+                )
+                if (isAdmin) {
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = "删除",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GlassTokens.Rose,
+                        modifier = Modifier
+                            .clickable { showConfirm = true }
+                            .padding(2.dp),
+                    )
+                }
+            }
         }
+    }
+
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showConfirm = false
+                        onDelete()
+                    },
+                ) { Text("删除", color = GlassTokens.Rose) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) { Text("取消") }
+            },
+            title = { Text("删除评论", color = GlassTokens.Label) },
+            text = { Text("确定删除这条评论吗？其楼中楼也会一并删除，且不可恢复。", color = GlassTokens.SecondaryLabel) },
+        )
     }
 }
 

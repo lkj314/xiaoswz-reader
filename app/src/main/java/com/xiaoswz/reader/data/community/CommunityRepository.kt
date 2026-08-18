@@ -79,6 +79,14 @@ object CommunityRepository {
     suspend fun commentPost(id: String, content: String, parentId: String? = null): Result<OkAck> =
         runCommunity { BackendClient.api.commentPost(id, PostCommentBody(content, parentId)) }
 
+    /** 管理台：删除动态（硬删，级联评论与楼中楼）。仅 admin 账号可调。 */
+    suspend fun deletePost(id: String): Result<OkAck> =
+        runCommunity { BackendClient.api.adminDeletePost(id) }
+
+    /** 管理台：删除动态评论（硬删，级联楼中楼；重算帖子评论数）。仅 admin 账号可调。 */
+    suspend fun deletePostComment(postId: String, commentId: String): Result<OkAck> =
+        runCommunity { BackendClient.api.adminDeletePostComment(postId, commentId) }
+
     private fun mapCommunityError(e: HttpException): Exception {
         val errCode = try {
             e.response()?.errorBody()?.string()?.let { body ->
@@ -90,6 +98,7 @@ object CommunityRepository {
         return when (errCode) {
             "login_required" -> Exception("请先登录后再操作")
             "muted" -> Exception("你已被禁言，暂时无法操作")
+            "forbidden" -> Exception("无权限（需管理员账号）")
             "post not found", "not_found" -> Exception("内容不存在或已被删除")
             else -> Exception("操作失败（错误 ${e.code()}）")
         }

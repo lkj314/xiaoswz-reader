@@ -136,4 +136,9 @@ class CommunityViewModel : ViewModel() {
     fun onPostPublished() {
         refresh()
     }
+
+    /** 管理台：删除帖子后从当前列表移除（详情页也会关闭） */
+    fun removePost(postId: String) {
+        _uiState.update { st -> st.copy(posts = st.posts.filter { it.id != postId }) }
+    }
 }

@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 83
-        versionName = "0.15.7" // 0.15.7·彻底废除段评气泡系统：移除段落末尾 💬N 气泡、右侧 56dp 预留 padding 与段评下划线，正文恢复完整填充；段评入口收敛到阅读器菜单「段评/全部段评」与长按选区「评」工具条。UpdateManager 缩短连接超时并增加每通道 2 次重试，fallback 更积极。
+        versionCode = 84
+        versionName = "0.15.8" // 0.15.8·书友圈修复：① 帖子详情页评论输入框在带图帖子弹起键盘时被遮挡——评论列表改 weight(1f,fill=false) 吸收高度收缩、输入框作固定页脚由 imePadding 顶起；② 管理账号(role=admin)进入书友圈，帖子卡与详情页加「删除动态」「删除评论」按钮（带确认弹窗），后端新增 admin/posts/[id] 硬删与 admin/community/posts/[postId]/comments/[commentId] 删评（级联楼中楼+重算评论数），仅 admin 可调。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

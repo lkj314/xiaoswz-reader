@@ -318,6 +318,18 @@ interface BackendApi {
         @Body body: PostCommentBody,
     ): OkAck
 
+    // ── 0.15.8 管理台：书友圈内容治理（仅 admin）──
+    /** 管理台：删除动态（硬删，级联评论与楼中楼）。仅 admin。 */
+    @DELETE("api/admin/posts/{id}")
+    suspend fun adminDeletePost(@Path("id") id: String): OkAck
+
+    /** 管理台：删除动态评论（硬删，级联楼中楼；重算帖子评论数）。仅 admin。 */
+    @DELETE("api/admin/community/posts/{postId}/comments/{commentId}")
+    suspend fun adminDeletePostComment(
+        @Path("postId") postId: String,
+        @Path("commentId") commentId: String,
+    ): OkAck
+
     // ── P4 书单推书（0.7.4）──
     @GET("api/booklists")
     suspend fun getBooklists(
