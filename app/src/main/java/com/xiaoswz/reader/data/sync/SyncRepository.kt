@@ -103,6 +103,11 @@ class SyncRepository(context: Context) {
         for (rb in remote.bookshelf) {
             val slug = rb.bookId
             val local = localBySlug[slug]
+            // 软删墓碑：某端删了该书，需在本端同步清除本地副本（删除传播）。
+            if (rb.deleted) {
+                if (local != null) shelf.remove(slug)
+                continue
+            }
             // 封面只接受 http(s)，data: URI 不写回本地
             val cover = if (rb.coverUrl?.startsWith("data:") == true) null else rb.coverUrl
             if (local == null) {

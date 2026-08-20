@@ -10,9 +10,13 @@ import retrofit2.http.Query
 // 创意工坊 · 插件广场（浏览 / 安装计数 / 点赞计数 / 提交）。从 BackendApi.kt 拆分（P2）。
 interface PluginApi {
 
-    /** 广场列表：支持 ?pinned=true 把教程/官方示范置顶，分页/过滤由后端实现后生效 */
+    /** 广场列表：按 type 过滤 + 分页（后端按 置顶→安装量 排序，拉全量 published）。 */
     @GET("api/plugins")
-    suspend fun getPlugins(@Query("pinned") pinned: Boolean? = null): PluginListResponse
+    suspend fun getPlugins(@Query("type") type: String? = null, @Query("page") page: Int = 1): PluginListResponse
+
+    /** 「我的发布」状态查询：按本地记录的提交 id 批量拉取审核状态（含 pending/rejected）。 */
+    @GET("api/plugins")
+    suspend fun getPluginsStatus(@Query("ids") ids: String): PluginListResponse
 
     /** 单插件完整清单：安装时拉取 */
     @GET("api/plugins/{pluginId}")

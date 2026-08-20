@@ -8,7 +8,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.*
+import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.Json
 
 /**
@@ -22,8 +23,12 @@ private val Context.pluginStore: DataStore<Preferences> by preferencesDataStore(
 )
 
 private val KEY_INSTALLED = stringPreferencesKey("installed_plugins")
+private val KEY_SUBMITTED = stringPreferencesKey("submitted_plugin_ids")
 
 private val json = Json { ignoreUnknownKeys = true }
+
+/** 已提交插件 id 列表的显式类型序列化器（避免 String 基础类型在推断链中歧义）。 */
+private val submittedListSerializer: KSerializer<List<String>> = ListSerializer(String.serializer())
 
 object PluginStateStore {
 
@@ -71,4 +76,27 @@ object PluginStateStore {
                 json.decodeFromString(ListSerializer(PluginInstall.serializer()), raw)
             }.getOrElse { emptyList() }
         } ?: emptyList()
+
+    // ── 「我的发布」：本机记住自己提交到广场的插件 id（用于查询审核状态）──
+    /** 已提交插件 id 流（去重，保序无意义）。无则返回空列表。 */
+    fun submittedFlow(ctx: Context): Flow<List<String>> =
+        ctx.pluginStore.data.map { prefs ->
+            prefs[KEY_SUBMITTED]?.let { raw ->
+                runCatching { json.decodeFromString(submittedListSerializer, raw) }
+                    .getOrElse { emptyList() }
+            } ?: emptyList()
+        }
+
+    /** 记录一次成功提交（若已存在则忽略）。 */
+    suspend fun addSubmitted(ctx: Context, pluginId: String) {
+        ctx.pluginStore.edit { prefs ->
+            val list: List<String> = prefs[KEY_SUBMITTED]?.let { raw ->
+                runCatching { json.decodeFromString(submittedListSerializer, raw) }
+                    .getOrElse { emptyList() }
+            } ?: emptyList()
+            if (pluginId !in list) {
+                prefs[KEY_SUBMITTED] = json.encodeToString(submittedListSerializer, list + pluginId)
+            }
+        }
+    }
 }

@@ -82,6 +82,8 @@ data class BookshelfDto(
     val coverUrl: String? = null,
     val status: String = "reading",
     val updatedAt: Long,
+    // 软删墓碑标记（0.16.4 起）：true 表示该书被某端删除，本地需同步清除。
+    val deleted: Boolean = false,
 )
 
 @Serializable
@@ -849,10 +851,15 @@ data class PluginSummary(
     val pinned: Boolean = false,
     val installs: Int = 0,
     val likes: Int = 0,
+    // 后端自 0.16.4 起在列表/ids 查询中返回审核状态；广场恒为 published，ids 查询用于「我的发布」。
+    val status: String = "published",
 )
 
 @Serializable
-data class PluginListResponse(val items: List<PluginSummary> = emptyList())
+data class PluginListResponse(
+    val items: List<PluginSummary> = emptyList(),
+    val total: Int = 0,
+)
 
 @Serializable
 data class PluginManifestResponse(val manifest: PluginManifestDto)

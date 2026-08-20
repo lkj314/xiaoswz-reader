@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xiaoswz.reader.data.annotation.AnnotationEntity
 import com.xiaoswz.reader.data.community.CommunityRepository
+import com.xiaoswz.reader.data.plugin.DecoratorCap
 import com.xiaoswz.reader.data.plugin.PluginManifest
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.ui.theme.ReaderTheme
@@ -70,10 +71,11 @@ internal fun SegmentMarkedText(
     theme: ReaderTheme,
     fontSizeSp: Int,
     lineSpacing: Float,
+    decorators: Map<String, DecoratorCap> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
-    val annotated = remember(text, annotations, readingRange, theme) {
-        buildAnnotatedContent(text, annotations, readingRange, theme)
+    val annotated = remember(text, annotations, readingRange, theme, decorators) {
+        buildAnnotatedContent(text, annotations, readingRange, theme, decorators)
     }
     SelectionContainer {
         Text(
@@ -94,6 +96,7 @@ internal fun ChapterBlockView(
     isReadingChapter: Boolean = false,
     readingRange: IntRange? = null,
     annotations: List<AnnotationEntity> = emptyList(),
+    decorators: Map<String, DecoratorCap> = emptyMap(),
 ) {
     Column(
         modifier = Modifier
@@ -121,6 +124,7 @@ internal fun ChapterBlockView(
             theme = theme,
             fontSizeSp = settings.fontSize,
             lineSpacing = settings.lineSpacing,
+            decorators = decorators,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(36.dp))
@@ -265,30 +269,47 @@ internal fun buildAnnotatedContent(
     annotations: List<AnnotationEntity>,
     readingRange: IntRange?,
     theme: ReaderTheme,
+    decorators: Map<String, DecoratorCap> = emptyMap(),
 ): AnnotatedString = buildAnnotatedString {
     append(content)
     for (a in annotations) {
         val s = a.startOffset.coerceAtLeast(0)
         val e = a.endOffset.coerceAtMost(content.length)
         if (e > s) {
-            when (a.type) {
-                // 书签：冷色下划线 + 极淡底，与「高亮」（暖色块）明确区分，避免二者混淆
-                "bookmark" -> {
-                    val c = a.color?.let { Color(it) } ?: Color(0xFF3B82F6)
-                    addStyle(
-                        SpanStyle(
-                            textDecoration = TextDecoration.Underline,
-                            color = c,
-                            background = c.copy(alpha = 0.08f),
-                        ),
-                        s,
-                        e,
-                    )
-                }
-                // 高亮（及其余未知类型）：暖色块背景，沿用既有观感
-                else -> {
-                    val c = a.color?.let { Color(it) } ?: Color(-14336)
-                    addStyle(SpanStyle(background = c.copy(alpha = 0.22f)), s, e)
+            // decorator 槽优先：若该标注类型挂了「下划线」类装饰插件（如官方红批注下划线），
+            // 则按装饰插件的样式渲染，让创意工坊 decorator 能力真正生效。
+            val deco = decorators[a.type]
+            if (deco != null && deco.style == "underline") {
+                val c = (deco.color ?: a.color)?.let { Color(it) } ?: Color(-65536)
+                addStyle(
+                    SpanStyle(
+                        textDecoration = TextDecoration.Underline,
+                        color = c,
+                        background = c.copy(alpha = 0.08f),
+                    ),
+                    s,
+                    e,
+                )
+            } else {
+                when (a.type) {
+                    // 书签：冷色下划线 + 极淡底，与「高亮」（暖色块）明确区分，避免二者混淆
+                    "bookmark" -> {
+                        val c = a.color?.let { Color(it) } ?: Color(0xFF3B82F6)
+                        addStyle(
+                            SpanStyle(
+                                textDecoration = TextDecoration.Underline,
+                                color = c,
+                                background = c.copy(alpha = 0.08f),
+                            ),
+                            s,
+                            e,
+                        )
+                    }
+                    // 高亮（及其余未知类型）：暖色块背景，沿用既有观感
+                    else -> {
+                        val c = a.color?.let { Color(it) } ?: Color(-14336)
+                        addStyle(SpanStyle(background = c.copy(alpha = 0.22f)), s, e)
+                    }
                 }
             }
         }

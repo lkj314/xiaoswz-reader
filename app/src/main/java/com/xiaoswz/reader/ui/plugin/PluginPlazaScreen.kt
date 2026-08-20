@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -43,6 +44,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +65,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xiaoswz.reader.data.annotation.AnnotationEntity
 import com.xiaoswz.reader.data.annotation.AnnotationRepository
 import com.xiaoswz.reader.data.api.BackendClient
+import com.xiaoswz.reader.data.api.PluginSummary
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.plugin.PluginManifest
 import com.xiaoswz.reader.data.plugin.PluginRepository
@@ -161,19 +164,40 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit, onPublish: () -> Un
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var items by remember { mutableStateOf<List<PlazaItem>>(emptyList()) }
+    var total by remember { mutableStateOf(0) }
     var loading by remember { mutableStateOf(true) }
     var installingId by remember { mutableStateOf<String?>(null) }
+    var selectedType by remember { mutableStateOf<String?>(null) }
+    var page by remember { mutableStateOf(1) }
 
-    LaunchedEffect(Unit) {
-        runCatching { BackendClient.api.getPlugins(pinned = true) }
-            .onSuccess { resp ->
-                items = resp.items.map {
-                    PlazaItem(it.pluginId, it.name, it.author, it.description, it.icon, it.installs, it.likes, it.pinned)
+    fun toItem(p: PluginSummary) =
+        PlazaItem(p.pluginId, p.name, p.author, p.description, p.icon, p.type, p.installs, p.likes, p.pinned)
+
+    fun load(reset: Boolean) {
+        val nextPage = if (reset) 1 else page + 1
+        loading = true
+        scope.launch {
+            runCatching { BackendClient.api.getPlugins(type = selectedType, page = nextPage) }
+                .onSuccess { resp ->
+                    items = if (reset) resp.items.map(::toItem) else items + resp.items.map(::toItem)
+                    total = resp.total
+                    page = nextPage
                 }
-            }
-            .onFailure { /* 网络失败时广场为空，不影响本机插件 */ }
-        loading = false
+                .onFailure { if (reset) items = emptyList() }
+            loading = false
+        }
     }
+
+    LaunchedEffect(Unit) { load(true) }
+    LaunchedEffect(selectedType) { load(true) }
+
+    val typeTabs = listOf(
+        null to "全部",
+        "annotation" to "标注",
+        "theme" to "主题",
+        "decorator" to "装饰",
+        "toolbar" to "工具",
+    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -186,11 +210,27 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit, onPublish: () -> Un
             }
         }
 
+        // 分类筛选（横向滚动，避免占用纵向空间）
+        item {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                typeTabs.forEach { (t, label) ->
+                    FilterChip(
+                        selected = selectedType == t,
+                        onClick = { selectedType = t },
+                        label = { Text(label) },
+                    )
+                }
+            }
+        }
+
         item {
             Text("广场精选", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
         }
-        if (loading) {
+        if (loading && items.isEmpty()) {
             item {
                 Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(strokeWidth = 2.dp)
@@ -212,7 +252,7 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit, onPublish: () -> Un
                     description = item.description,
                     icon = item.icon,
                     minAppVersion = 67,
-                    type = "annotation",
+                    type = item.type,
                 )
                 PluginCard(
                     icon = item.icon.ifBlank { "🧩" },
@@ -252,6 +292,16 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit, onPublish: () -> Un
                     onClick = { onOpenPlugin(manifest) },
                 )
             }
+            // 分页：仍有更多时展示「加载更多」
+            if (items.size < total) {
+                item {
+                    Button(
+                        onClick = { load(false) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !loading,
+                    ) { Text(if (loading) "加载中…" else "加载更多") }
+                }
+            }
         }
     }
 }
@@ -262,6 +312,7 @@ private data class PlazaItem(
     val author: String,
     val description: String,
     val icon: String,
+    val type: String,
     val installs: Int,
     val likes: Int,
     val pinned: Boolean,
@@ -328,10 +379,64 @@ private fun MineTab(onOpenPlugin: (PluginManifest) -> Unit, onImport: () -> Unit
     val scope = rememberCoroutineScope()
     val installed by PluginStateStore.installedFlow(context).collectAsStateWithLifecycle(initialValue = emptyList())
 
+    // 「我的发布」：本机记录提交过的插件 id，向后台拉取审核状态（pending/published/rejected）。
+    val submittedIds by PluginStateStore.submittedFlow(context).collectAsStateWithLifecycle(initialValue = emptyList())
+    var submittedItems by remember { mutableStateOf<List<PluginSummary>>(emptyList()) }
+    var loadingSubmitted by remember { mutableStateOf(false) }
+    LaunchedEffect(submittedIds) {
+        if (submittedIds.isEmpty()) { submittedItems = emptyList(); return@LaunchedEffect }
+        loadingSubmitted = true
+        runCatching { BackendClient.api.getPluginsStatus(submittedIds.joinToString(",")) }
+            .onSuccess { submittedItems = it.items }
+            .onFailure { submittedItems = emptyList() }
+        loadingSubmitted = false
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // 「我的发布」：提交后在广场的审核状态（UGC 闭环的用户侧反馈）
+        item {
+            Text("我提交的插件（审核状态）", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(8.dp))
+        }
+        if (submittedIds.isEmpty()) {
+            item {
+                Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
+                    Text("你还没有提交过插件。去广场点「发布我的插件」分享你的作品~", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        } else if (loadingSubmitted) {
+            item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(strokeWidth = 2.dp) } }
+        } else {
+            items(submittedItems, key = { "submitted:${it.pluginId}" }) { s ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(s.icon.ifBlank { "🧩" }, fontSize = 28.sp, modifier = Modifier.size(44.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(s.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("by ${s.author}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        val (badge, badgeColor) = when (s.status) {
+                            "published" -> "已通过" to MaterialTheme.colorScheme.primary
+                            "pending" -> "待审核" to MaterialTheme.colorScheme.onSurfaceVariant
+                            "rejected" -> "已拒绝" to MaterialTheme.colorScheme.error
+                            else -> s.status to MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        Text(badge, style = MaterialTheme.typography.labelSmall, color = badgeColor)
+                    }
+                }
+            }
+        }
+
         // 导入入口：对应 Obsidian 手动放入插件目录 / VS Code 从 VSIX 安装
         item {
             Button(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
@@ -474,6 +579,8 @@ private fun ImportPublishContent(mode: String, onBack: () -> Unit) {
                         if (mode == "publish") {
                             runCatching { BackendClient.api.submitPlugin(m) }
                                 .onSuccess { ack ->
+                                    // 记录本次提交，供「我的发布」查询审核状态（本机维度）。
+                                    PluginStateStore.addSubmitted(context, m.id)
                                     Toast.makeText(context, if (ack.status == "published") "已发布到广场" else "已提交，待审核", Toast.LENGTH_SHORT).show()
                                     onBack()
                                 }

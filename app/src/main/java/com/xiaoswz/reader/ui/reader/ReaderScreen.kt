@@ -200,6 +200,12 @@ fun ReaderScreen(
     // 当前生效的「工具栏动作」类插件：注入顶/底栏按钮（能力槽 3.4）。
     val toolbarPlugins by PluginRepository.toolbarPlugins(context)
         .collectAsState(initial = emptyList())
+    // 当前生效的「装饰」类插件：标注类型 -> 装饰能力（下划线等），供 buildAnnotatedContent 渲染。
+    val decoratorPlugins by PluginRepository.decoratorPlugins(context)
+        .collectAsState(initial = emptyList())
+    val decoratorMap = remember(decoratorPlugins) {
+        decoratorPlugins.mapNotNull { it.capabilities.decorator }.associateBy { it.targetType }
+    }
     // 划词标注模式开关 + 只读文本字段（承载选区状态，offset 相对预处理正文）
     var annoActive by remember { mutableStateOf(false) }
     val annoTextField = remember { mutableStateOf(TextFieldValue(text = "", selection = TextRange.Zero)) }
@@ -914,6 +920,7 @@ fun ReaderScreen(
                                 isReadingChapter = isReadingChapter,
                                 readingRange = readingRange,
                                 annotations = annotations.filter { it.chapterId == block.id },
+                                decorators = decoratorMap,
                             )
                         }
                         item {
@@ -992,6 +999,7 @@ fun ReaderScreen(
                                             annotations = annoAnnotations,
                                             readingRange = if (isReadingChapter) readingRange else null,
                                             theme = theme,
+                                            decorators = decoratorMap,
                                         ),
                                         OffsetMapping.Identity,
                                     )
@@ -1017,6 +1025,7 @@ fun ReaderScreen(
                                 theme = theme,
                                 fontSizeSp = state.settings.fontSize,
                                 lineSpacing = state.settings.lineSpacing,
+                                decorators = decoratorMap,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
