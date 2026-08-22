@@ -33,6 +33,10 @@ import com.xiaoswz.reader.data.api.AdminCharacterListResponse
 import com.xiaoswz.reader.data.api.AdminCharacterUpsertResponse
 import com.xiaoswz.reader.data.api.AdminAnnouncementListResponse
 import com.xiaoswz.reader.data.api.AdminAnnouncementResponse
+import com.xiaoswz.reader.data.api.AuthorLogListResponse
+import com.xiaoswz.reader.data.api.AuthorLogCreateBody
+import com.xiaoswz.reader.data.api.AuthorLogPatchBody
+import com.xiaoswz.reader.data.api.AuthorLogResponse
 
 /**
  * 冲浪阅读独立后端的统一访问层。所有方法都包了 runCatching——
@@ -265,5 +269,44 @@ object BackendRepository {
     /** 管理台：删除公告 */
     suspend fun adminDeleteAnnouncement(id: String): Result<Unit> = runCatching {
         api.adminDeleteAnnouncement(id)
+    }
+
+    // ── 作者日志（0.16.5）──
+    /** 公开列表（读者详情页专区 + 作者日志全屏页） */
+    suspend fun getAuthorLogs(
+        bookId: String,
+        type: String? = null,
+        page: Int = 1,
+    ): Result<AuthorLogListResponse> = runCatching {
+        api.getAuthorLogs(bookId, type, page)
+    }
+
+    /** 管理台：新建作者日志 */
+    suspend fun adminCreateAuthorLog(
+        bookId: String,
+        type: String,
+        title: String,
+        body: String,
+        chapterRef: String?,
+        pinned: Boolean,
+    ): Result<AuthorLogResponse> = runCatching {
+        api.adminCreateAuthorLog(AuthorLogCreateBody(bookId, type, title, body, chapterRef, pinned))
+    }
+
+    /** 管理台：编辑作者日志 */
+    suspend fun adminPatchAuthorLog(
+        id: String,
+        title: String?,
+        body: String?,
+        type: String?,
+        chapterRef: String?,
+        pinned: Boolean?,
+    ): Result<AuthorLogResponse> = runCatching {
+        api.adminPatchAuthorLog(id, AuthorLogPatchBody(title, body, type, chapterRef, pinned))
+    }
+
+    /** 管理台：删除作者日志 */
+    suspend fun adminDeleteAuthorLog(id: String): Result<Unit> = runCatching {
+        api.adminDeleteAuthorLog(id)
     }
 }

@@ -434,6 +434,55 @@ data class AdminAnnouncementResponse(
     val announcement: AdminAnnouncementDto? = null,
 )
 
+// ── 作者碎碎念 / 作者日志（0.16.5）──
+// 三类：musings(碎碎念/脑洞/灵感素材) / announcement(公告·更新计划) / changelog(章节改动说明)。
+@Serializable
+data class AuthorLogDto(
+    val id: String,
+    val bookId: String,
+    val type: String = "musings", // musings / announcement / changelog
+    val title: String,
+    val body: String,
+    val chapterRef: String? = null, // 关联章节（自由文本，如 "第12章 迷雾"）
+    val pinned: Boolean = false,
+    val createdAt: Long = 0,
+    val updatedAt: Long = 0,
+)
+
+@Serializable
+data class AuthorLogListResponse(
+    val items: List<AuthorLogDto> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 30,
+)
+
+@Serializable
+data class AuthorLogCreateBody(
+    val bookId: String,
+    val type: String = "musings",
+    val title: String,
+    val body: String,
+    val chapterRef: String? = null,
+    val pinned: Boolean = false,
+)
+
+@Serializable
+data class AuthorLogPatchBody(
+    val title: String? = null,
+    val body: String? = null,
+    val type: String? = null,
+    val chapterRef: String? = null,
+    val pinned: Boolean? = null,
+)
+
+@Serializable
+data class AuthorLogResponse(
+    val ok: Boolean = true,
+    val id: String? = null,
+    val log: AuthorLogDto? = null,
+)
+
 // ── P3 广告 / 归因 ──
 @Serializable
 data class AdResponse(

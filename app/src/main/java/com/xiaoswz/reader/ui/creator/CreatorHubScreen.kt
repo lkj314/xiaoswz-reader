@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -40,6 +41,7 @@ fun CreatorHubScreen(
     onCharacters: () -> Unit,
     onBooks: () -> Unit,
     onAnnouncements: () -> Unit,
+    onAuthorLogs: () -> Unit,
 ) {
     Scaffold(
         topBar = { AppTopBar(title = "创作者中心", onBack = onBack, showLogo = false) },
@@ -81,6 +83,14 @@ fun CreatorHubScreen(
                     title = "公告管理",
                     subtitle = "发布 / 编辑 / 删除运营公告（信息 / 警告 / 重要）",
                     onClick = onAnnouncements,
+                )
+            }
+            item {
+                HubCard(
+                    icon = Icons.Default.Chat,
+                    title = "作者日志",
+                    subtitle = "写碎碎念 / 公告 / 章节改动说明，读者在书籍详情页可见",
+                    onClick = onAuthorLogs,
                 )
             }
         }

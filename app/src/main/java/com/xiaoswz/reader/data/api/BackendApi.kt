@@ -39,6 +39,7 @@ interface BackendApi :
     CatalogApi,
     AnnotationApi,
     PluginApi,
+    AuthorLogApi,
     ReadingApi
 
 object BackendClient {

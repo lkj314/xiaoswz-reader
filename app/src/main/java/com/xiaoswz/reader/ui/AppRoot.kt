@@ -75,6 +75,8 @@ import com.xiaoswz.reader.ui.creator.CreatorHubScreen
 import com.xiaoswz.reader.ui.creator.CharacterAdminScreen
 import com.xiaoswz.reader.ui.creator.BookAdminScreen
 import com.xiaoswz.reader.ui.creator.AnnouncementAdminScreen
+import com.xiaoswz.reader.ui.creator.AuthorLogAdminScreen
+import com.xiaoswz.reader.ui.detail.AuthorLogDetailScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.reader.SegmentCommentListScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
@@ -127,6 +129,11 @@ object Routes {
     fun booklist(id: String) = "booklist/$id"
     fun user(id: String) = "user/$id"
     fun segmentComments(slug: String) = "segment-comments/${Uri.encode(slug)}"
+
+    const val AUTHOR_LOG_DETAIL = "author-log-detail/{slug}" // 0.16.5 作者日志全屏时间线（读者）
+    const val AUTHOR_LOG_ADMIN = "author-log-admin" // 0.16.5 作者日志管理（仅 admin）
+    fun authorLogDetail(slug: String) = "author-log-detail/${Uri.encode(slug)}"
+    fun authorLogAdmin() = "author-log-admin"
 }
 
 /** 顶层目标（显示底部导航栏），详情/阅读器为覆盖式全屏，不显示底栏 */
@@ -367,6 +374,27 @@ private fun AppShell() {
                         onCharacters = { navController.navigate(Routes.characterAdmin("", "")) },
                         onBooks = { navController.navigate(Routes.bookAdmin()) },
                         onAnnouncements = { navController.navigate(Routes.announcementAdmin()) },
+                        onAuthorLogs = { navController.navigate(Routes.authorLogAdmin()) },
+                    )
+                }
+
+                composable(Routes.AUTHOR_LOG_ADMIN) {
+                    AuthorLogAdminScreen(onBack = { navController.popBackStack() })
+                }
+
+                composable(
+                    route = Routes.AUTHOR_LOG_DETAIL,
+                    arguments = listOf(navArgument("slug") { type = NavType.StringType }),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val slug = entry.arguments?.getString("slug").orEmpty()
+                    AuthorLogDetailScreen(
+                        bookId = slug,
+                        bookTitle = null,
+                        onBack = { navController.popBackStack() },
                     )
                 }
 
@@ -451,6 +479,7 @@ private fun AppShell() {
                         onCharacterClick = { characterId ->
                             navController.navigate(Routes.character(characterId))
                         },
+                        onAuthorLogClick = { navController.navigate(Routes.authorLogDetail(slug)) },
                     )
                 }
 

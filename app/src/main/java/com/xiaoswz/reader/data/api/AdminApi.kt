@@ -68,4 +68,19 @@ interface AdminApi {
         @Path("postId") postId: String,
         @Path("commentId") commentId: String,
     ): OkAck
+
+    /** 管理台：新建作者日志（仅 admin） */
+    @POST("api/admin/author-logs")
+    suspend fun adminCreateAuthorLog(@Body body: AuthorLogCreateBody): AuthorLogResponse
+
+    /** 管理台：编辑作者日志（仅 admin） */
+    @PATCH("api/admin/author-logs/{id}")
+    suspend fun adminPatchAuthorLog(
+        @Path("id") id: String,
+        @Body body: AuthorLogPatchBody,
+    ): AuthorLogResponse
+
+    /** 管理台：删除作者日志（仅 admin） */
+    @DELETE("api/admin/author-logs/{id}")
+    suspend fun adminDeleteAuthorLog(@Path("id") id: String): OkAck
 }

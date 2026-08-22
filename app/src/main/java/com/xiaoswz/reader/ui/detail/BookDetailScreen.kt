@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -71,11 +72,16 @@ import com.xiaoswz.reader.ui.components.StatusPill
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.LiquidGlassCard
 import com.xiaoswz.reader.ui.components.SectionHeader
+import com.xiaoswz.reader.ui.components.whaleGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.data.booklist.BooklistRepository
 import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
 import com.xiaoswz.reader.data.api.BooklistSummary
 import com.xiaoswz.reader.data.api.CharacterDto
+import com.xiaoswz.reader.data.api.AuthorLogDto
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -97,6 +103,7 @@ fun BookDetailScreen(
     onBookClick: (String) -> Unit = {},
     onAccountClick: () -> Unit = {},
     onCharacterClick: (String) -> Unit = {},
+    onAuthorLogClick: () -> Unit = {},
     viewModel: BookDetailViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -114,6 +121,10 @@ fun BookDetailScreen(
     var newBooklistTitle by remember { mutableStateOf("") }
     var addingToBooklist by remember { mutableStateOf(false) }
     val addSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // 作者碎碎念（0.16.5）：详情页专区数据
+    var authorLogs by remember { mutableStateOf<List<AuthorLogDto>>(emptyList()) }
+    var authorLogsFailed by remember { mutableStateOf(false) }
 
     fun doAddToBooklist(booklistId: String) {
         val d = viewModel.uiState.value.detail ?: return
@@ -166,6 +177,14 @@ fun BookDetailScreen(
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.clearToast()
         }
+    }
+
+    // 拉取作者日志（后端不可达时静默降级，专区不显示）
+    LaunchedEffect(slug) {
+        authorLogsFailed = false
+        BackendRepository.getAuthorLogs(slug, page = 1)
+            .onSuccess { resp -> authorLogs = resp.items }
+            .onFailure { authorLogsFailed = true }
     }
 
     Scaffold(
@@ -422,6 +441,16 @@ fun BookDetailScreen(
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // ── 作者碎碎念 / 作者日志（0.16.5）：作者面向读者的透明窗口 ──
+                    if (!authorLogsFailed) {
+                        item {
+                            AuthorLogZone(
+                                logs = authorLogs,
+                                onViewAll = onAuthorLogClick,
+                            )
                         }
                     }
 
@@ -884,5 +913,101 @@ private fun CommentRow(
             modifier = Modifier.padding(top = 8.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
         )
+    }
+}
+
+// ── 作者碎碎念专区（0.16.5）──
+private val authorLogTypeLabel = mapOf(
+    "musings" to "碎碎念",
+    "announcement" to "公告",
+    "changelog" to "章节改动",
+)
+private val authorLogTypeColor = mapOf(
+    "musings" to Color(0xFF9B6DFF),
+    "announcement" to GlassTokens.SystemBlue,
+    "changelog" to Color(0xFFE0A200),
+)
+
+/** 详情页专区：列出最近 3 条作者日志；空则提示；点击「查看全部」进入时间线全屏页。 */
+@Composable
+private fun AuthorLogZone(
+    logs: List<AuthorLogDto>,
+    onViewAll: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(text = "作者碎碎念", style = MaterialTheme.typography.titleMedium)
+            if (logs.isNotEmpty()) {
+                TextButton(onClick = onViewAll) { Text("查看全部 ›", color = GlassTokens.SystemBlue) }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        if (logs.isEmpty()) {
+            Text(
+                text = "作者还没有发布碎碎念～",
+                style = MaterialTheme.typography.bodyMedium,
+                color = GlassTokens.SecondaryLabel,
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                logs.take(3).forEach { log ->
+                    AuthorLogMiniCard(log = log)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AuthorLogMiniCard(log: AuthorLogDto) {
+    val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA)
+    LiquidGlassCard(
+        modifier = Modifier.fillMaxWidth().whaleGlassCard(),
+        radius = GlassTokens.RadiusLG,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    authorLogTypeLabel[log.type] ?: log.type,
+                    color = authorLogTypeColor[log.type] ?: GlassTokens.SystemBlue,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                if (log.pinned) {
+                    Spacer(Modifier.width(6.dp))
+                    Text("置顶", color = GlassTokens.TertiaryLabel, fontSize = 11.sp)
+                }
+                if (!log.chapterRef.isNullOrBlank()) {
+                    Spacer(Modifier.width(6.dp))
+                    Text("📖 ${log.chapterRef}", color = GlassTokens.SecondaryLabel, fontSize = 11.sp)
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                log.title,
+                color = GlassTokens.Label,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                log.body,
+                color = GlassTokens.SecondaryLabel,
+                fontSize = 12.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Text(
+                fmt.format(Date(log.createdAt)),
+                color = GlassTokens.TertiaryLabel,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
 }
