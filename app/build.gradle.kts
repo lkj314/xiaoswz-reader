@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 90
-        versionName = "0.16.5" // 0.16.5·作者碎碎念/开发者日志：书籍详情页新增作者日志专区（碎碎念/公告/章节改动），读者可点开时间线；创作者中心新增作者日志管理（搜索书籍→新建/编辑/删除/置顶）。
+        versionCode = 91
+        versionName = "0.17.0" // 0.17.0·书圈经济体：书籍详情页新增「书圈」入口；书圈主页（加入/每书人设、圈主竞拍、书币投资、声望排行、圈主精选）；书币账本（余额+透明流水）；每日 POA 结算 cron；书币不可交易不可提现（避 QunQun 投机坑）。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
