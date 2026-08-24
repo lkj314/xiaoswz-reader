@@ -37,12 +37,16 @@ import com.xiaoswz.reader.data.api.AuthorLogListResponse
 import com.xiaoswz.reader.data.api.AuthorLogCreateBody
 import com.xiaoswz.reader.data.api.AuthorLogPatchBody
 import com.xiaoswz.reader.data.api.AuthorLogResponse
-import com.xiaoswz.reader.data.api.BidResultDto
+import com.xiaoswz.reader.data.api.AnchorPriceResponse
 import com.xiaoswz.reader.data.api.BookCircleDto
-import com.xiaoswz.reader.data.api.CircleBidBody
+import com.xiaoswz.reader.data.api.BoardAnchorBody
+import com.xiaoswz.reader.data.api.BoardBuybackBody
+import com.xiaoswz.reader.data.api.BoardReserveBody
+import com.xiaoswz.reader.data.api.BuybackResponse
 import com.xiaoswz.reader.data.api.CircleConfigBody
 import com.xiaoswz.reader.data.api.CircleConfigDto
 import com.xiaoswz.reader.data.api.CircleFeatureBody
+import com.xiaoswz.reader.data.api.CircleHubResponse
 import com.xiaoswz.reader.data.api.CircleInvestBody
 import com.xiaoswz.reader.data.api.CircleJoinBody
 import com.xiaoswz.reader.data.api.CircleRankResponse
@@ -51,6 +55,14 @@ import com.xiaoswz.reader.data.api.CoinGrantBody
 import com.xiaoswz.reader.data.api.CoinLedgerListResponse
 import com.xiaoswz.reader.data.api.CircleResetOwnerBody
 import com.xiaoswz.reader.data.api.ClaimResponse
+import com.xiaoswz.reader.data.api.ExchangeCancelBody
+import com.xiaoswz.reader.data.api.ExchangeFillBody
+import com.xiaoswz.reader.data.api.ExchangePlaceBody
+import com.xiaoswz.reader.data.api.NewsListResponse
+import com.xiaoswz.reader.data.api.NewsPublishBody
+import com.xiaoswz.reader.data.api.NewsPublishResponse
+import com.xiaoswz.reader.data.api.OrderBookResponse
+import com.xiaoswz.reader.data.api.PriceHistoryResponse
 import com.xiaoswz.reader.data.api.TransferBody
 import com.xiaoswz.reader.data.api.CircleBookIdBody
 import com.xiaoswz.reader.data.api.InvestResultDto
@@ -342,11 +354,6 @@ object BackendRepository {
         api.joinBookCircle(CircleJoinBody(bookId, displayName, avatarUrl))
     }
 
-    /** 圈主竞拍 */
-    suspend fun bidCircleOwner(bookId: String, bid: Int): Result<BidResultDto> = runCatching {
-        api.bidCircleOwner(CircleBidBody(bookId, bid))
-    }
-
     /** 圈主精选章评/书评 */
     suspend fun featureComment(bookId: String, commentId: String): Result<Unit> = runCatching {
         api.featureComment(CircleFeatureBody(bookId, commentId))
@@ -362,8 +369,8 @@ object BackendRepository {
         api.claimInitial(CircleBookIdBody(bookId))
     }
 
-    /** P2P 转账 / 打赏 */
-    suspend fun transferCoins(toUserId: String, amount: Int, reason: String? = null, bookId: String? = null): Result<Unit> = runCatching {
+    /** P2P 转账 / 打赏（0.18 多书币：必须指定书币所属的书） */
+    suspend fun transferCoins(toUserId: String, amount: Int, reason: String? = null, bookId: String): Result<Unit> = runCatching {
         api.transferCoins(TransferBody(toUserId, amount, reason, bookId))
     }
 
@@ -410,5 +417,69 @@ object BackendRepository {
     /** 管理台：圈主罢免 */
     suspend fun adminResetCircleOwner(bookId: String): Result<Unit> = runCatching {
         api.adminResetCircleOwner(CircleResetOwnerBody(bookId))
+    }
+
+    // ── 0.18 书圈金融模拟器 ──
+    /** 书圈专区聚合（导航【书圈】Tab） */
+    suspend fun getCircleHub(): Result<CircleHubResponse> = runCatching {
+        api.getCircleHub()
+    }
+
+    /** 书币交易所：挂单（maker 锁仓 fromBook 求 toBook） */
+    suspend fun placeExchangeOrder(fromBookId: String, toBookId: String, fromAmount: Int, toAmount: Int): Result<Unit> = runCatching {
+        api.placeExchangeOrder(ExchangePlaceBody(fromBookId, toBookId, fromAmount, toAmount))
+    }
+
+    /** 书币交易所：吃单（taker 以 toAmount 换 fromAmount） */
+    suspend fun fillExchangeOrder(orderId: String): Result<Unit> = runCatching {
+        api.fillExchangeOrder(ExchangeFillBody(orderId))
+    }
+
+    /** 书币交易所：撤单（解锁回 maker） */
+    suspend fun cancelExchangeOrder(orderId: String): Result<Unit> = runCatching {
+        api.cancelExchangeOrder(ExchangeCancelBody(orderId))
+    }
+
+    /** 书币交易所：订单簿 */
+    suspend fun getOrderBook(fromBookId: String, toBookId: String): Result<OrderBookResponse> = runCatching {
+        api.getOrderBook(fromBookId, toBookId)
+    }
+
+    /** 书币交易所：币价历史 */
+    suspend fun getPriceHistory(bookId: String, limit: Int = 60): Result<PriceHistoryResponse> = runCatching {
+        api.getPriceHistory(bookId, limit)
+    }
+
+    /** 董事会：设定基准书币价（董事权限） */
+    suspend fun boardSetAnchor(bookId: String, price: Float): Result<AnchorPriceResponse> = runCatching {
+        api.boardSetAnchor(BoardAnchorBody(bookId, price))
+    }
+
+    /** 董事会：回购（用本书 treasury 锁入储备） */
+    suspend fun boardBuyback(bookId: String, amount: Int): Result<BuybackResponse> = runCatching {
+        api.boardBuyback(BoardBuybackBody(bookId, amount))
+    }
+
+    /** 董事会：储备调拨（用本书 treasury 换入他书币） */
+    suspend fun boardMoveReserve(circleBookId: String, assetBookId: String, amount: Int): Result<Unit> = runCatching {
+        api.boardMoveReserve(BoardReserveBody(circleBookId, assetBookId, amount))
+    }
+
+    /** 书圈新闻稿 / 财报：列表 */
+    suspend fun getCircleNews(bookId: String): Result<NewsListResponse> = runCatching {
+        api.getCircleNews(bookId)
+    }
+
+    /** 书圈新闻稿 / 财报：发布（董事权限） */
+    suspend fun publishCircleNews(
+        bookId: String,
+        type: String,
+        title: String,
+        body: String,
+        sentiment: String,
+        statsJson: String? = null,
+        roadmapJson: String? = null,
+    ): Result<NewsPublishResponse> = runCatching {
+        api.publishCircleNews(NewsPublishBody(bookId, type, title, body, sentiment, statsJson, roadmapJson))
     }
 }

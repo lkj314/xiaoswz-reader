@@ -5,7 +5,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
 
-// 书圈经济体（0.17.0）：书圈主页 / 加入 / 竞拍 / 精选 / 投资 / 排行
+// 书圈经济体（0.17.0 → 0.18 书圈金融模拟器）：书圈主页 / 加入 / 精选 / 投资 / 持股治理 / 交易所 / 董事会 / 新闻
 interface BookCircleApi {
     @GET("api/book-circle")
     suspend fun getBookCircle(
@@ -14,9 +14,6 @@ interface BookCircleApi {
 
     @POST("api/book-circle/join")
     suspend fun joinBookCircle(@Body body: CircleJoinBody): BookCircleDto
-
-    @POST("api/book-circle/bid")
-    suspend fun bidCircleOwner(@Body body: CircleBidBody): BidResultDto
 
     @POST("api/book-circle/feature")
     suspend fun featureComment(@Body body: CircleFeatureBody): OkAck
@@ -44,4 +41,49 @@ interface BookCircleApi {
         @Query("bookId") bookId: String,
         @Query("date") date: String? = null,
     ): CircleRankResponse
+
+    // ── 0.18 书圈专区（导航【书圈】Tab 聚合）──
+    @GET("api/book-circle/hub")
+    suspend fun getCircleHub(): CircleHubResponse
+
+    // ── 0.18 书币交易所 ──
+    @POST("api/exchange/order")
+    suspend fun placeExchangeOrder(@Body body: ExchangePlaceBody): OkAck
+
+    @POST("api/exchange/fill")
+    suspend fun fillExchangeOrder(@Body body: ExchangeFillBody): OkAck
+
+    @POST("api/exchange/cancel")
+    suspend fun cancelExchangeOrder(@Body body: ExchangeCancelBody): OkAck
+
+    @GET("api/exchange/book")
+    suspend fun getOrderBook(
+        @Query("fromBookId") fromBookId: String,
+        @Query("toBookId") toBookId: String,
+    ): OrderBookResponse
+
+    @GET("api/exchange/price")
+    suspend fun getPriceHistory(
+        @Query("bookId") bookId: String,
+        @Query("limit") limit: Int = 60,
+    ): PriceHistoryResponse
+
+    // ── 0.18 董事会（董事权限）──
+    @POST("api/book-circle/board/anchor")
+    suspend fun boardSetAnchor(@Body body: BoardAnchorBody): AnchorPriceResponse
+
+    @POST("api/book-circle/board/buyback")
+    suspend fun boardBuyback(@Body body: BoardBuybackBody): BuybackResponse
+
+    @POST("api/book-circle/board/reserve")
+    suspend fun boardMoveReserve(@Body body: BoardReserveBody): OkAck
+
+    // ── 0.18 书圈新闻稿 / 财报 ──
+    @GET("api/book-circle/news")
+    suspend fun getCircleNews(
+        @Query("bookId") bookId: String,
+    ): NewsListResponse
+
+    @POST("api/book-circle/news")
+    suspend fun publishCircleNews(@Body body: NewsPublishBody): NewsPublishResponse
 }

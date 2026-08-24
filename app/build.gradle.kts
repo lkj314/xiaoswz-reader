@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 93
-        versionName = "0.17.0" // 0.17.0·书圈经济体·硬通货修订版(2)：领取窗口改为「国库 10 万枚发完即关」（不再限 3 天）；资格不限时间；安卓端错误提示改为解析后端 error 字段给出可读中文（修「请求参数有误」误报）。
+        versionCode = 94
+        versionName = "0.18.0" // 0.18.0·书圈金融模拟器：多书币独立硬通货池 + 持股治理（圈主=持股最高者，无竞拍）+ 书圈导航专区（资产仪表盘）+ 书币交易所（限价订单簿）+ 董事会（锚定价/回购/储备调拨/财报新闻稿）。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

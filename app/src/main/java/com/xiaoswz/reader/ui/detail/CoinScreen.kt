@@ -94,16 +94,45 @@ fun CoinScreen(onBack: () -> Unit) {
                         Icon(Icons.Default.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(34.dp))
                         Spacer(Modifier.width(14.dp))
                         Column {
-                            Text("当前书币", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.SecondaryLabel)
+                            Text("书币总资产", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.SecondaryLabel)
                             Spacer(Modifier.height(2.dp))
                             Text("${state.balance}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
                             Spacer(Modifier.height(2.dp))
-                            Text("累计获得 ${state.earnedTotal}（含已花费）", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                            Text("累计获得 ${state.earnedTotal} · 锁仓 ${state.locked}（跨 ${state.coins.size} 种书币）", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
                         }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Text("每一笔书币进出都公开可查——透明本身就是激励。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                Text("每一笔书币进出都公开可查——透明本身就是激励。书币为固定池硬通货，每书独立铸造，互不相同。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+            }
+
+            // ── 0.18 按书持仓明细 ──
+            item {
+                Text("各书币持仓", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+            }
+            if (state.coins.isEmpty()) {
+                item {
+                    Text("暂无持仓。去书籍书圈领取初始书币或投资即可获得本书币。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                }
+            } else {
+                items(state.coins, key = { it.bookId }) { coin ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().whaleGlassCard(),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text("《${coin.bookId}》", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                                Text("锁仓 ${coin.locked} · 累计获得 ${coin.earnedTotal}", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                            }
+                            Text("${coin.balance}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFFE0A200))
+                        }
+                    }
+                }
             }
 
             if (state.error != null) {

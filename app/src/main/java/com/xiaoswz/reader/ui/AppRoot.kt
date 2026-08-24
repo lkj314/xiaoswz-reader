@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -78,6 +79,9 @@ import com.xiaoswz.reader.ui.creator.AnnouncementAdminScreen
 import com.xiaoswz.reader.ui.creator.AuthorLogAdminScreen
 import com.xiaoswz.reader.ui.detail.AuthorLogDetailScreen
 import com.xiaoswz.reader.ui.detail.BookCircleScreen
+import com.xiaoswz.reader.ui.detail.BookCircleHubScreen
+import com.xiaoswz.reader.ui.detail.ExchangeScreen
+import com.xiaoswz.reader.ui.detail.BoardScreen
 import com.xiaoswz.reader.ui.detail.CoinScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.reader.SegmentCommentListScreen
@@ -138,10 +142,17 @@ object Routes {
     // 0.17.0 书圈经济体
     const val BOOK_CIRCLE = "book-circle/{slug}" // 书圈主页（读者，按书）
     const val COIN = "coin" // 书币账本（个人透明流水）
+    // 0.18 书圈金融模拟器
+    const val CIRCLE_HUB = "circle-hub" // 书圈专区（导航【书圈】Tab 聚合仪表盘）
+    const val EXCHANGE = "exchange/{fromBookId}/{toBookId}" // 书币交易所（按交易对）
+    const val BOARD = "board/{bookId}" // 董事会（董事权限操作）
     fun authorLogDetail(slug: String) = "author-log-detail/${Uri.encode(slug)}"
     fun authorLogAdmin() = "author-log-admin"
     fun bookCircle(slug: String) = "book-circle/${Uri.encode(slug)}"
     fun coin() = "coin"
+    fun circleHub() = "circle-hub"
+    fun exchange(fromBookId: String, toBookId: String) = "exchange/${Uri.encode(fromBookId)}/${Uri.encode(toBookId)}"
+    fun board(bookId: String) = "board/${Uri.encode(bookId)}"
 }
 
 /** 顶层目标（显示底部导航栏），详情/阅读器为覆盖式全屏，不显示底栏 */
@@ -151,6 +162,7 @@ private val TopLevelRoutes = setOf(
     Routes.COMMUNITY,
     Routes.BOOKLISTS,
     Routes.PLUGIN_PLAZA,
+    Routes.CIRCLE_HUB,
     Routes.SETTINGS,
 )
 
@@ -164,6 +176,7 @@ private val BottomTabs = listOf(
     BottomTab(Routes.HOME, "首页", Icons.Default.Home),
     BottomTab(Routes.BOOKSHELF, "书架", Icons.Default.MenuBook),
     BottomTab(Routes.COMMUNITY, "书友圈", Icons.Default.Forum),
+    BottomTab(Routes.CIRCLE_HUB, "书圈", Icons.Default.AccountBalance),
     BottomTab(Routes.BOOKLISTS, "书单", Icons.Default.MenuBook),
     BottomTab(Routes.PLUGIN_PLAZA, "工坊", Icons.Default.Extension),
     BottomTab(Routes.SETTINGS, "设置", Icons.Default.Settings),
@@ -419,6 +432,56 @@ private fun AppShell() {
                     BookCircleScreen(
                         bookId = slug,
                         bookTitle = null,
+                        onBack = { navController.popBackStack() },
+                        onExchangeClick = { bid -> navController.navigate(Routes.exchange(bid, bid)) },
+                        onBoardClick = { bid -> navController.navigate(Routes.board(bid)) },
+                    )
+                }
+
+                composable(
+                    route = Routes.CIRCLE_HUB,
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) {
+                    BookCircleHubScreen(
+                        onBack = { navController.popBackStack() },
+                        onBookClick = { bid -> navController.navigate(Routes.bookCircle(bid)) },
+                    )
+                }
+
+                composable(
+                    route = Routes.EXCHANGE,
+                    arguments = listOf(
+                        navArgument("fromBookId") { type = NavType.StringType },
+                        navArgument("toBookId") { type = NavType.StringType },
+                    ),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val from = entry.arguments?.getString("fromBookId").orEmpty()
+                    val to = entry.arguments?.getString("toBookId").orEmpty()
+                    ExchangeScreen(
+                        fromBookId = from,
+                        toBookId = to,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(
+                    route = Routes.BOARD,
+                    arguments = listOf(navArgument("bookId") { type = NavType.StringType }),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val bid = entry.arguments?.getString("bookId").orEmpty()
+                    BoardScreen(
+                        bookId = bid,
                         onBack = { navController.popBackStack() },
                     )
                 }

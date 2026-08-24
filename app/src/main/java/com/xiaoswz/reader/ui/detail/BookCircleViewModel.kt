@@ -13,23 +13,21 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
 /**
- * 书圈经济体（0.17.0）读者端核心：每书一个书圈。
- * 功能：加入书圈（设定每书独立人设）、竞拍圈主、书币投资、查看排行与我的投资、圈主精选。
- * 书币不可交易不可提现（避 QunQun 投机坑）；所有系数由后端 AppConfig 热调。
+ * 书圈经济体（0.17.0 → 0.18 书圈金融模拟器）：每书一个书圈。
+ * 功能：加入书圈（每书人设）、持股治理（圈主=持股最高者）、书币投资、查看股权结构 / 排行 / 我的投资、圈主精选。
+ * 书币不可凭空增发（硬通货）；所有系数由后端 AppConfig 热调。
  */
 data class BookCircleUiState(
     val bookId: String = "",
     val bookTitle: String? = null,
     val circle: BookCircleDto? = null,
     val rank: List<CircleRankItem> = emptyList(),
-    val balance: Int = 0,
-    val locked: Int = 0, // 锁仓（竞拍押金 / 投资质押）
+    val balance: Int = 0, // 我的本书币余额（多书币：仅本圈）
+    val locked: Int = 0, // 我的本书币锁仓（投资质押 / 交易所挂单）
     val isLoading: Boolean = false,
     val error: String? = null,
     val toast: String? = null,
     val saving: Boolean = false,
-    val showBidDialog: Boolean = false,
-    val bidAmount: String = "",
     val showInvestDialog: Boolean = false,
     val investAmount: String = "",
     val showIdentityDialog: Boolean = false,
@@ -64,11 +62,11 @@ class BookCircleViewModel : ViewModel() {
                             isLoading = false,
                             circle = c,
                             identityName = c.myMembership?.displayName ?: "",
-                            balance = it.balance,
+                            balance = c.myCoin.balance,
+                            locked = c.myCoin.locked,
                         )
                     }
                     loadRank()
-                    loadBalance()
                 }
                 .onFailure {
                     _uiState.update { it.copy(isLoading = false, error = "书圈加载失败，后端未连接或网络异常") }
@@ -82,14 +80,6 @@ class BookCircleViewModel : ViewModel() {
             BackendRepository.getCircleRank(bookId)
                 .onSuccess { resp -> _uiState.update { it.copy(rank = resp.items) } }
                 .onFailure { /* 排行非关键，静默 */ }
-        }
-    }
-
-    private fun loadBalance() {
-        viewModelScope.launch {
-            BackendRepository.getCoinBalance()
-                .onSuccess { resp -> _uiState.update { it.copy(balance = resp.balance, locked = resp.locked) } }
-                .onFailure { /* 余额非关键 */ }
         }
     }
 
@@ -119,40 +109,6 @@ class BookCircleViewModel : ViewModel() {
         }
     }
 
-    // ── 竞拍圈主 ──
-    fun openBidDialog() = _uiState.update {
-        it.copy(showBidDialog = true, bidAmount = (it.circle?.currentBid?.plus(10) ?: 10).toString())
-    }
-
-    fun dismissBidDialog() = _uiState.update { it.copy(showBidDialog = false) }
-
-    fun confirmBid() {
-        val bookId = _uiState.value.bookId
-        val amt = _uiState.value.bidAmount.toIntOrNull()
-        val cur = _uiState.value.circle?.currentBid ?: 0
-        if (amt == null || amt <= cur) {
-            _uiState.update { it.copy(toast = "出价必须高于当前最高 ${cur} 书币") }
-            return
-        }
-        if (amt > _uiState.value.balance) {
-            _uiState.update { it.copy(toast = "书币余额不足（当前 ${_uiState.value.balance}）") }
-            return
-        }
-        _uiState.update { it.copy(saving = true, showBidDialog = false) }
-        viewModelScope.launch {
-            BackendRepository.bidCircleOwner(bookId, amt)
-                .onSuccess { _uiState.update { s -> s.copy(saving = false, toast = "竞拍成功，你已是圈主！") } }
-                .onFailure { e ->
-                    _uiState.update { it.copy(saving = false, toast = mapErr(e)) }
-                }
-            // 重新拉取圈状态（圈主可能已变）
-            BackendRepository.getBookCircle(bookId).onSuccess { c ->
-                _uiState.update { it.copy(circle = c) }
-                loadBalance()
-            }
-        }
-    }
-
     // ── 投资 ──
     fun openInvestDialog() = _uiState.update { it.copy(showInvestDialog = true, investAmount = "") }
 
@@ -179,10 +135,7 @@ class BookCircleViewModel : ViewModel() {
             BackendRepository.investBook(bookId, amt)
                 .onSuccess { _uiState.update { it.copy(saving = false, toast = "投资成功，已锁定份额") } }
                 .onFailure { e -> _uiState.update { it.copy(saving = false, toast = mapErr(e)) } }
-            BackendRepository.getBookCircle(bookId).onSuccess { c ->
-                _uiState.update { it.copy(circle = c) }
-                loadBalance()
-            }
+            load()
         }
     }
 
@@ -231,6 +184,7 @@ class BookCircleViewModel : ViewModel() {
     fun confirmTransfer() {
         val to = _uiState.value.transferTarget.trim()
         val amt = _uiState.value.transferAmount.toIntOrNull()
+        val bookId = _uiState.value.bookId
         if (to.isEmpty()) {
             _uiState.update { it.copy(toast = "请输入收款人 ID") }
             return
@@ -245,14 +199,14 @@ class BookCircleViewModel : ViewModel() {
         }
         _uiState.update { it.copy(saving = true, showTransferDialog = false) }
         viewModelScope.launch {
-            BackendRepository.transferCoins(to, amt, null, _uiState.value.bookId)
+            BackendRepository.transferCoins(to, amt, null, bookId)
                 .onSuccess { _uiState.update { it.copy(saving = false, toast = "转账成功（P2P，系统零抽成）") } }
                 .onFailure { e -> _uiState.update { it.copy(saving = false, toast = mapErr(e)) } }
             load()
         }
     }
 
-    /** 打赏圈主（快捷 P2P 转账） */
+    /** 打赏圈主（快捷 P2P 转账，指定本书币） */
     fun rewardOwner(amount: Int) {
         val owner = _uiState.value.circle?.ownerUserId ?: return
         val bookId = _uiState.value.bookId
@@ -282,7 +236,6 @@ class BookCircleViewModel : ViewModel() {
     }
 
     // 对话框输入（StateFlow 只读，统一经 setter 更新）
-    fun setBidAmount(v: String) = _uiState.update { it.copy(bidAmount = v) }
     fun setInvestAmount(v: String) = _uiState.update { it.copy(investAmount = v) }
     fun setIdentityName(v: String) = _uiState.update { it.copy(identityName = v) }
     fun setFeatureCommentId(v: String) = _uiState.update { it.copy(featureCommentId = v) }
@@ -320,8 +273,6 @@ class BookCircleViewModel : ViewModel() {
         "nothing_locked" -> "没有可解锁的锁仓"
         "not_owner" -> "仅圈主可执行此操作"
         "comment_mismatch" -> "评论与本书不匹配"
-        "invalid_bid" -> "竞拍出价无效"
-        "bid_too_low" -> "出价需高于当前最高价"
         "invalid_amount" -> "金额无效"
         "exceed_max" -> "超过单本书投资上限"
         "no_active_investment" -> "没有进行中的投资"

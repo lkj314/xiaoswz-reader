@@ -483,12 +483,22 @@ data class AuthorLogResponse(
     val log: AuthorLogDto? = null,
 )
 
-// ══ 书圈经济体（0.17.0）══
+// ══ 书圈经济体（0.17.0 → 0.18 书圈金融模拟器）══
 @Serializable
 data class CoinBalanceDto(
     val userId: String = "",
     val balance: Int = 0,
-    val locked: Int = 0, // 锁仓（竞拍押金 / 投资质押）
+    val locked: Int = 0, // 聚合锁仓（所有书币锁仓之和）
+    val earnedTotal: Int = 0,
+    val coins: List<BookCoinBalance> = emptyList(), // 0.18 多书币：按书拆分持仓
+)
+
+/** 单书币持仓（0.18 多书币） */
+@Serializable
+data class BookCoinBalance(
+    val bookId: String = "",
+    val balance: Int = 0,
+    val locked: Int = 0, // 锁仓（投资质押 / 交易所挂单）
     val earnedTotal: Int = 0,
 )
 
@@ -530,19 +540,46 @@ data class BookCircleDto(
     val ownerDisplayName: String? = null,
     val ownerSince: Long? = null,
     val status: String = "open",
-    val currentBid: Int = 0, // 当前最高竞拍价（无主时=起拍参考）
     val treasury: Int = 0, // 国库未领取余额（初始铸造 - 已领取）
     val mintedTotal: Int = 0, // 已进入流通的总量
-    val claimWindowOpen: Boolean = false, // 初始领取窗口是否开放
+    val policyAnchorPrice: Float = 1f, // 0.18 董事会锚定的基准书币价（信号）
+    val claimWindowOpen: Boolean = false, // 初始领取窗口是否开放（国库>0）
     val totalInvestment: Int = 0,
     val growthIndex: Float = 0f,
+    val circulatingSupply: Int = 0, // 流通量 = 投资锁仓 + 已领取
+    val shareTotal: Int = 0, // 股权总份额（= 全书活跃投资总额）
+    val shareholders: List<ShareholderDto> = emptyList(), // 股东名册 top10
+    val reserves: List<ReserveDto> = emptyList(), // 书圈持有的他书币储备
     val myMembership: CircleMembershipDto? = null,
     val myInvestment: InvestmentDto? = null,
-    val lockedBalance: Int = 0, // 我的锁仓总额
-    val canBid: Boolean = false, // 当前用户是否可参与竞拍
+    val myCoin: MyBookCoinDto = MyBookCoinDto(), // 我的本书币持仓
     val canInvest: Boolean = false,
     val investMaxPerBook: Int = 5000,
     val investLockDays: Int = 14,
+)
+
+/** 股东条目（0.18 股权结构） */
+@Serializable
+data class ShareholderDto(
+    val userId: String = "",
+    val displayName: String? = null,
+    val role: String = "member",
+    val shares: Int = 0, // 投资份额（= 锁仓书币数）
+    val pct: Float = 0f, // 占全书总份额比例 %
+)
+
+/** 书圈储备条目（0.18）：本书圈持有某他书币的数量（可为负，表示自我储备抵消） */
+@Serializable
+data class ReserveDto(
+    val assetBookId: String = "",
+    val amount: Int = 0,
+)
+
+/** 单书币持仓视图（0.18） */
+@Serializable
+data class MyBookCoinDto(
+    val balance: Int = 0,
+    val locked: Int = 0,
 )
 
 @Serializable
@@ -584,13 +621,6 @@ data class InvestmentListResponse(
 )
 
 @Serializable
-data class BidResultDto(
-    val ok: Boolean = true,
-    val ownerUserId: String? = null,
-    val ownerSince: Long? = null,
-)
-
-@Serializable
 data class InvestResultDto(
     val ok: Boolean = true,
     val investmentId: String = "",
@@ -603,12 +633,6 @@ data class CircleJoinBody(
     val bookId: String,
     val displayName: String? = null,
     val avatarUrl: String? = null,
-)
-
-@Serializable
-data class CircleBidBody(
-    val bookId: String,
-    val bid: Int, // 出价书币（高于当前最高）
 )
 
 @Serializable
@@ -638,7 +662,7 @@ data class TransferBody(
     val toUserId: String,
     val amount: Int,
     val reason: String? = null,
-    val bookId: String? = null,
+    val bookId: String, // 0.18 多书币：转账必须指定书币所属的书
 )
 
 @Serializable
@@ -654,19 +678,161 @@ data class CircleConfigBody(val value: String = "") // Json 字符串透传
 @Serializable
 data class CircleConfigDto(
     val circleInitialMint: Int = 100000,
-    val circleClaimWindowDays: Int = 3,
+    val circleClaimWindowDays: Int = 3, // 已弃用（0.18 领取窗口由 treasury>0 推导）
     val circleClaimPerUser: Int = 100,
-    val ownerStartBid: Int = 100,
-    val inactiveOwnerDays: Int = 30,
+    val ownerStartBid: Int = 100, // 已弃用（0.18 圈主改由持股决定，无竞拍）
+    val inactiveOwnerDays: Int = 30, // 已弃用
     val investMaxPerBook: Int = 5000,
     val investLockDays: Int = 14,
     val councilTopPct: Int = 10,
     val elderTopPct: Int = 1,
     val ownerMinInvestShares: Int = 100,
+    // ── 0.18 书圈金融模拟器新增 ──
+    val anchorBookUid: String = "B000001", // 基准书（第一本书）币，作为汇率锚
+    val exchangeFeePct: Int = 0, // 交易所费率（系统零抽成）
+    val chairmanMarginPct: Int = 10, // 圈主稳定边际 %
+    val chairmanCooldownHrs: Int = 24, // 圈主重算冷却小时
+    val boardQuorumPct: Int = 30, // 董事会决议法定占比 %
 )
 
 @Serializable
 data class CircleResetOwnerBody(val bookId: String)
+
+// ── 0.18 书圈金融模拟器：导航【书圈】专区聚合 ──
+@Serializable
+data class CircleHubResponse(
+    val totalNetWorth: Double = 0.0, // 资产净值（Σ(余额+锁仓)×锚定价）
+    val joinedCircles: Int = 0, // 已加入/持币书圈数
+    val investedBooks: Int = 0, // 已投资书籍数
+    val books: List<HubBookDto> = emptyList(),
+)
+
+@Serializable
+data class HubBookDto(
+    val bookId: String = "",
+    val anchorPrice: Float = 1f, // 该书币基准价
+    val treasury: Int = 0, // 国库剩余
+    val myBalance: Int = 0, // 我的该书币余额
+    val myLocked: Int = 0, // 我的该书币锁仓
+    val myInvested: Int = 0, // 我的投资份额
+    val myShares: Int = 0, // 投资份额（同 myInvested）
+    val mySharePct: Float = 0f, // 我的持股占比 %
+    val isChairman: Boolean = false, // 是否本书圈主（董事长）
+    val isDirector: Boolean = false, // 是否董事（含圈主/长老/议事员）
+    val role: String = "member",
+    val netValue: Double = 0.0, // 该书币资产净值
+)
+
+// ── 0.18 书币交易所 ──
+@Serializable
+data class ExchangePlaceBody(
+    val fromBookId: String,
+    val toBookId: String,
+    val fromAmount: Int, // 挂出 fromBook 数量
+    val toAmount: Int, // 期望换入 toBook 数量
+)
+
+@Serializable
+data class ExchangeFillBody(val orderId: String)
+
+@Serializable
+data class ExchangeCancelBody(val orderId: String)
+
+@Serializable
+data class OrderBookResponse(
+    val orders: List<ExchangeOrderDto> = emptyList(),
+)
+
+@Serializable
+data class ExchangeOrderDto(
+    val orderId: String = "",
+    val makerId: String = "",
+    val fromAmount: Int = 0,
+    val toAmount: Int = 0,
+    val rate: Float = 0f, // 每 1 fromBook 可换 toBook 数
+    val createdAt: Long = 0,
+)
+
+@Serializable
+data class PriceHistoryResponse(
+    val points: List<PricePointDto> = emptyList(),
+)
+
+@Serializable
+data class PricePointDto(
+    val price: Float = 0f,
+    val anchorPrice: Float = 0f,
+    val volume: Int = 0,
+    val ts: Long = 0,
+)
+
+// ── 0.18 董事会（董事权限操作）──
+@Serializable
+data class BoardAnchorBody(
+    val bookId: String,
+    val price: Float, // 设定基准书币价（信号）
+)
+
+@Serializable
+data class BoardBuybackBody(
+    val bookId: String,
+    val amount: Int, // 用本书 treasury 回购锁入储备
+)
+
+@Serializable
+data class BoardReserveBody(
+    val circleBookId: String, // 操作方书圈
+    val assetBookId: String, // 换入的他书币
+    val amount: Int,
+)
+
+@Serializable
+data class AnchorPriceResponse(
+    val ok: Boolean = true,
+    val anchorPrice: Float = 1f,
+)
+
+@Serializable
+data class BuybackResponse(
+    val ok: Boolean = true,
+    val treasuryRemaining: Int = 0,
+)
+
+// ── 0.18 书圈新闻稿 / 财报 ──
+@Serializable
+data class NewsPublishBody(
+    val bookId: String,
+    val type: String = "report", // report / event / announcement
+    val title: String,
+    val body: String,
+    val sentiment: String = "neutral", // bull / bear / neutral
+    val statsJson: String? = null, // 运营数据（JSON 字符串透传）
+    val roadmapJson: String? = null, // 作者更新蓝图（JSON 字符串透传）
+)
+
+@Serializable
+data class NewsListResponse(
+    val news: List<NewsItemDto> = emptyList(),
+)
+
+@Serializable
+data class NewsItemDto(
+    val id: String = "",
+    val type: String = "report",
+    val title: String = "",
+    val body: String = "",
+    val sentiment: String = "neutral",
+    val statsJson: String? = null,
+    val roadmapJson: String? = null,
+    val authorId: String = "",
+    val createdAt: Long = 0,
+)
+
+@Serializable
+data class NewsPublishResponse(
+    val ok: Boolean = true,
+    val newsId: String = "",
+)
 
 // ── P3 广告 / 归因 ──
 @Serializable
