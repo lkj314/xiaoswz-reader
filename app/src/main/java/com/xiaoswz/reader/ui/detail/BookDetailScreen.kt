@@ -24,12 +24,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -104,6 +107,7 @@ fun BookDetailScreen(
     onAccountClick: () -> Unit = {},
     onCharacterClick: (String) -> Unit = {},
     onAuthorLogClick: () -> Unit = {},
+    onBookCircleClick: () -> Unit = {},
     viewModel: BookDetailViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -440,6 +444,44 @@ fun BookDetailScreen(
                                         CharacterChip(ch, onClick = { onCharacterClick(ch.id) })
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // ── 书圈（0.17.0）：以书为锚点的社区经济体入口 ──
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .whaleGlassCard()
+                                .clickable { onBookCircleClick() },
+                            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                            shape = RoundedCornerShape(14.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Default.Groups, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(26.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "书圈",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GlassTokens.Label,
+                                    )
+                                    Spacer(Modifier.height(3.dp))
+                                    Text(
+                                        "加入本书圈 · 竞拍圈主 · 书币投资 · 声望排行",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = GlassTokens.SecondaryLabel,
+                                    )
+                                }
+                                Text("进入 ›", color = GlassTokens.SystemBlue, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }

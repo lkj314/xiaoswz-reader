@@ -1,0 +1,411 @@
+package com.xiaoswz.reader.ui.detail
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import android.widget.Toast
+import com.xiaoswz.reader.data.api.CircleRankItem
+import com.xiaoswz.reader.ui.components.AppTopBar
+import com.xiaoswz.reader.ui.components.whaleGlassCard
+import com.xiaoswz.reader.ui.theme.GlassTokens
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+private val roleLabel = mapOf(
+    "owner" to "圈主",
+    "council" to "议事员",
+    "elder" to "长老",
+    "member" to "书迷",
+)
+private val roleColor = mapOf(
+    "owner" to Color(0xFFE0A200),
+    "council" to Color(0xFF9B6DFF),
+    "elder" to GlassTokens.SystemBlue,
+    "member" to GlassTokens.SecondaryLabel,
+)
+
+@Composable
+fun BookCircleScreen(
+    bookId: String,
+    bookTitle: String?,
+    onBack: () -> Unit,
+) {
+    val vm: BookCircleViewModel = viewModel()
+    val state by vm.uiState.collectAsState()
+
+    LaunchedEffect(bookId) { vm.init(bookId, bookTitle) }
+
+    Scaffold(
+        topBar = { AppTopBar(title = "书圈", onBack = onBack, showLogo = false) },
+        containerColor = Color.Transparent,
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                Spacer(Modifier.height(4.dp))
+                if (!bookTitle.isNullOrBlank()) {
+                    Text(
+                        bookTitle!!,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = GlassTokens.Label,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                // 书币余额胶囊
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "我的书币：${state.balance}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = GlassTokens.Label,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "书币不可交易、不可提现，仅用于解锁阅读功能、竞拍圈主、投资书籍与兑换徽章。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GlassTokens.SecondaryLabel,
+                )
+            }
+
+            // ── 圈主 / 竞拍 ──
+            item {
+                val c = state.circle
+                val isOwner = c?.ownerUserId != null && c.ownerUserId == c.myMembership?.userId
+                CircleGlassCard {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Gavel, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("圈主", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        if (c?.ownerUserId == null) {
+                            Text(
+                                "本书圈暂无圈主。竞拍圈主可获得置顶权、圈主精选标记权与角色认证标签管理权（声誉门槛，非金钱投机）。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = GlassTokens.SecondaryLabel,
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Text("当前最高竞拍价：${c?.currentBid ?: 0} 书币", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.Label)
+                            Spacer(Modifier.height(10.dp))
+                            if (c?.canBid == true) {
+                                Button(onClick = vm::openBidDialog) { Text("竞拍圈主") }
+                            } else {
+                                Text("你已加入且暂无竞拍资格（或已是圈主）", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                            }
+                        } else {
+                            Text(
+                                "现任圈主：${c.ownerDisplayName ?: "圈主"}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = GlassTokens.Label,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            if (isOwner) {
+                                Spacer(Modifier.height(8.dp))
+                                Text("你就是本书圈圈主 🎉", style = MaterialTheme.typography.bodySmall, color = Color(0xFFE0A200), fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(10.dp))
+                                Button(onClick = vm::openFeatureDialog) { Text("圈主精选（输入评论 ID）") }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── 加入书圈 / 每书人设 ──
+            item {
+                val c = state.circle
+                if (c?.myMembership == null) {
+                    CircleGlassCard {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("加入书圈", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "加入后可设定本书圈专属昵称（如「唐门弟子」），增强沉浸与归属感。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = GlassTokens.SecondaryLabel,
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Button(onClick = vm::openIdentityDialog) { Text("加入并设定人设") }
+                        }
+                    }
+                } else {
+                    CircleGlassCard {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Default.Star, null, tint = Color(0xFF9B6DFF), modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("本书圈人设", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "昵称：${c.myMembership.displayName ?: "（继承主身份）"} · 声望 ${c.myMembership.reputation} · ${roleLabel[c.myMembership.role] ?: "书迷"}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = GlassTokens.SecondaryLabel,
+                                )
+                            }
+                            TextButton(onClick = vm::openIdentityDialog) { Text("修改", color = GlassTokens.SystemBlue) }
+                        }
+                    }
+                }
+            }
+
+            // ── 投资 ──
+            item {
+                val c = state.circle
+                CircleGlassCard {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(22.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("投资这本书", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "用不可交易的「书币」投资本书，获得份额；书成长后按份额分红。锁定期内不可撤（防短线炒作），越早投资回报系数越高。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GlassTokens.SecondaryLabel,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text("全书总投资：${c?.totalInvestment ?: 0} 书币 · 成长指数 ${(c?.growthIndex ?: 0f).let { "%.2f".format(it) }}", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.Label)
+                        // 我的投资
+                        c?.myInvestment?.let { inv ->
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "我的投资：份额 ${"%.2f".format(inv.sharePct * 100)}% · 解锁 ${fmtDate(inv.unlockAt)} · 已分红 ${inv.returnedTotal}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = GlassTokens.SystemBlue,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        if (c?.canInvest == true) {
+                            Button(onClick = vm::openInvestDialog) { Text("投资本书") }
+                        } else {
+                            Text("你已加入且暂无投资资格，或已达单书上限", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                        }
+                    }
+                }
+            }
+
+            // ── 排行 ──
+            item {
+                Text("书圈声望排行", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+            }
+            if (state.rank.isEmpty()) {
+                item {
+                    Text("暂无排行数据", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                }
+            } else {
+                items(state.rank, key = { it.userId }) { item ->
+                    RankRow(item = item)
+                }
+            }
+        }
+    }
+
+    // ── 对话框 ──
+    if (state.showBidDialog) {
+        NumberDialog(
+            title = "竞拍圈主",
+            hint = "出价书币（须高于当前 ${state.circle?.currentBid ?: 0}）",
+            value = state.bidAmount,
+            onValue = vm::setBidAmount,
+            onConfirm = vm::confirmBid,
+            onDismiss = vm::dismissBidDialog,
+        )
+    }
+    if (state.showInvestDialog) {
+        NumberDialog(
+            title = "投资本书",
+            hint = "投入书币（上限 ${state.circle?.investMaxPerBook ?: 5000}）",
+            value = state.investAmount,
+            onValue = vm::setInvestAmount,
+            onConfirm = vm::confirmInvest,
+            onDismiss = vm::dismissInvestDialog,
+        )
+    }
+    if (state.showIdentityDialog) {
+        AlertDialog(
+            onDismissRequest = vm::dismissIdentityDialog,
+            title = { Text("设定本书圈人设") },
+            text = {
+                Column {
+                    Text("为本书圈设定一个专属昵称（留空则继承主身份）。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = state.identityName,
+                        onValueChange = vm::setIdentityName,
+                        label = { Text("本书圈昵称") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = { Button(onClick = { vm.joinWithIdentity(state.identityName) }) { Text("加入 / 保存") } },
+            dismissButton = { TextButton(onClick = vm::dismissIdentityDialog) { Text("取消") } },
+        )
+    }
+    if (state.showFeatureDialog) {
+        AlertDialog(
+            onDismissRequest = vm::dismissFeatureDialog,
+            title = { Text("圈主精选") },
+            text = {
+                Column {
+                    Text("输入要精选的评论 ID（章评/书评），被精选的评论将获「圈主精选」标记。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = state.featureCommentId,
+                        onValueChange = vm::setFeatureCommentId,
+                        label = { Text("评论 ID") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = { Button(onClick = vm::confirmFeature) { Text("精选") } },
+            dismissButton = { TextButton(onClick = vm::dismissFeatureDialog) { Text("取消") } },
+        )
+    }
+
+    // Toast（可见提示）
+    val context = LocalContext.current
+    LaunchedEffect(state.toast) {
+        state.toast?.let { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            vm.clearToast()
+        }
+    }
+}
+
+@Composable
+private fun CircleGlassCard(content: @Composable () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().whaleGlassCard(),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(16.dp),
+    ) { content() }
+}
+
+@Composable
+private fun RankRow(item: CircleRankItem) {
+    Card(
+        modifier = Modifier.fillMaxWidth().whaleGlassCard(),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.EmojiEvents, null, tint = roleColor[item.role] ?: GlassTokens.SecondaryLabel, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    item.displayName ?: "书迷",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = GlassTokens.Label,
+                )
+                Text(
+                    "声望 ${item.reputation} · 投资份额 ${item.investedShares}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = GlassTokens.SecondaryLabel,
+                )
+            }
+            val label = roleLabel[item.role]
+            if (label != null) {
+                Text(label, style = MaterialTheme.typography.bodySmall, color = roleColor[item.role] ?: GlassTokens.SecondaryLabel, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NumberDialog(
+    title: String,
+    hint: String,
+    value: String,
+    onValue: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValue,
+                label = { Text(hint) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { Button(onClick = onConfirm) { Text("确认") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
+}
+
+private fun fmtDate(ts: Long): String {
+    if (ts <= 0) return "—"
+    return try {
+        SimpleDateFormat("yyyy-MM-dd", Locale.CHINA).format(Date(ts))
+    } catch (_: Exception) {
+        "—"
+    }
+}

@@ -77,6 +77,8 @@ import com.xiaoswz.reader.ui.creator.BookAdminScreen
 import com.xiaoswz.reader.ui.creator.AnnouncementAdminScreen
 import com.xiaoswz.reader.ui.creator.AuthorLogAdminScreen
 import com.xiaoswz.reader.ui.detail.AuthorLogDetailScreen
+import com.xiaoswz.reader.ui.detail.BookCircleScreen
+import com.xiaoswz.reader.ui.detail.CoinScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.reader.SegmentCommentListScreen
 import com.xiaoswz.reader.ui.settings.SettingsScreen
@@ -132,8 +134,14 @@ object Routes {
 
     const val AUTHOR_LOG_DETAIL = "author-log-detail/{slug}" // 0.16.5 作者日志全屏时间线（读者）
     const val AUTHOR_LOG_ADMIN = "author-log-admin" // 0.16.5 作者日志管理（仅 admin）
+
+    // 0.17.0 书圈经济体
+    const val BOOK_CIRCLE = "book-circle/{slug}" // 书圈主页（读者，按书）
+    const val COIN = "coin" // 书币账本（个人透明流水）
     fun authorLogDetail(slug: String) = "author-log-detail/${Uri.encode(slug)}"
     fun authorLogAdmin() = "author-log-admin"
+    fun bookCircle(slug: String) = "book-circle/${Uri.encode(slug)}"
+    fun coin() = "coin"
 }
 
 /** 顶层目标（显示底部导航栏），详情/阅读器为覆盖式全屏，不显示底栏 */
@@ -375,6 +383,7 @@ private fun AppShell() {
                         onBooks = { navController.navigate(Routes.bookAdmin()) },
                         onAnnouncements = { navController.navigate(Routes.announcementAdmin()) },
                         onAuthorLogs = { navController.navigate(Routes.authorLogAdmin()) },
+                        onCoin = { navController.navigate(Routes.coin()) },
                     )
                 }
 
@@ -396,6 +405,32 @@ private fun AppShell() {
                         bookTitle = null,
                         onBack = { navController.popBackStack() },
                     )
+                }
+
+                composable(
+                    route = Routes.BOOK_CIRCLE,
+                    arguments = listOf(navArgument("slug") { type = NavType.StringType }),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val slug = entry.arguments?.getString("slug").orEmpty()
+                    BookCircleScreen(
+                        bookId = slug,
+                        bookTitle = null,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(
+                    route = Routes.COIN,
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) {
+                    CoinScreen(onBack = { navController.popBackStack() })
                 }
 
                 composable(
@@ -480,6 +515,7 @@ private fun AppShell() {
                             navController.navigate(Routes.character(characterId))
                         },
                         onAuthorLogClick = { navController.navigate(Routes.authorLogDetail(slug)) },
+                        onBookCircleClick = { navController.navigate(Routes.bookCircle(slug)) },
                     )
                 }
 
