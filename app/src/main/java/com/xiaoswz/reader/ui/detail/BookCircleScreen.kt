@@ -140,7 +140,7 @@ fun BookCircleScreen(
                             }
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                "新书圈开放 3 天领取窗口：在本书圈做出有效贡献（章评通过审核 / 提交角色标签）即可从国库领取，单人上限 100 枚。国库剩余 ${c.treasury} / 铸造 ${c.mintedTotal + c.treasury}。窗口关闭后不再增发。",
+                                "书币为固定池硬通货，每书圈一次性铸造 10 万枚，发完即关闭领取通道。在本书做出过有效贡献（章评通过审核 / 提交角色标签）即可从国库领取，单人上限 100 枚。国库剩余 ${c.treasury} / 铸造 ${c.mintedTotal + c.treasury}。领完后不再增发。",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = GlassTokens.SecondaryLabel,
                             )

@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 92
-        versionName = "0.17.0" // 0.17.0·书圈经济体·硬通货修订版：书币改为固定池硬通货（每书圈一次性铸造 10 万枚、绝不增发、系统绝不付息）；初始仅 3 天窗口从国库领取（单人上限 100）；此后只走 P2P 转账/打赏 + 投资锁仓 + 圈主竞拍 + 治理，价值由市场共识决定；阅读免费（广告供养），书币不参与内容消费。
+        versionCode = 93
+        versionName = "0.17.0" // 0.17.0·书圈经济体·硬通货修订版(2)：领取窗口改为「国库 10 万枚发完即关」（不再限 3 天）；资格不限时间；安卓端错误提示改为解析后端 error 字段给出可读中文（修「请求参数有误」误报）。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

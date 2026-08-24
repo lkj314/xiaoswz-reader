@@ -287,13 +287,48 @@ class BookCircleViewModel : ViewModel() {
     fun setIdentityName(v: String) = _uiState.update { it.copy(identityName = v) }
     fun setFeatureCommentId(v: String) = _uiState.update { it.copy(featureCommentId = v) }
 
-    private fun mapErr(e: Throwable): String = when (e) {
-        is HttpException -> when (e.code()) {
-            403 -> "无权限（请用管理员账号操作）"
-            401 -> "登录已失效，请重新登录"
-            400 -> "请求参数有误"
-            else -> "操作失败（${e.code()}）"
+    private fun mapErr(e: Throwable): String {
+        if (e is HttpException) {
+            val body = try {
+                e.response()?.errorBody()?.string()
+            } catch (_: Exception) { null }
+            val code = body?.let { extractErrCode(it) }
+            when (e.code()) {
+                403 -> "无权限（请用管理员账号操作）"
+                401 -> "登录已失效，请重新登录"
+                400 -> code?.let { translateBackendErr(it) } ?: "请求参数有误"
+                else -> code?.let { translateBackendErr(it) } ?: "操作失败（${e.code()}）"
+            }.let { return it }
         }
-        else -> "操作失败，后端未连接"
+        return "操作失败，后端未连接"
+    }
+
+    // 从 {"error":"xxx","message":"..."} 提取 error 字段
+    private fun extractErrCode(json: String): String? {
+        val m = Regex("\"error\"\\s*:\\s*\"([^\"]+)\"").find(json) ?: return null
+        return m.groupValues.getOrNull(1)
+    }
+
+    // 后端业务错误码 → 中文（书圈经济相关）
+    private fun translateBackendErr(code: String): String = when (code) {
+        "bookId required" -> "缺少书 ID"
+        "claim_not_eligible" -> "领取资格不足：请先发表通过审核的章评或提交角色标签"
+        "claim_window_closed", "claim_closed_treasury_empty" -> "国库已发放完毕，领取通道已关闭"
+        "claim_already_max" -> "你已领满单本书上限（100 枚）"
+        "treasury_empty" -> "国库已空，无法领取"
+        "insufficient_coins" -> "书币余额不足"
+        "nothing_locked" -> "没有可解锁的锁仓"
+        "not_owner" -> "仅圈主可执行此操作"
+        "comment_mismatch" -> "评论与本书不匹配"
+        "invalid_bid" -> "竞拍出价无效"
+        "bid_too_low" -> "出价需高于当前最高价"
+        "invalid_amount" -> "金额无效"
+        "exceed_max" -> "超过单本书投资上限"
+        "no_active_investment" -> "没有进行中的投资"
+        "locked" -> "投资仍在锁定期，暂不可撤回"
+        "same_user" -> "不能转给自己"
+        "invalid_stake" -> "份额无效或不属于你"
+        "mint_disabled" -> "系统铸造已禁用"
+        else -> "操作失败：$code"
     }
 }
