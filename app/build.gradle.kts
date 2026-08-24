@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 94
-        versionName = "0.18.0" // 0.18.0·书圈金融模拟器：多书币独立硬通货池 + 持股治理（圈主=持股最高者，无竞拍）+ 书圈导航专区（资产仪表盘）+ 书币交易所（限价订单簿）+ 董事会（锚定价/回购/储备调拨/财报新闻稿）。
+        versionCode = 95
+        versionName = "0.19.0" // 0.19.0·个人钱包与稳定币资产包：书圈专区升级为个人钱包（净值/持仓/理财收益）；新增理财产品市场（董事发行多书币资产包，用户认购份额、收益每日结算打入钱包）；书圈稳定币（1万枚硬顶、真实B000001 1:10背书、守恒、概率衰减 max(0.0005,0.001·(1−n/10000)²)；董事每日抓取/调拨）；退市阈值14天连负或累计−30%。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

@@ -82,6 +82,8 @@ import com.xiaoswz.reader.ui.detail.BookCircleScreen
 import com.xiaoswz.reader.ui.detail.BookCircleHubScreen
 import com.xiaoswz.reader.ui.detail.ExchangeScreen
 import com.xiaoswz.reader.ui.detail.BoardScreen
+import com.xiaoswz.reader.ui.detail.FundListScreen
+import com.xiaoswz.reader.ui.detail.FundDetailScreen
 import com.xiaoswz.reader.ui.detail.CoinScreen
 import com.xiaoswz.reader.ui.reader.ReaderScreen
 import com.xiaoswz.reader.ui.reader.SegmentCommentListScreen
@@ -146,6 +148,9 @@ object Routes {
     const val CIRCLE_HUB = "circle-hub" // 书圈专区（导航【书圈】Tab 聚合仪表盘）
     const val EXCHANGE = "exchange/{fromBookId}/{toBookId}" // 书币交易所（按交易对）
     const val BOARD = "board/{bookId}" // 董事会（董事权限操作）
+    // 0.19 个人钱包：理财产品列表 + 详情
+    const val FUNDS = "funds" // 理财产品发现（从书圈钱包进入）
+    const val FUND_DETAIL = "fund/{fundId}" // 理财产品详情（认购/赎回/董事会挖稳定币）
     fun authorLogDetail(slug: String) = "author-log-detail/${Uri.encode(slug)}"
     fun authorLogAdmin() = "author-log-admin"
     fun bookCircle(slug: String) = "book-circle/${Uri.encode(slug)}"
@@ -153,6 +158,8 @@ object Routes {
     fun circleHub() = "circle-hub"
     fun exchange(fromBookId: String, toBookId: String) = "exchange/${Uri.encode(fromBookId)}/${Uri.encode(toBookId)}"
     fun board(bookId: String) = "board/${Uri.encode(bookId)}"
+    fun funds() = "funds"
+    fun fund(fundId: String) = "fund/${Uri.encode(fundId)}"
 }
 
 /** 顶层目标（显示底部导航栏），详情/阅读器为覆盖式全屏，不显示底栏 */
@@ -448,6 +455,7 @@ private fun AppShell() {
                     BookCircleHubScreen(
                         onBack = { navController.popBackStack() },
                         onBookClick = { bid -> navController.navigate(Routes.bookCircle(bid)) },
+                        onFundsClick = { navController.navigate(Routes.funds()) },
                     )
                 }
 
@@ -482,6 +490,34 @@ private fun AppShell() {
                     val bid = entry.arguments?.getString("bookId").orEmpty()
                     BoardScreen(
                         bookId = bid,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(
+                    route = Routes.FUNDS,
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) {
+                    FundListScreen(
+                        onBack = { navController.popBackStack() },
+                        onFundClick = { fid -> navController.navigate(Routes.fund(fid)) },
+                    )
+                }
+
+                composable(
+                    route = Routes.FUND_DETAIL,
+                    arguments = listOf(navArgument("fundId") { type = NavType.StringType }),
+                    enterTransition = { EnterTransitionX },
+                    exitTransition = { ExitTransitionX },
+                    popEnterTransition = { PopEnterTransitionX },
+                    popExitTransition = { PopExitTransitionX },
+                ) { entry ->
+                    val fid = entry.arguments?.getString("fundId").orEmpty()
+                    FundDetailScreen(
+                        fundId = fid,
                         onBack = { navController.popBackStack() },
                     )
                 }

@@ -68,6 +68,20 @@ import com.xiaoswz.reader.data.api.CircleBookIdBody
 import com.xiaoswz.reader.data.api.InvestResultDto
 import com.xiaoswz.reader.data.api.InvestmentDto
 import com.xiaoswz.reader.data.api.InvestmentListResponse
+import com.xiaoswz.reader.data.api.CreateFundResponse
+import com.xiaoswz.reader.data.api.FundAssetInput
+import com.xiaoswz.reader.data.api.FundDetailResponse
+import com.xiaoswz.reader.data.api.FundDiscoveryResponse
+import com.xiaoswz.reader.data.api.GrabResponse
+import com.xiaoswz.reader.data.api.RedeemResponse
+import com.xiaoswz.reader.data.api.StablecoinStatusResponse
+import com.xiaoswz.reader.data.api.SubscribeResponse
+import com.xiaoswz.reader.data.api.TransferStableResponse
+import com.xiaoswz.reader.data.api.CreateFundBody
+import com.xiaoswz.reader.data.api.GrabBody
+import com.xiaoswz.reader.data.api.RedeemBody
+import com.xiaoswz.reader.data.api.SubscribeBody
+import com.xiaoswz.reader.data.api.TransferStableBody
 
 /**
  * 冲浪阅读独立后端的统一访问层。所有方法都包了 runCatching——
@@ -481,5 +495,46 @@ object BackendRepository {
         roadmapJson: String? = null,
     ): Result<NewsPublishResponse> = runCatching {
         api.publishCircleNews(NewsPublishBody(bookId, type, title, body, sentiment, statsJson, roadmapJson))
+    }
+
+    // ── 0.19 个人钱包 + 理财产品 + 稳定币 ──
+    /** 理财产品发现列表（含我的持仓） */
+    suspend fun getFundDiscovery(): Result<FundDiscoveryResponse> = runCatching {
+        api.getFundDiscovery()
+    }
+
+    /** 创建理财产品（董事权限） */
+    suspend fun createFund(bookId: String, name: String, description: String?, assets: List<FundAssetInput>): Result<CreateFundResponse> = runCatching {
+        api.createFund(CreateFundBody(bookId, name, description, assets))
+    }
+
+    /** 理财产品详情 */
+    suspend fun getFundDetail(fundId: String): Result<FundDetailResponse> = runCatching {
+        api.getFundDetail(fundId)
+    }
+
+    /** 认购理财产品（用某书币按份额认购） */
+    suspend fun subscribeFund(fundId: String, payBookId: String, payAmount: Int): Result<SubscribeResponse> = runCatching {
+        api.subscribeFund(SubscribeBody(fundId, payBookId, payAmount))
+    }
+
+    /** 赎回理财产品份额 */
+    suspend fun redeemFund(fundId: String, shares: Double): Result<RedeemResponse> = runCatching {
+        api.redeemFund(RedeemBody(fundId, shares))
+    }
+
+    /** 董事手动抓取稳定币（每天每 fund 一次） */
+    suspend fun grabStableCoin(fundId: String): Result<GrabResponse> = runCatching {
+        api.grabStableCoin(GrabBody(fundId))
+    }
+
+    /** 董事转移稳定币到另一 fund */
+    suspend fun transferStableCoin(serial: Int, toFundId: String): Result<TransferStableResponse> = runCatching {
+        api.transferStableCoin(TransferStableBody(serial, toFundId))
+    }
+
+    /** 稳定币全局状态 */
+    suspend fun getStablecoinStatus(): Result<StablecoinStatusResponse> = runCatching {
+        api.getStablecoinStatus()
     }
 }

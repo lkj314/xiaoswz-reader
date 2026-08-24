@@ -698,13 +698,18 @@ data class CircleConfigDto(
 @Serializable
 data class CircleResetOwnerBody(val bookId: String)
 
-// ── 0.18 书圈金融模拟器：导航【书圈】专区聚合 ──
+// ── 0.18 书圈金融模拟器：导航【书圈】专区聚合（0.19 升级为个人钱包）──
 @Serializable
 data class CircleHubResponse(
     val totalNetWorth: Double = 0.0, // 资产净值（Σ(余额+锁仓)×锚定价）
     val joinedCircles: Int = 0, // 已加入/持币书圈数
     val investedBooks: Int = 0, // 已投资书籍数
     val books: List<HubBookDto> = emptyList(),
+    // 0.19 个人钱包：持有的理财产品聚合
+    val funds: List<HubFundDto> = emptyList(),
+    val totalFundValue: Double = 0.0, // 理财产品总市值（以锚定币计）
+    val totalFundCost: Double = 0.0, // 理财产品总投入成本
+    val totalFundYieldPct: Double = 0.0, // 理财产品总收益率 %
 )
 
 @Serializable
@@ -721,6 +726,20 @@ data class HubBookDto(
     val isDirector: Boolean = false, // 是否董事（含圈主/长老/议事员）
     val role: String = "member",
     val netValue: Double = 0.0, // 该书币资产净值
+)
+
+// 0.19 个人钱包：持有的理财产品概要
+@Serializable
+data class HubFundDto(
+    val fundId: String = "",
+    val bookId: String = "",
+    val name: String = "",
+    val navPerShare: Double = 1.0,
+    val status: String = "active",
+    val shares: Double = 0.0, // 持有份额
+    val value: Double = 0.0, // 当前市值
+    val costBasis: Double = 0.0, // 投入成本
+    val yieldPct: Double = 0.0, // 收益率 %
 )
 
 // ── 0.18 书币交易所 ──
@@ -832,6 +851,171 @@ data class NewsItemDto(
 data class NewsPublishResponse(
     val ok: Boolean = true,
     val newsId: String = "",
+)
+
+// ── 0.19 个人钱包 + 理财产品(CircleFund) + 稳定币(StableCoin) ──
+@Serializable
+data class FundDiscoveryResponse(
+    val funds: List<FundSummaryDto> = emptyList(),
+)
+
+@Serializable
+data class FundSummaryDto(
+    val fundId: String = "",
+    val bookId: String = "",
+    val name: String = "",
+    val description: String? = null,
+    val navPerShare: Double = 1.0,
+    val totalShares: Double = 0.0,
+    val status: String = "active",
+    val lastDayReturn: Double = 0.0,
+    val cumulativeReturnPct: Double = 0.0,
+    val stableCount: Int = 0,
+    val createdAt: Long = 0,
+    val myShares: Double = 0.0,
+    val myValue: Double = 0.0,
+    val myCostBasis: Double = 0.0,
+    val myYieldPct: Double = 0.0,
+)
+
+@Serializable
+data class FundDetailResponse(
+    val fundId: String = "",
+    val bookId: String = "",
+    val name: String = "",
+    val description: String? = null,
+    val createdBy: String = "",
+    val status: String = "active",
+    val navPerShare: Double = 1.0,
+    val totalShares: Double = 0.0,
+    val lastDayReturn: Double = 0.0,
+    val cumulativeReturnPct: Double = 0.0,
+    val consecutiveNegDays: Int = 0,
+    val assets: List<FundAssetDto> = emptyList(),
+    val stablecoins: List<StableCoinDto> = emptyList(),
+    val history: List<FundYieldPointDto> = emptyList(),
+    val stableReserve: StableReserveDto? = null,
+    val myShares: Double = 0.0,
+    val myValue: Double = 0.0,
+    val myCostBasis: Double = 0.0,
+    val myYieldPct: Double = 0.0,
+)
+
+@Serializable
+data class FundAssetDto(
+    val assetType: String = "book_coin", // book_coin / stablecoin
+    val assetBookId: String = "",
+    val weightPct: Double = 0.0,
+    val balance: Int = 0,
+    val value: Double = 0.0,
+)
+
+@Serializable
+data class StableCoinDto(
+    val serial: Int = 0,
+    val ownerFundId: String = "",
+    val status: String = "",
+    val producedAt: Long = 0,
+)
+
+@Serializable
+data class FundYieldPointDto(
+    val date: String = "",
+    val navPerShare: Double = 1.0,
+    val dayReturnPct: Double = 0.0,
+    val totalAssets: Int = 0,
+    val dropAttempted: Boolean = false,
+    val droppedSerial: Int? = null,
+)
+
+@Serializable
+data class StableReserveDto(
+    val issuedCount: Int = 0,
+    val hardCap: Int = 0,
+    val lockedB000001: Int = 0,
+    val backing: Int = 0,
+    val currentProbability: Double = 0.0,
+)
+
+@Serializable
+data class CreateFundBody(
+    val bookId: String,
+    val name: String,
+    val description: String? = null,
+    val assets: List<FundAssetInput> = emptyList(),
+)
+
+@Serializable
+data class FundAssetInput(
+    val assetBookId: String,
+    val weightPct: Double = 0.0,
+)
+
+@Serializable
+data class SubscribeBody(
+    val fundId: String,
+    val payBookId: String,
+    val payAmount: Int,
+)
+
+@Serializable
+data class RedeemBody(
+    val fundId: String,
+    val shares: Double,
+)
+
+@Serializable
+data class GrabBody(val fundId: String)
+
+@Serializable
+data class TransferStableBody(
+    val serial: Int,
+    val toFundId: String,
+)
+
+@Serializable
+data class CreateFundResponse(
+    val ok: Boolean = true,
+    val fundId: String = "",
+)
+
+@Serializable
+data class SubscribeResponse(
+    val ok: Boolean = true,
+    val shares: Double = 0.0,
+    val nav: Double = 1.0,
+    val valuePaid: Double = 0.0,
+    val myShares: Double = 0.0,
+    val myValue: Double = 0.0,
+)
+
+@Serializable
+data class RedeemResponse(
+    val ok: Boolean = true,
+    val value: Double = 0.0,
+)
+
+@Serializable
+data class GrabResponse(
+    val dropped: Boolean = false,
+    val reason: String? = null,
+    val serial: Int? = null,
+    val backing: Int? = null,
+    val probability: Double? = null,
+)
+
+@Serializable
+data class TransferStableResponse(
+    val ok: Boolean = true,
+)
+
+@Serializable
+data class StablecoinStatusResponse(
+    val issuedCount: Int = 0,
+    val hardCap: Int = 0,
+    val lockedB000001: Int = 0,
+    val backing: Int = 0,
+    val currentProbability: Double = 0.0,
 )
 
 // ── P3 广告 / 归因 ──

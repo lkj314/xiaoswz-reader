@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -40,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import com.xiaoswz.reader.data.api.HubBookDto
+import com.xiaoswz.reader.data.api.HubFundDto
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.whaleGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
@@ -57,13 +59,14 @@ private val dirRoleColorMap = mapOf(
 fun BookCircleHubScreen(
     onBack: () -> Unit,
     onBookClick: (String) -> Unit,
+    onFundsClick: () -> Unit,
 ) {
     val vm: BookCircleHubViewModel = viewModel()
     val state by vm.uiState.collectAsState()
     val hub = state.hub
 
     Scaffold(
-        topBar = { AppTopBar(title = "书圈 · 资产仪表盘", onBack = onBack, showLogo = false) },
+        topBar = { AppTopBar(title = "书圈钱包", onBack = onBack, showLogo = false) },
         containerColor = Color.Transparent,
     ) { padding ->
         LazyColumn(
@@ -76,7 +79,14 @@ fun BookCircleHubScreen(
             item {
                 Spacer(Modifier.height(4.dp))
                 if (hub != null) {
-                    HubSummaryCard(hub.totalNetWorth, hub.joinedCircles, hub.investedBooks)
+                    HubSummaryCard(
+                        netWorth = hub.totalNetWorth,
+                        joined = hub.joinedCircles,
+                        invested = hub.investedBooks,
+                        fundValue = hub.totalFundValue,
+                        fundYieldPct = hub.totalFundYieldPct,
+                        onFundsClick = onFundsClick,
+                    )
                 } else if (state.error != null) {
                     Text(state.error ?: "", style = MaterialTheme.typography.bodySmall, color = Color(0xFFC62828))
                 } else {
@@ -84,22 +94,46 @@ fun BookCircleHubScreen(
                 }
             }
 
-            if (hub != null && hub.books.isEmpty()) {
+            if (hub != null && hub.books.isEmpty() && hub.funds.isEmpty()) {
                 item {
                     Text(
-                        "你还没有加入任何书圈。去书籍详情页点「书圈」即可加入并领取初始书币、投资持股。",
+                        "你还没有加入任何书圈，也没有持有理财产品。去书籍详情页点「书圈」即可加入、领取初始书币、投资持股，或到「理财产品市场」认购董事会发行的资产包。",
                         style = MaterialTheme.typography.bodySmall,
                         color = GlassTokens.SecondaryLabel,
                     )
                 }
             }
 
+            // 持仓明细（书币 + 股份）
             if (hub != null) {
                 item {
-                    Text("持仓明细", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                    SectionTitle("书币持仓与股份")
+                }
+                if (hub.books.isEmpty()) {
+                    item { HintRow("还没有书币持仓，去书圈领取初始书币或交易所兑换。") }
                 }
                 items(hub.books, key = { it.bookId }) { book ->
                     HubBookRow(book = book, onClick = { onBookClick(book.bookId) })
+                }
+            }
+
+            // 我的理财产品
+            if (hub != null) {
+                item {
+                    Row(
+                        Modifier.fillMaxWidth().clickable(onClick = onFundsClick),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        SectionTitle("我的理财产品")
+                        Text("市场 →", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.SystemBlue, fontWeight = FontWeight.Bold)
+                    }
+                }
+                if (hub.funds.isEmpty()) {
+                    item { HintRow("还没有认购任何理财产品，去市场看看董事会发行的资产包。") }
+                }
+                items(hub.funds, key = { it.fundId }) { fund ->
+                    HubFundRow(fund = fund, onClick = onFundsClick)
                 }
             }
         }
@@ -115,15 +149,33 @@ fun BookCircleHubScreen(
 }
 
 @Composable
-private fun HubSummaryCard(netWorth: Double, joined: Int, invested: Int) {
+private fun SectionTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+}
+
+@Composable
+private fun HintRow(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+}
+
+@Composable
+private fun HubSummaryCard(
+    netWorth: Double,
+    joined: Int,
+    invested: Int,
+    fundValue: Double,
+    fundYieldPct: Double,
+    onFundsClick: () -> Unit,
+) {
     val nf = remember { NumberFormat.getNumberInstance(Locale.CHINA) }
+    val yieldPositive = fundYieldPct >= 0
     Card(
-        modifier = Modifier.fillMaxWidth().whaleGlassCard(),
+        modifier = Modifier.fillMaxWidth().whaleGlassCard().clickable(onClick = onFundsClick),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         shape = RoundedCornerShape(18.dp),
     ) {
         Column(Modifier.padding(20.dp)) {
-            Text("资产净值（书币 × 锚定价）", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+            Text("总资产净值（书币 × 锚定价）", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
             Spacer(Modifier.height(4.dp))
             Text(
                 nf.format(netWorth.toLong()) + " 书币",
@@ -135,8 +187,16 @@ private fun HubSummaryCard(netWorth: Double, joined: Int, invested: Int) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 MetricChip(Icons.Default.AccountBalance, "已加入", joined.toString(), GlassTokens.SystemBlue)
                 MetricChip(Icons.Default.PieChart, "已投资", invested.toString(), Color(0xFF9B6DFF))
-                MetricChip(Icons.Default.MonetizationOn, "净资产", nf.format(netWorth.toLong()), Color(0xFFE0A200))
+                MetricChip(Icons.Default.Savings, "理财市值", nf.format(fundValue.toLong()), Color(0xFF2BB673))
+                MetricChip(
+                    Icons.Default.MonetizationOn,
+                    "理财收益",
+                    (if (yieldPositive) "+" else "") + "%.1f%%".format(fundYieldPct),
+                    if (yieldPositive) Color(0xFF2BB673) else Color(0xFFC62828),
+                )
             }
+            Spacer(Modifier.height(12.dp))
+            Text("进入理财产品市场 →", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.SystemBlue, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -178,12 +238,45 @@ private fun HubBookRow(book: HubBookDto, onClick: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            // 持股 / 持仓数据条
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 StatBlock("持股", "%.2f%%".format(book.mySharePct), GlassTokens.SystemBlue)
                 StatBlock("投资份额", nf.format(book.myInvested), Color(0xFF9B6DFF))
                 StatBlock("余额/锁仓", "${nf.format(book.myBalance)}/${nf.format(book.myLocked)}", GlassTokens.Label)
                 StatBlock("净值", nf.format(book.netValue.toLong()), Color(0xFFE0A200))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HubFundRow(fund: HubFundDto, onClick: () -> Unit) {
+    val nf = remember { NumberFormat.getNumberInstance(Locale.CHINA) }
+    val yieldPositive = fund.yieldPct >= 0
+    Card(
+        modifier = Modifier.fillMaxWidth().whaleGlassCard().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(fund.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                    Spacer(Modifier.height(2.dp))
+                    Text("《${fund.bookId}》· NAV ${String.format("%.3f", fund.navPerShare)}", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                }
+                Text(
+                    (if (yieldPositive) "+" else "") + "%.1f%%".format(fund.yieldPct),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (yieldPositive) Color(0xFF2BB673) else Color(0xFFC62828),
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                StatBlock("持有份额", nf.format(fund.shares.toLong()), Color(0xFF9B6DFF))
+                StatBlock("市值", nf.format(fund.value.toLong()), Color(0xFFE0A200))
+                StatBlock("成本", nf.format(fund.costBasis.toLong()), GlassTokens.Label)
+                StatBlock("状态", if (fund.status == "active") "运行中" else "已退市", GlassTokens.SecondaryLabel)
             }
         }
     }

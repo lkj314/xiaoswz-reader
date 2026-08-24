@@ -86,4 +86,31 @@ interface BookCircleApi {
 
     @POST("api/book-circle/news")
     suspend fun publishCircleNews(@Body body: NewsPublishBody): NewsPublishResponse
+
+    // ── 0.19 个人钱包 + 理财产品 + 稳定币 ──
+    @GET("api/circle-fund")
+    suspend fun getFundDiscovery(): FundDiscoveryResponse
+
+    @POST("api/circle-fund")
+    suspend fun createFund(@Body body: CreateFundBody): CreateFundResponse
+
+    @GET("api/circle-fund/{fundId}")
+    suspend fun getFundDetail(
+        @retrofit2.http.Path("fundId") fundId: String,
+    ): FundDetailResponse
+
+    @POST("api/circle-fund/subscribe")
+    suspend fun subscribeFund(@Body body: SubscribeBody): SubscribeResponse
+
+    @POST("api/circle-fund/redeem")
+    suspend fun redeemFund(@Body body: RedeemBody): RedeemResponse
+
+    @POST("api/circle-fund/grab")
+    suspend fun grabStableCoin(@Body body: GrabBody): GrabResponse
+
+    @POST("api/circle-fund/transfer-stablecoin")
+    suspend fun transferStableCoin(@Body body: TransferStableBody): TransferStableResponse
+
+    @GET("api/circle-fund/stablecoin")
+    suspend fun getStablecoinStatus(): StablecoinStatusResponse
 }
