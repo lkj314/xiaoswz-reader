@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 // BackendApi 聚合接口（P2 文件拆分）。
 //
-// 原先 1500+ 行的单一 interface 已按业务域拆成 15 个独立接口
+// 原先 1500+ 行的单一 interface 已按业务域拆成 17 个独立接口
 // （AuthApi / SyncApi / BookApi / EngagementApi / CharacterApi / AdminApi /
 //  AdsApi / CommunityApi / BooklistApi / UserApi / HomeApi / CatalogApi /
 //  AnnotationApi / PluginApi / ReadingApi），各自成文件，便于并行维护。
@@ -40,6 +40,8 @@ interface BackendApi :
     AnnotationApi,
     PluginApi,
     AuthorLogApi,
+    CoinApi,
+    BookCircleApi,
     ReadingApi
 
 object BackendClient {

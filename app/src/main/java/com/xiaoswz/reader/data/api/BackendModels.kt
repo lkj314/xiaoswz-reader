@@ -483,6 +483,173 @@ data class AuthorLogResponse(
     val log: AuthorLogDto? = null,
 )
 
+// ══ 书圈经济体（0.17.0）══
+@Serializable
+data class CoinBalanceDto(
+    val userId: String = "",
+    val balance: Int = 0,
+    val earnedTotal: Int = 0,
+)
+
+@Serializable
+data class CoinLedgerDto(
+    val id: String = "",
+    val type: String = "",
+    val delta: Int = 0,
+    val reason: String? = null,
+    val balanceAfter: Int = 0,
+    val bookId: String? = null,
+    val createdAt: Long = 0,
+)
+
+@Serializable
+data class CoinLedgerListResponse(
+    val items: List<CoinLedgerDto> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 30,
+)
+
+@Serializable
+data class CircleMembershipDto(
+    val userId: String = "",
+    val displayName: String? = null,
+    val avatarUrl: String? = null,
+    val reputation: Int = 0,
+    val role: String = "member",
+    val investedShares: Int = 0,
+)
+
+@Serializable
+data class BookCircleDto(
+    val bookSourceId: String = "main",
+    val bookId: String = "",
+    val ownerUserId: String? = null,
+    val ownerDisplayName: String? = null,
+    val ownerSince: Long? = null,
+    val status: String = "open",
+    val currentBid: Int = 0, // 当前最高竞拍价（无主时=起拍参考）
+    val totalInvestment: Int = 0,
+    val growthIndex: Float = 0f,
+    val myMembership: CircleMembershipDto? = null,
+    val myInvestment: InvestmentDto? = null,
+    val canBid: Boolean = false, // 当前用户是否可参与竞拍
+    val canInvest: Boolean = false,
+    val investMaxPerBook: Int = 5000,
+    val investLockDays: Int = 14,
+)
+
+@Serializable
+data class CircleRankItem(
+    val userId: String = "",
+    val displayName: String? = null,
+    val avatarUrl: String? = null,
+    val reputation: Int = 0,
+    val role: String = "member",
+    val investedShares: Int = 0,
+)
+
+@Serializable
+data class CircleRankResponse(
+    val items: List<CircleRankItem> = emptyList(),
+    val totalInvestment: Int = 0,
+    val growthIndex: Float = 0f,
+    val date: String? = null,
+)
+
+@Serializable
+data class InvestmentDto(
+    val id: String = "",
+    val bookId: String = "",
+    val amount: Int = 0,
+    val sharePct: Float = 0f,
+    val investedAt: Long = 0,
+    val unlockAt: Long = 0,
+    val status: String = "active",
+    val returnedTotal: Int = 0,
+)
+
+@Serializable
+data class InvestmentListResponse(
+    val items: List<InvestmentDto> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val pageSize: Int = 30,
+)
+
+@Serializable
+data class BidResultDto(
+    val ok: Boolean = true,
+    val ownerUserId: String? = null,
+    val ownerSince: Long? = null,
+)
+
+@Serializable
+data class InvestResultDto(
+    val ok: Boolean = true,
+    val investmentId: String = "",
+    val sharePct: Float = 0f,
+)
+
+// 请求体
+@Serializable
+data class CircleJoinBody(
+    val bookId: String,
+    val displayName: String? = null,
+    val avatarUrl: String? = null,
+)
+
+@Serializable
+data class CircleBidBody(
+    val bookId: String,
+    val bid: Int, // 出价书币（高于当前最高）
+)
+
+@Serializable
+data class CircleFeatureBody(
+    val bookId: String,
+    val commentId: String,
+)
+
+@Serializable
+data class CircleInvestBody(
+    val bookId: String,
+    val amount: Int,
+)
+
+@Serializable
+data class CoinGrantBody(
+    val userId: String,
+    val amount: Int,
+    val reason: String? = null,
+)
+
+@Serializable
+data class CircleConfigBody(val value: String = "") // Json 字符串透传
+
+@Serializable
+data class CircleConfigDto(
+    val circleOwnerSharePct: Int = 30,
+    val coinPerReadingMinute: Int = 1,
+    val coinReadingDailyCap: Int = 30,
+    val coinPerCommentFeatured: Int = 5,
+    val coinPerTagAdopted: Int = 3,
+    val coinPerHeartGiven: Int = 1,
+    val coinHeartDailyCap: Int = 10,
+    val investMaxPerBook: Int = 5000,
+    val investLockDays: Int = 14,
+    val returnCoeffEarly: Float = 3.0f,
+    val returnCoeffMid: Float = 2.0f,
+    val returnCoeffLate: Float = 1.2f,
+    val councilTopPct: Int = 10,
+    val elderTopPct: Int = 1,
+    val ownerMinInvestShares: Int = 100,
+    val inactiveOwnerDays: Int = 30,
+)
+
+@Serializable
+data class CircleResetOwnerBody(val bookId: String)
+
 // ── P3 广告 / 归因 ──
 @Serializable
 data class AdResponse(

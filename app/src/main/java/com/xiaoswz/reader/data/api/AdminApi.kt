@@ -83,4 +83,21 @@ interface AdminApi {
     /** 管理台：删除作者日志（仅 admin） */
     @DELETE("api/admin/author-logs/{id}")
     suspend fun adminDeleteAuthorLog(@Path("id") id: String): OkAck
+
+    // ── 书圈经济体（0.17.0）管理台 ──
+    /** 读取书圈经济系数配置 */
+    @GET("api/admin/coin/config")
+    suspend fun adminGetCircleConfig(): CircleConfigDto
+
+    /** 调整书圈经济系数配置（value=Json 字符串） */
+    @POST("api/admin/coin/config")
+    suspend fun adminSetCircleConfig(@Body body: CircleConfigBody): OkAck
+
+    /** 运营补偿发币 */
+    @POST("api/admin/coin/grant")
+    suspend fun adminGrantCoin(@Body body: CoinGrantBody): OkAck
+
+    /** 圈主作恶罢免（清 owner，书圈转 auctioning） */
+    @POST("api/admin/book-circle/reset-owner")
+    suspend fun adminResetCircleOwner(@Body body: CircleResetOwnerBody): OkAck
 }

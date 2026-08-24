@@ -37,6 +37,22 @@ import com.xiaoswz.reader.data.api.AuthorLogListResponse
 import com.xiaoswz.reader.data.api.AuthorLogCreateBody
 import com.xiaoswz.reader.data.api.AuthorLogPatchBody
 import com.xiaoswz.reader.data.api.AuthorLogResponse
+import com.xiaoswz.reader.data.api.BidResultDto
+import com.xiaoswz.reader.data.api.BookCircleDto
+import com.xiaoswz.reader.data.api.CircleBidBody
+import com.xiaoswz.reader.data.api.CircleConfigBody
+import com.xiaoswz.reader.data.api.CircleConfigDto
+import com.xiaoswz.reader.data.api.CircleFeatureBody
+import com.xiaoswz.reader.data.api.CircleInvestBody
+import com.xiaoswz.reader.data.api.CircleJoinBody
+import com.xiaoswz.reader.data.api.CircleRankResponse
+import com.xiaoswz.reader.data.api.CoinBalanceDto
+import com.xiaoswz.reader.data.api.CoinGrantBody
+import com.xiaoswz.reader.data.api.CoinLedgerListResponse
+import com.xiaoswz.reader.data.api.CircleResetOwnerBody
+import com.xiaoswz.reader.data.api.InvestResultDto
+import com.xiaoswz.reader.data.api.InvestmentDto
+import com.xiaoswz.reader.data.api.InvestmentListResponse
 
 /**
  * 冲浪阅读独立后端的统一访问层。所有方法都包了 runCatching——
@@ -308,5 +324,73 @@ object BackendRepository {
     /** 管理台：删除作者日志 */
     suspend fun adminDeleteAuthorLog(id: String): Result<Unit> = runCatching {
         api.adminDeleteAuthorLog(id)
+    }
+
+    // ── 书圈经济体（0.17.0）──
+    /** 书圈主页数据 */
+    suspend fun getBookCircle(bookId: String): Result<BookCircleDto> = runCatching {
+        api.getBookCircle(bookId)
+    }
+
+    /** 加入书圈并设置每书昵称/头像 */
+    suspend fun joinBookCircle(
+        bookId: String, displayName: String? = null, avatarUrl: String? = null,
+    ): Result<BookCircleDto> = runCatching {
+        api.joinBookCircle(CircleJoinBody(bookId, displayName, avatarUrl))
+    }
+
+    /** 圈主竞拍 */
+    suspend fun bidCircleOwner(bookId: String, bid: Int): Result<BidResultDto> = runCatching {
+        api.bidCircleOwner(CircleBidBody(bookId, bid))
+    }
+
+    /** 圈主精选章评/书评 */
+    suspend fun featureComment(bookId: String, commentId: String): Result<Unit> = runCatching {
+        api.featureComment(CircleFeatureBody(bookId, commentId))
+    }
+
+    /** 投资书 */
+    suspend fun investBook(bookId: String, amount: Int): Result<InvestResultDto> = runCatching {
+        api.investBook(CircleInvestBody(bookId, amount))
+    }
+
+    /** 我的投资列表 */
+    suspend fun getInvestment(bookId: String, page: Int = 1): Result<InvestmentListResponse> = runCatching {
+        api.getInvestment(bookId, page)
+    }
+
+    /** 书圈声望/活跃度排行 */
+    suspend fun getCircleRank(bookId: String, date: String? = null): Result<CircleRankResponse> = runCatching {
+        api.getCircleRank(bookId, date)
+    }
+
+    /** 我的书币余额 */
+    suspend fun getCoinBalance(): Result<CoinBalanceDto> = runCatching {
+        api.getCoinBalance()
+    }
+
+    /** 我的书币流水 */
+    suspend fun getCoinLedger(page: Int = 1): Result<CoinLedgerListResponse> = runCatching {
+        api.getCoinLedger(page)
+    }
+
+    /** 管理台：读取系数配置 */
+    suspend fun adminGetCircleConfig(): Result<CircleConfigDto> = runCatching {
+        api.adminGetCircleConfig()
+    }
+
+    /** 管理台：调整系数配置 */
+    suspend fun adminSetCircleConfig(value: String): Result<Unit> = runCatching {
+        api.adminSetCircleConfig(CircleConfigBody(value))
+    }
+
+    /** 管理台：运营补偿发币 */
+    suspend fun adminGrantCoin(userId: String, amount: Int, reason: String? = null): Result<Unit> = runCatching {
+        api.adminGrantCoin(CoinGrantBody(userId, amount, reason))
+    }
+
+    /** 管理台：圈主罢免 */
+    suspend fun adminResetCircleOwner(bookId: String): Result<Unit> = runCatching {
+        api.adminResetCircleOwner(CircleResetOwnerBody(bookId))
     }
 }
