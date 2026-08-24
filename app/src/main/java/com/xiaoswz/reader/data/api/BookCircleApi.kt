@@ -24,6 +24,15 @@ interface BookCircleApi {
     @POST("api/book-circle/invest")
     suspend fun investBook(@Body body: CircleInvestBody): InvestResultDto
 
+    @POST("api/book-circle/claim")
+    suspend fun claimInitial(@Body body: CircleBookIdBody): ClaimResponse
+
+    @POST("api/book-circle/transfer")
+    suspend fun transferCoins(@Body body: TransferBody): OkAck
+
+    @POST("api/book-circle/withdraw")
+    suspend fun withdrawInvestment(@Body body: CircleBookIdBody): OkAck
+
     @GET("api/book-circle/investment")
     suspend fun getInvestment(
         @Query("bookId") bookId: String,

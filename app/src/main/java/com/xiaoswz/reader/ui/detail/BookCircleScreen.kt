@@ -109,13 +109,48 @@ fun BookCircleScreen(
                         color = GlassTokens.Label,
                         fontWeight = FontWeight.Medium,
                     )
+                    if (state.locked > 0) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "· 锁仓 ${state.locked}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GlassTokens.SecondaryLabel,
+                        )
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "书币不可交易、不可提现，仅用于解锁阅读功能、竞拍圈主、投资书籍与兑换徽章。",
+                    "书币是固定池硬通货：每书圈一次性铸造 10 万枚，绝不增发、系统绝不付息。它不参与内容消费（阅读免费），只用于投资、竞拍圈主、治理与收藏展示——价值由市场共识决定。",
                     style = MaterialTheme.typography.bodySmall,
                     color = GlassTokens.SecondaryLabel,
                 )
+            }
+
+            // ── 初始领取（硬通货唯一入口）──
+            item {
+                val c = state.circle
+                val myClaimed = c?.myMembership?.claimedAmount ?: 0
+                if (c?.claimWindowOpen == true && myClaimed < 100) {
+                    CircleGlassCard {
+                        Column(Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("初始书币领取", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "新书圈开放 3 天领取窗口：在本书圈做出有效贡献（章评通过审核 / 提交角色标签）即可从国库领取，单人上限 100 枚。国库剩余 ${c.treasury} / 铸造 ${c.mintedTotal + c.treasury}。窗口关闭后不再增发。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = GlassTokens.SecondaryLabel,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text("你已领取：$myClaimed / 100", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.Label)
+                            Spacer(Modifier.height(10.dp))
+                            Button(onClick = vm::claim) { Text("领取初始书币") }
+                        }
+                    }
+                }
             }
 
             // ── 圈主 / 竞拍 ──
@@ -156,6 +191,9 @@ fun BookCircleScreen(
                                 Text("你就是本书圈圈主 🎉", style = MaterialTheme.typography.bodySmall, color = Color(0xFFE0A200), fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(10.dp))
                                 Button(onClick = vm::openFeatureDialog) { Text("圈主精选（输入评论 ID）") }
+                            } else {
+                                Spacer(Modifier.height(10.dp))
+                                Button(onClick = vm::openTransferDialog) { Text("转账 / 打赏圈主") }
                             }
                         }
                     }
@@ -216,7 +254,7 @@ fun BookCircleScreen(
                         }
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "用不可交易的「书币」投资本书，获得份额；书成长后按份额分红。锁定期内不可撤（防短线炒作），越早投资回报系数越高。",
+                            "用固定池「书币」投资本书获得份额——这是你与这本书的经济纽带。锁定期内质押不可撤（防短线炒作）。投资回报严格只来自其他读者的 P2P 转账与份额二手交易，系统绝不付息：你越早支持，后期读者进场接盘时你的份额越值钱。",
                             style = MaterialTheme.typography.bodySmall,
                             color = GlassTokens.SecondaryLabel,
                         )
@@ -225,12 +263,17 @@ fun BookCircleScreen(
                         // 我的投资
                         c?.myInvestment?.let { inv ->
                             Spacer(Modifier.height(8.dp))
+                            val unlocked = inv.unlockAt <= System.currentTimeMillis()
                             Text(
-                                "我的投资：份额 ${"%.2f".format(inv.sharePct * 100)}% · 解锁 ${fmtDate(inv.unlockAt)} · 已分红 ${inv.returnedTotal}",
+                                "我的投资：份额 ${"%.2f".format(inv.sharePct)}% · 质押 ${inv.amount} 书币 · 解锁 ${fmtDate(inv.unlockAt)}${if (unlocked) "（可撤回）" else "（锁仓中）"}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = GlassTokens.SystemBlue,
                                 fontWeight = FontWeight.Medium,
                             )
+                            if (unlocked && inv.status == "active") {
+                                Spacer(Modifier.height(8.dp))
+                                Button(onClick = vm::withdraw) { Text("撤回投资（质押退回）") }
+                            }
                         }
                         Spacer(Modifier.height(10.dp))
                         if (c?.canInvest == true) {
@@ -319,6 +362,36 @@ fun BookCircleScreen(
             },
             confirmButton = { Button(onClick = vm::confirmFeature) { Text("精选") } },
             dismissButton = { TextButton(onClick = vm::dismissFeatureDialog) { Text("取消") } },
+        )
+    }
+
+    if (state.showTransferDialog) {
+        AlertDialog(
+            onDismissRequest = vm::dismissTransferDialog,
+            title = { Text("转账 / 打赏（P2P）") },
+            text = {
+                Column {
+                    Text("书币在用户之间直接流转，系统零抽成。填入收款人 ID（可在书圈排行或其他读者处获取）与金额。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = state.transferTarget,
+                        onValueChange = vm::setTransferTarget,
+                        label = { Text("收款人 ID") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = state.transferAmount,
+                        onValueChange = vm::setTransferAmount,
+                        label = { Text("金额（余额 ${state.balance}）") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = { Button(onClick = vm::confirmTransfer) { Text("转账") } },
+            dismissButton = { TextButton(onClick = vm::dismissTransferDialog) { Text("取消") } },
         )
     }
 

@@ -50,6 +50,9 @@ import com.xiaoswz.reader.data.api.CoinBalanceDto
 import com.xiaoswz.reader.data.api.CoinGrantBody
 import com.xiaoswz.reader.data.api.CoinLedgerListResponse
 import com.xiaoswz.reader.data.api.CircleResetOwnerBody
+import com.xiaoswz.reader.data.api.ClaimResponse
+import com.xiaoswz.reader.data.api.TransferBody
+import com.xiaoswz.reader.data.api.CircleBookIdBody
 import com.xiaoswz.reader.data.api.InvestResultDto
 import com.xiaoswz.reader.data.api.InvestmentDto
 import com.xiaoswz.reader.data.api.InvestmentListResponse
@@ -352,6 +355,21 @@ object BackendRepository {
     /** 投资书 */
     suspend fun investBook(bookId: String, amount: Int): Result<InvestResultDto> = runCatching {
         api.investBook(CircleInvestBody(bookId, amount))
+    }
+
+    /** 初始领取（硬通货唯一入口：从国库领取） */
+    suspend fun claimInitial(bookId: String): Result<ClaimResponse> = runCatching {
+        api.claimInitial(CircleBookIdBody(bookId))
+    }
+
+    /** P2P 转账 / 打赏 */
+    suspend fun transferCoins(toUserId: String, amount: Int, reason: String? = null, bookId: String? = null): Result<Unit> = runCatching {
+        api.transferCoins(TransferBody(toUserId, amount, reason, bookId))
+    }
+
+    /** 撤回投资（解锁后质押退回） */
+    suspend fun withdrawInvestment(bookId: String): Result<Unit> = runCatching {
+        api.withdrawInvestment(CircleBookIdBody(bookId))
     }
 
     /** 我的投资列表 */

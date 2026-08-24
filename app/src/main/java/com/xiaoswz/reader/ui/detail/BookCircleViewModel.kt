@@ -23,6 +23,7 @@ data class BookCircleUiState(
     val circle: BookCircleDto? = null,
     val rank: List<CircleRankItem> = emptyList(),
     val balance: Int = 0,
+    val locked: Int = 0, // 锁仓（竞拍押金 / 投资质押）
     val isLoading: Boolean = false,
     val error: String? = null,
     val toast: String? = null,
@@ -35,6 +36,9 @@ data class BookCircleUiState(
     val identityName: String = "",
     val showFeatureDialog: Boolean = false,
     val featureCommentId: String = "",
+    val showTransferDialog: Boolean = false,
+    val transferTarget: String = "",
+    val transferAmount: String = "",
 )
 
 class BookCircleViewModel : ViewModel() {
@@ -84,7 +88,7 @@ class BookCircleViewModel : ViewModel() {
     private fun loadBalance() {
         viewModelScope.launch {
             BackendRepository.getCoinBalance()
-                .onSuccess { resp -> _uiState.update { it.copy(balance = resp.balance) } }
+                .onSuccess { resp -> _uiState.update { it.copy(balance = resp.balance, locked = resp.locked) } }
                 .onFailure { /* 余额非关键 */ }
         }
     }
@@ -203,6 +207,79 @@ class BookCircleViewModel : ViewModel() {
     }
 
     fun clearToast() = _uiState.update { it.copy(toast = null) }
+
+    // ── 初始领取（硬通货唯一入口）──
+    fun claim() {
+        val bookId = _uiState.value.bookId
+        _uiState.update { it.copy(saving = true) }
+        viewModelScope.launch {
+            BackendRepository.claimInitial(bookId)
+                .onSuccess { r ->
+                    _uiState.update { it.copy(saving = false, toast = "领取成功，获得 ${r.claimed} 书币（国库剩余 ${r.treasuryRemaining}）") }
+                    load()
+                }
+                .onFailure { e -> _uiState.update { it.copy(saving = false, toast = mapErr(e)) } }
+        }
+    }
+
+    // ── P2P 转账 / 打赏 ──
+    fun openTransferDialog() = _uiState.update { it.copy(showTransferDialog = true, transferTarget = "", transferAmount = "") }
+    fun dismissTransferDialog() = _uiState.update { it.copy(showTransferDialog = false) }
+    fun setTransferTarget(v: String) = _uiState.update { it.copy(transferTarget = v) }
+    fun setTransferAmount(v: String) = _uiState.update { it.copy(transferAmount = v) }
+
+    fun confirmTransfer() {
+        val to = _uiState.value.transferTarget.trim()
+        val amt = _uiState.value.transferAmount.toIntOrNull()
+        if (to.isEmpty()) {
+            _uiState.update { it.copy(toast = "请输入收款人 ID") }
+            return
+        }
+        if (amt == null || amt <= 0) {
+            _uiState.update { it.copy(toast = "请输入有效的书币数量") }
+            return
+        }
+        if (amt > _uiState.value.balance) {
+            _uiState.update { it.copy(toast = "书币余额不足（当前 ${_uiState.value.balance}）") }
+            return
+        }
+        _uiState.update { it.copy(saving = true, showTransferDialog = false) }
+        viewModelScope.launch {
+            BackendRepository.transferCoins(to, amt, null, _uiState.value.bookId)
+                .onSuccess { _uiState.update { it.copy(saving = false, toast = "转账成功（P2P，系统零抽成）") } }
+                .onFailure { e -> _uiState.update { it.copy(saving = false, toast = mapErr(e)) } }
+            load()
+        }
+    }
+
+    /** 打赏圈主（快捷 P2P 转账） */
+    fun rewardOwner(amount: Int) {
+        val owner = _uiState.value.circle?.ownerUserId ?: return
+        val bookId = _uiState.value.bookId
+        if (amount <= 0 || amount > _uiState.value.balance) {
+            _uiState.update { it.copy(toast = "书币余额不足或金额无效") }
+            return
+        }
+        _uiState.update { it.copy(saving = true) }
+        viewModelScope.launch {
+            BackendRepository.transferCoins(owner, amount, "打赏圈主", bookId)
+                .onSuccess { _uiState.update { it.copy(saving = false, toast = "已打赏圈主") } }
+                .onFailure { e -> _uiState.update { it.copy(saving = false, toast = mapErr(e)) } }
+            load()
+        }
+    }
+
+    // ── 撤回投资（解锁后质押退回）──
+    fun withdraw() {
+        val bookId = _uiState.value.bookId
+        _uiState.update { it.copy(saving = true) }
+        viewModelScope.launch {
+            BackendRepository.withdrawInvestment(bookId)
+                .onSuccess { _uiState.update { it.copy(saving = false, toast = "已撤回投资，质押退回余额") } }
+                .onFailure { e -> _uiState.update { it.copy(saving = false, toast = mapErr(e)) } }
+            load()
+        }
+    }
 
     // 对话框输入（StateFlow 只读，统一经 setter 更新）
     fun setBidAmount(v: String) = _uiState.update { it.copy(bidAmount = v) }

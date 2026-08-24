@@ -488,6 +488,7 @@ data class AuthorLogResponse(
 data class CoinBalanceDto(
     val userId: String = "",
     val balance: Int = 0,
+    val locked: Int = 0, // 锁仓（竞拍押金 / 投资质押）
     val earnedTotal: Int = 0,
 )
 
@@ -518,6 +519,7 @@ data class CircleMembershipDto(
     val reputation: Int = 0,
     val role: String = "member",
     val investedShares: Int = 0,
+    val claimedAmount: Int = 0, // 已从国库领取的初始书币
 )
 
 @Serializable
@@ -529,10 +531,14 @@ data class BookCircleDto(
     val ownerSince: Long? = null,
     val status: String = "open",
     val currentBid: Int = 0, // 当前最高竞拍价（无主时=起拍参考）
+    val treasury: Int = 0, // 国库未领取余额（初始铸造 - 已领取）
+    val mintedTotal: Int = 0, // 已进入流通的总量
+    val claimWindowOpen: Boolean = false, // 初始领取窗口是否开放
     val totalInvestment: Int = 0,
     val growthIndex: Float = 0f,
     val myMembership: CircleMembershipDto? = null,
     val myInvestment: InvestmentDto? = null,
+    val lockedBalance: Int = 0, // 我的锁仓总额
     val canBid: Boolean = false, // 当前用户是否可参与竞拍
     val canInvest: Boolean = false,
     val investMaxPerBook: Int = 5000,
@@ -618,6 +624,24 @@ data class CircleInvestBody(
 )
 
 @Serializable
+data class CircleBookIdBody(val bookId: String)
+
+@Serializable
+data class ClaimResponse(
+    val ok: Boolean = true,
+    val claimed: Int = 0,
+    val treasuryRemaining: Int = 0,
+)
+
+@Serializable
+data class TransferBody(
+    val toUserId: String,
+    val amount: Int,
+    val reason: String? = null,
+    val bookId: String? = null,
+)
+
+@Serializable
 data class CoinGrantBody(
     val userId: String,
     val amount: Int,
@@ -629,22 +653,16 @@ data class CircleConfigBody(val value: String = "") // Json 字符串透传
 
 @Serializable
 data class CircleConfigDto(
-    val circleOwnerSharePct: Int = 30,
-    val coinPerReadingMinute: Int = 1,
-    val coinReadingDailyCap: Int = 30,
-    val coinPerCommentFeatured: Int = 5,
-    val coinPerTagAdopted: Int = 3,
-    val coinPerHeartGiven: Int = 1,
-    val coinHeartDailyCap: Int = 10,
+    val circleInitialMint: Int = 100000,
+    val circleClaimWindowDays: Int = 3,
+    val circleClaimPerUser: Int = 100,
+    val ownerStartBid: Int = 100,
+    val inactiveOwnerDays: Int = 30,
     val investMaxPerBook: Int = 5000,
     val investLockDays: Int = 14,
-    val returnCoeffEarly: Float = 3.0f,
-    val returnCoeffMid: Float = 2.0f,
-    val returnCoeffLate: Float = 1.2f,
     val councilTopPct: Int = 10,
     val elderTopPct: Int = 1,
     val ownerMinInvestShares: Int = 100,
-    val inactiveOwnerDays: Int = 30,
 )
 
 @Serializable
