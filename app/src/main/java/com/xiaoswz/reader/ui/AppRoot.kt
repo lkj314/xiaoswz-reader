@@ -175,7 +175,7 @@ private data class BottomTab(
 private val BottomTabs = listOf(
     BottomTab(Routes.HOME, "首页", Icons.Default.Home),
     BottomTab(Routes.BOOKSHELF, "书架", Icons.Default.MenuBook),
-    BottomTab(Routes.COMMUNITY, "书友圈", Icons.Default.Forum),
+    BottomTab(Routes.COMMUNITY, "社区", Icons.Default.Forum),
     BottomTab(Routes.CIRCLE_HUB, "书圈", Icons.Default.AccountBalance),
     BottomTab(Routes.BOOKLISTS, "书单", Icons.Default.MenuBook),
     BottomTab(Routes.PLUGIN_PLAZA, "工坊", Icons.Default.Extension),

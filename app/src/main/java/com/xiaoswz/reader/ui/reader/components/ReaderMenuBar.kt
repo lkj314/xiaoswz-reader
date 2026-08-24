@@ -162,7 +162,7 @@ fun ReaderBottomBar(
                 Icon(Icons.Filled.Search, contentDescription = "书内搜索", tint = OverlayText)
             }
             IconButton(onClick = onShare) {
-                Icon(Icons.Filled.Share, contentDescription = "分享到书友圈", tint = OverlayText)
+                Icon(Icons.Filled.Share, contentDescription = "分享到社区", tint = OverlayText)
             }
             IconButton(onClick = onAnnoToggle, enabled = annoAvailable) {
                 Icon(

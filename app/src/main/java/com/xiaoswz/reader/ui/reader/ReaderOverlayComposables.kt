@@ -214,7 +214,7 @@ internal fun ReaderShareSheet(
             .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
-        Text("分享到书友圈", style = MaterialTheme.typography.titleLarge)
+        Text("分享到社区", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(
             value = text,
@@ -237,7 +237,7 @@ internal fun ReaderShareSheet(
                 sheetScope.launch {
                     CommunityRepository.createPost(content, emptyList())
                         .onSuccess {
-                            android.widget.Toast.makeText(context, "已分享到书友圈", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(context, "已分享到社区", android.widget.Toast.LENGTH_SHORT).show()
                             posting = false
                             onDismiss()
                         }
@@ -250,7 +250,7 @@ internal fun ReaderShareSheet(
             enabled = !posting,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (posting) "发布中…" else "发布到书友圈")
+            Text(if (posting) "发布中…" else "发布到社区")
         }
         Spacer(modifier = Modifier.height(16.dp))
     }

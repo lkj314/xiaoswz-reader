@@ -240,7 +240,7 @@ fun BooklistDetailScreen(
                             )
                         }
                     }
-                    // 分享到书友圈
+                    // 分享到社区
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -251,7 +251,7 @@ fun BooklistDetailScreen(
                                     viewModel.shareToCommunity(booklistId, detail.title, detail.description) { res ->
                                         res.onSuccess {
                                             justShared = true
-                                            android.widget.Toast.makeText(context, "已分享到书友圈", android.widget.Toast.LENGTH_SHORT).show()
+                                            android.widget.Toast.makeText(context, "已分享到社区", android.widget.Toast.LENGTH_SHORT).show()
                                         }.onFailure { e ->
                                             android.widget.Toast.makeText(context, e.message ?: "分享失败（需登录）", android.widget.Toast.LENGTH_SHORT).show()
                                         }

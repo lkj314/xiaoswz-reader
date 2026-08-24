@@ -130,7 +130,7 @@ fun CommunityScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "书友圈",
+                title = "社区",
                 showLogo = true,
                 actions = {
                     IconButton(onClick = onReadingStats) {
