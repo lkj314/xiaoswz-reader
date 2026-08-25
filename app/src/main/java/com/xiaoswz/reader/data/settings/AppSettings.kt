@@ -41,6 +41,8 @@ class AppSettingsRepository(private val context: Context) {
         val ACCOUNT_EMAIL = stringPreferencesKey("account_email")
         val ACCOUNT_ROLE = stringPreferencesKey("account_role") // guest / user / admin
         val ACCOUNT_MUTED_UNTIL = longPreferencesKey("account_muted_until") // 禁言到期时间戳，0=未禁言
+        // ── 书圈用户需知（首次进入书圈强制阅读，只弹一次）──
+        val BOOK_CIRCLE_AGREED = booleanPreferencesKey("book_circle_agreed")
     }
 
     val themeModeFlow: Flow<Int> = context.appSettingsStore.data.map { prefs ->
@@ -187,5 +189,14 @@ class AppSettingsRepository(private val context: Context) {
     /** 当前登录账号 id（owner 判别用：作者本人可自改/自删动态与书单） */
     val accountIdFlow: Flow<String?> = context.appSettingsStore.data.map {
         it[Keys.ACCOUNT_ID]
+    }
+
+    // ── 书圈用户需知：是否已阅读并同意（首次进入书圈强制，只弹一次）──
+    val bookCircleAgreedFlow: Flow<Boolean> = context.appSettingsStore.data.map {
+        it[Keys.BOOK_CIRCLE_AGREED] ?: false
+    }
+
+    suspend fun setBookCircleAgreed(on: Boolean) {
+        context.appSettingsStore.edit { it[Keys.BOOK_CIRCLE_AGREED] = on }
     }
 }

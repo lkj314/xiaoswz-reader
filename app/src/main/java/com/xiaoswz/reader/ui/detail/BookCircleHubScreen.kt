@@ -47,6 +47,11 @@ import com.xiaoswz.reader.ui.components.whaleGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.NumberFormat
 import java.util.Locale
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import com.xiaoswz.reader.data.settings.AppSettingsRepository
 
 private val dirRoleColorMap = mapOf(
     "owner" to Color(0xFFE0A200),
@@ -145,6 +150,24 @@ fun BookCircleHubScreen(
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
             vm.clearToast()
         }
+    }
+
+    // 首次进入书圈：未同意需知则强制弹出（只弹一次，状态持久化在 DataStore）
+    val settingsRepo = remember { AppSettingsRepository(context.applicationContext) }
+    val agreed by settingsRepo.bookCircleAgreedFlow.collectAsState(initial = false)
+    var showAgreement by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(agreed) {
+        if (!agreed) showAgreement = true
+    }
+
+    if (showAgreement) {
+        BookCircleAgreementDialog(
+            onAgree = {
+                scope.launch { settingsRepo.setBookCircleAgreed(true) }
+                showAgreement = false
+            },
+        )
     }
 }
 
