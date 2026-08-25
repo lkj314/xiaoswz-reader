@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TrendingDown
@@ -148,6 +149,13 @@ fun FundListScreen(
 }
 
 @Composable
+private fun riskColor(risk: String): Color = when (risk) {
+    "低" -> Color(0xFF2BB673)
+    "中" -> Color(0xFFE0A200)
+    else -> Color(0xFFC62828)
+}
+
+@Composable
 private fun CreateFundCard(state: FundListUiState, vm: FundListViewModel, nf: NumberFormat) {
     Card(
         modifier = Modifier.fillMaxWidth().whaleGlassCard(),
@@ -156,15 +164,38 @@ private fun CreateFundCard(state: FundListUiState, vm: FundListViewModel, nf: Nu
     ) {
         Column(Modifier.padding(16.dp)) {
             Text("发起理财产品", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
-            Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
-                value = state.createBookId,
-                onValueChange = vm::setCreateBookId,
-                label = { Text("所属书 ID（如 B000001）") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Spacer(Modifier.height(12.dp))
+
+            // ① 选书圈（仅你是董事的书，杜绝 403）
+            Text("① 选择你的书圈", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
             Spacer(Modifier.height(8.dp))
+            if (state.directorBooks.isEmpty()) {
+                Text("你还没有可发起产品的书圈（需成为某书圈董事）。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.directorBooks.forEach { b ->
+                        val sel = state.selectedBookId == b.bookId
+                        BookChip(b.bookId, sel) { vm.selectBook(b.bookId) }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // ② 选模版
+            Text("② 选择理财包模版", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+            Spacer(Modifier.height(8.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.templates.forEach { t ->
+                    TemplateCard(t, state.selectedTemplateId == t.id) {
+                        if (t.unlocked) vm.selectTemplate(t.id)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ③ 命名
             OutlinedTextField(
                 value = state.createName,
                 onValueChange = vm::setCreateName,
@@ -180,22 +211,116 @@ private fun CreateFundCard(state: FundListUiState, vm: FundListViewModel, nf: Nu
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = state.createAssets,
-                onValueChange = vm::setCreateAssets,
-                label = { Text("资产构成（书ID:权重%，逗号或换行分隔）") },
-                placeholder = { Text("B000001:60,B000002:40") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(10.dp))
+
+            // 资产构成预览
+            val selTmpl = state.templates.firstOrNull { it.id == state.selectedTemplateId }
+            val selTmplDef = FUND_TEMPLATES.firstOrNull { it.id == state.selectedTemplateId }
+            if (state.selectedBookId.isNotEmpty() && selTmpl != null && selTmpl.unlocked && selTmplDef != null) {
+                val assets = selTmplDef.buildAssets(state.selectedBookId, state.allBooks)
+                Spacer(Modifier.height(12.dp))
+                Text("资产构成预览", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    assets.forEach { a ->
+                        AssetChip(a.assetBookId, a.weightPct)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = vm::createFund, modifier = Modifier.weight(1f), enabled = !state.creating) {
+                val ready = state.selectedBookId.isNotEmpty() &&
+                    state.selectedTemplateId.isNotEmpty() &&
+                    (state.templates.firstOrNull { it.id == state.selectedTemplateId }?.unlocked == true) &&
+                    state.createName.isNotBlank()
+                Button(onClick = vm::createFund, modifier = Modifier.weight(1f), enabled = !state.creating && ready) {
                     Text(if (state.creating) "发起中…" else "发起产品")
                 }
                 androidx.compose.material3.TextButton(onClick = vm::toggleCreate) {
                     Text("取消")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookChip(bookId: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) GlassTokens.SystemBlue.copy(alpha = 0.18f) else GlassTokens.SystemBlue.copy(alpha = 0.06f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(
+            "《$bookId》",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = if (selected) GlassTokens.SystemBlue else GlassTokens.SecondaryLabel,
+        )
+    }
+}
+
+@Composable
+private fun AssetChip(bookId: String, weight: Double) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFF9B6DFF).copy(alpha = 0.14f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Text("$bookId ${weight.toInt()}%", style = MaterialTheme.typography.bodySmall, color = Color(0xFF9B6DFF), fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun TemplateCard(t: FundTemplateUi, selected: Boolean, onClick: () -> Unit) {
+    val enabled = t.unlocked
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .whaleGlassCard(),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+                .then(if (selected) Modifier.background(GlassTokens.SystemBlue.copy(alpha = 0.10f)) else Modifier)
+                .padding(if (selected) 4.dp else 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(t.emoji, style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(t.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(riskColor(t.risk).copy(alpha = 0.14f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text("${t.risk}风险", style = MaterialTheme.typography.bodySmall, color = riskColor(t.risk), fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(t.tagline, style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                if (!enabled) {
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Lock, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(13.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("未解锁 · ${t.unlockHint}", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
+                    }
+                }
+            }
+            if (selected) {
+                Icon(Icons.Default.Star, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(20.dp))
             }
         }
     }

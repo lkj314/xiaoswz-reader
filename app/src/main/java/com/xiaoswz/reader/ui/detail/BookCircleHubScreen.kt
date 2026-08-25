@@ -50,6 +50,7 @@ import java.util.Locale
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
 
@@ -152,20 +153,21 @@ fun BookCircleHubScreen(
         }
     }
 
-    // 首次进入书圈：未同意需知则强制弹出（只弹一次，状态持久化在 DataStore）
+    // 首次进入书圈：未同意需知则强制弹出；同意后写入 DataStore，永不再弹。
+    // 用 Boolean? + first() 读取：加载中为 null（不弹），避免每次重进页面被 initial=false 误触发。
     val settingsRepo = remember { AppSettingsRepository(context.applicationContext) }
-    val agreed by settingsRepo.bookCircleAgreedFlow.collectAsState(initial = false)
-    var showAgreement by remember { mutableStateOf(false) }
+    var agreed by remember { mutableStateOf<Boolean?>(null) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(agreed) {
-        if (!agreed) showAgreement = true
+    LaunchedEffect(Unit) {
+        agreed = settingsRepo.bookCircleAgreedFlow.first()
     }
-
-    if (showAgreement) {
+    if (agreed == false) {
         BookCircleAgreementDialog(
             onAgree = {
-                scope.launch { settingsRepo.setBookCircleAgreed(true) }
-                showAgreement = false
+                scope.launch {
+                    settingsRepo.setBookCircleAgreed(true)
+                    agreed = true
+                }
             },
         )
     }
