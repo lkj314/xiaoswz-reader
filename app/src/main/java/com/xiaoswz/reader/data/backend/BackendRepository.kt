@@ -8,6 +8,10 @@ import com.xiaoswz.reader.data.api.AttributionBody
 import com.xiaoswz.reader.data.api.BackendClient
 import com.xiaoswz.reader.data.api.BookStatsResponse
 import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import retrofit2.HttpException
 import com.xiaoswz.reader.data.api.CommentBody
 import com.xiaoswz.reader.data.api.CommentItem
 import com.xiaoswz.reader.data.api.CommentListResponse
@@ -536,5 +540,39 @@ object BackendRepository {
     /** 稳定币全局状态 */
     suspend fun getStablecoinStatus(): Result<StablecoinStatusResponse> = runCatching {
         api.getStablecoinStatus()
+    }
+}
+
+/**
+ * 把后端抛出的异常转成中文友好提示（统一技术债里的「错误提示生硬」问题）。
+ * 后端统一错误体为 {"error":"<code>","message":"<可选>"}（见 lib/errors.ts）。
+ */
+fun backendFriendlyError(e: Throwable): String {
+    val code: String? = (e as? HttpException)?.response()?.errorBody()?.string()
+        ?.let { body ->
+            runCatching {
+                val el = Json.parseToJsonElement(body)
+                if (el is JsonObject) el["error"]?.jsonPrimitive?.content else null
+            }.getOrNull()
+        }
+        ?: e.message
+    return when (code) {
+        "login_required" -> "请先登录"
+        "forbidden", "mint_disabled" -> "无权限操作"
+        "muted" -> "账号已被禁言"
+        "insufficient_coins" -> "书币余额不足"
+        "insufficient_shares" -> "持有份额不足"
+        "fund_not_active" -> "该产品已退市或未激活"
+        "invalid_amount" -> "数量无效"
+        "invalid_name" -> "名称无效"
+        "empty_assets" -> "资产包不能为空"
+        "drop_already_today" -> "今日已抓取过稳定币"
+        "not_positive" -> "需维持正收益才有产出资格"
+        "cap_reached" -> "稳定币已达 1 万硬顶"
+        "no_luck" -> "本次未抓中（概率产出）"
+        "not_found" -> "内容不存在"
+        "conflict" -> "操作冲突，请重试"
+        "internal" -> "服务器异常，请稍后重试"
+        else -> code ?: "网络异常，请稍后重试"
     }
 }

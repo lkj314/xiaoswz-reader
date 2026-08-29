@@ -705,6 +705,7 @@ data class CircleHubResponse(
     val joinedCircles: Int = 0, // 已加入/持币书圈数
     val investedBooks: Int = 0, // 已投资书籍数
     val books: List<HubBookDto> = emptyList(),
+    val anchorBalance: Int = 0, // 持有的锚定币（B000001）余额：用于钱包展示与「锚定护航包」模版解锁
     // 0.19 个人钱包：持有的理财产品聚合
     val funds: List<HubFundDto> = emptyList(),
     val totalFundValue: Double = 0.0, // 理财产品总市值（以锚定币计）

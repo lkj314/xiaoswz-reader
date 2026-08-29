@@ -121,6 +121,10 @@ fun BookCircleHubScreen(
                 items(hub.books, key = { it.bookId }) { book ->
                     HubBookRow(book = book, onClick = { onBookClick(book.bookId) })
                 }
+                // 锚定币 B000001：不在书圈 books 列表，余额由 hub.anchorBalance 单独下发
+                if (hub.anchorBalance > 0) {
+                    item { AnchorCoinRow(balance = hub.anchorBalance) }
+                }
             }
 
             // 我的理财产品
@@ -268,6 +272,36 @@ private fun HubBookRow(book: HubBookDto, onClick: () -> Unit) {
                 StatBlock("投资份额", nf.format(book.myInvested), Color(0xFF9B6DFF))
                 StatBlock("余额/锁仓", "${nf.format(book.myBalance)}/${nf.format(book.myLocked)}", GlassTokens.Label)
                 StatBlock("净值", nf.format(book.netValue.toLong()), Color(0xFFE0A200))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnchorCoinRow(balance: Int) {
+    val nf = remember { NumberFormat.getNumberInstance(Locale.CHINA) }
+    Card(
+        modifier = Modifier.fillMaxWidth().whaleGlassCard(),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("《B000001》锚定币", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "全市场定价锚 · 稳定币按 1:10 背书",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GlassTokens.SecondaryLabel,
+                    )
+                }
+                RoleBadge("锚定", Color(0xFF3DA9FC))
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                StatBlock("我的余额", nf.format(balance), GlassTokens.SystemBlue)
+                StatBlock("用途", "理财/兑换", Color(0xFF9B6DFF))
             }
         }
     }

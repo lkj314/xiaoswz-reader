@@ -159,9 +159,11 @@ fun computeTemplateContext(
     directorBooks: List<HubBookDto>,
     allBooks: List<HubBookDto>,
     subscribedFundCount: Int,
+    anchorBalance: Int = 0,
 ): TemplateContext {
-    val held = allBooks.count { it.myBalance > 0 || it.myLocked > 0 || it.myInvested > 0 }
-    val b000001 = allBooks.firstOrNull { it.bookId == ANCHOR_BOOK }?.myBalance ?: 0
+    val held = allBooks.count { it.myBalance > 0 || it.myLocked > 0 || it.myInvested > 0 || it.myShares > 0 }
+    // 锚定币 B000001 不在书圈 books 列表里，余额由 hub.anchorBalance 单独下发（见 #2 修复）
+    val b000001 = anchorBalance
     return TemplateContext(
         directorBookCount = directorBooks.size,
         heldBookCount = held,

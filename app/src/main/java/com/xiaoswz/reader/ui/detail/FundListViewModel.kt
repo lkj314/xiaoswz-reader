@@ -8,6 +8,7 @@ import com.xiaoswz.reader.data.api.FundDiscoveryResponse
 import com.xiaoswz.reader.data.api.FundSummaryDto
 import com.xiaoswz.reader.data.api.HubBookDto
 import com.xiaoswz.reader.data.backend.BackendRepository
+import com.xiaoswz.reader.data.backend.backendFriendlyError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,7 +56,7 @@ class FundListViewModel : ViewModel() {
                 val directorBooks = h?.books?.filter { it.isDirector } ?: emptyList()
                 val allBooks = h?.books ?: emptyList()
                 val subscribed = h?.funds?.size ?: 0
-                val ctx = computeTemplateContext(directorBooks, allBooks, subscribed)
+                val ctx = computeTemplateContext(directorBooks, allBooks, subscribed, h?.anchorBalance ?: 0)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -122,7 +123,7 @@ class FundListViewModel : ViewModel() {
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(creating = false, toast = "发起失败：${e.message ?: "网络异常"}") }
+                    _uiState.update { it.copy(creating = false, toast = "发起失败：${backendFriendlyError(e)}") }
                 }
         }
     }

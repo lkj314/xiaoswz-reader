@@ -8,6 +8,7 @@ import com.xiaoswz.reader.data.api.RedeemResponse
 import com.xiaoswz.reader.data.api.SubscribeResponse
 import com.xiaoswz.reader.data.api.TransferStableResponse
 import com.xiaoswz.reader.data.backend.BackendRepository
+import com.xiaoswz.reader.data.backend.backendFriendlyError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -93,7 +94,7 @@ class FundDetailViewModel : ViewModel() {
                         _uiState.update { it.copy(busy = false, toast = "认购失败") }
                     }
                 }
-                .onFailure { e -> _uiState.update { it.copy(busy = false, toast = "认购失败：${e.message ?: "网络异常"}") } }
+                .onFailure { e -> _uiState.update { it.copy(busy = false, toast = "认购失败：${backendFriendlyError(e)}") } }
         }
     }
 
@@ -115,7 +116,7 @@ class FundDetailViewModel : ViewModel() {
                         _uiState.update { it.copy(busy = false, toast = "赎回失败") }
                     }
                 }
-                .onFailure { e -> _uiState.update { it.copy(busy = false, toast = "赎回失败：${e.message ?: "网络异常"}") } }
+                .onFailure { e -> _uiState.update { it.copy(busy = false, toast = "赎回失败：${backendFriendlyError(e)}") } }
         }
     }
 
@@ -127,12 +128,19 @@ class FundDetailViewModel : ViewModel() {
                     val msg = if (r.dropped) {
                         "挖出稳定币 #${r.serial}（恒定兑换 ${r.backing ?: 10} 枚 B000001）"
                     } else {
-                        "本次未挖到稳定币（成功率 ${"%.3f".format((r.probability ?: 0.0) * 100)}%）：${r.reason ?: ""}"
+                        val reasonText = when (r.reason) {
+                            "not_positive" -> "今日收益为负，需维持正收益才有产出资格"
+                            "cap_reached" -> "稳定币已达 1 万硬顶"
+                            "drop_already_today" -> "今日已抓取过"
+                            "no_luck" -> "本次未抓中（成功率 ${"%.3f".format((r.probability ?: 0.0) * 100)}%）"
+                            else -> r.reason ?: "本次未抓中"
+                        }
+                        "未挖到稳定币：$reasonText"
                     }
                     _uiState.update { it.copy(busy = false, toast = msg) }
                     load()
                 }
-                .onFailure { e -> _uiState.update { it.copy(busy = false, toast = "抓取失败：${e.message ?: "网络异常"}") } }
+                .onFailure { e -> _uiState.update { it.copy(busy = false, toast = "抓取失败：${backendFriendlyError(e)}") } }
         }
     }
 
@@ -149,11 +157,12 @@ class FundDetailViewModel : ViewModel() {
             BackendRepository.transferStableCoin(serial, toFund)
                 .onSuccess { r ->
                     if (r.ok) {
+                        val fromName = s.fund?.name ?: "本产品"
                         _uiState.update {
                             it.copy(
                                 busy = false, showTransfer = false,
                                 transferSerial = "", transferToFund = "",
-                                toast = "稳定币 #$serial 已转入《$toFund》",
+                                toast = "稳定币 #$serial 已从《$fromName》转出",
                             )
                         }
                         load()
@@ -161,7 +170,7 @@ class FundDetailViewModel : ViewModel() {
                         _uiState.update { it.copy(busy = false, toast = "转移失败") }
                     }
                 }
-                .onFailure { e -> _uiState.update { it.copy(busy = false, toast = "转移失败：${e.message ?: "网络异常"}") } }
+                .onFailure { e -> _uiState.update { it.copy(busy = false, toast = "转移失败：${backendFriendlyError(e)}") } }
         }
     }
 
