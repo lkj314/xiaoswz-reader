@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlin.math.roundToInt
 
 /**
  * 本地书架仓库：封装 Room，对外提供收藏与阅读进度的读写。
@@ -56,8 +57,11 @@ class BookshelfRepository(context: Context) {
         totalChapters: Int = 0,
         ts: Long = System.currentTimeMillis(),
     ) {
+        // 修复（L8）：原来是 `(currentIndex + 1) * 100 / totalChapters` 的整型除法，
+        // 章数 > 100 时前若干章一律被截断为 0（300 章读到第 1 章 → 1*100/300 = 0），
+        // 书架长期显示 0%。改用浮点计算后四舍五入。
         val pct = if (totalChapters > 0) {
-            ((currentIndex + 1) * 100 / totalChapters).coerceIn(0, 100)
+            ((currentIndex + 1) * 100.0 / totalChapters).roundToInt().coerceIn(0, 100)
         } else 0
         dao.updateProgressWithPercent(slug, chapterId, chapterTitle, pct, ts)
     }

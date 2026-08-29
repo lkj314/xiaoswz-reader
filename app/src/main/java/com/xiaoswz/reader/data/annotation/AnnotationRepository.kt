@@ -64,8 +64,10 @@ object AnnotationRepository {
         updatedAt = System.currentTimeMillis(),
     )
 
+    // 供 UI 读取：文件损坏时按空列表处理（不阻塞阅读体验），
+    // 但绝不会因此把损坏文件覆盖成空——覆盖保护在 sync() 里。
     fun loadLocal(ctx: Context, bookId: String): List<AnnotationEntity> =
-        AnnotationStore.load(ctx, bookId)
+        AnnotationStore.loadOrEmpty(ctx, bookId)
 
 
     fun persist(ctx: Context, bookId: String, items: List<AnnotationEntity>) {
@@ -82,7 +84,10 @@ object AnnotationRepository {
     /** 云端拉取 + 本地合并：本地为准，云端补充本地缺失项；本地更新项回传云端。 */
     suspend fun sync(ctx: Context, bookId: String): List<AnnotationEntity> =
         withContext(Dispatchers.IO) {
-            val local = loadLocal(ctx, bookId).toMutableList()
+            // H3 核心保护：本地文件损坏（load 返回 null）时直接放弃本次同步，
+            // 绝不 persist——否则会把损坏文件覆盖成空列表，该书全部标注永久丢失且零报错。
+            val raw = AnnotationStore.load(ctx, bookId) ?: return@withContext emptyList()
+            val local = raw.toMutableList()
             runCatching {
                 val remote = BackendClient.api.getAnnotations(bookId).items
                 val remoteMap = remote.associateBy { it.clientId }

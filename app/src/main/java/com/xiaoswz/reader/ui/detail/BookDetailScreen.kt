@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -245,10 +246,13 @@ fun BookDetailScreen(
                     id?.let(onChapterClick)
                 }
 
-                // 评论区在章节列表之后，索引 = 头部信息(0)+互动卡(1)+[简介(2)?]+目录标题(3?)+章节数
+                // 修复（M13）：评论区之前有若干「条件 item」（角色卡 / 书圈 / 作者日志 / 简介），
+                // 原先用魔法数字 `(if (introShown) 4 else 3) + chapters.size` 估算下标，
+                // 条件 item 出现与否会让它偏移 1~3 位 → 「查看评论」永远滚到目录区。
+                // 改为在构建列表时按实际顺序累加，得到评论头 item 的真实下标。
+                // （LazyListScope 的 DSL 在组合阶段即按序执行，点击回调触发时已是最终值）
                 val listState = rememberLazyListState()
-                val introShown = !detail.intro.isNullOrBlank()
-                val commentHeaderIndex = (if (introShown) 4 else 3) + chapters.size
+                var commentHeaderIndex = 0
 
                 LazyColumn(
                     state = listState,
@@ -409,6 +413,7 @@ fun BookDetailScreen(
                     }
 
                     // ── 互动区：月票 / 评分 / 广告（P1–P3，后端不可达自动降级）──
+                    commentHeaderIndex++ // 已完成：书籍信息头部
                     item {
                         InteractionCard(
                             stats = state.stats,
@@ -429,6 +434,7 @@ fun BookDetailScreen(
                     }
 
                     // ── 角色互动横滑卡片（0.14.0）：点击进入角色详情 ──
+                    commentHeaderIndex++ // 已完成：互动卡
                     if (state.characters.isNotEmpty()) {
                         item {
                             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -449,6 +455,7 @@ fun BookDetailScreen(
                     }
 
                     // ── 书圈（0.17.0）：以书为锚点的社区经济体入口 ──
+                    commentHeaderIndex++ // 已完成：角色卡（条件 item）
                     item {
                         Card(
                             modifier = Modifier
@@ -487,6 +494,7 @@ fun BookDetailScreen(
                     }
 
                     // ── 作者碎碎念 / 作者日志（0.16.5）：作者面向读者的透明窗口 ──
+                    commentHeaderIndex++ // 已完成：书圈卡
                     if (!authorLogsFailed) {
                         item {
                             AuthorLogZone(
@@ -496,6 +504,7 @@ fun BookDetailScreen(
                         }
                     }
 
+                    commentHeaderIndex++ // 已完成：作者日志（条件 item）
                     // 简介
                     if (!detail.intro.isNullOrBlank()) {
                         item {
@@ -514,6 +523,7 @@ fun BookDetailScreen(
                         }
                     }
 
+                    commentHeaderIndex++ // 已完成：简介（条件 item）
                     // 目录标题
                     item {
                         HorizontalDivider()
@@ -524,6 +534,7 @@ fun BookDetailScreen(
                         )
                     }
 
+                    commentHeaderIndex++ // 已完成：目录标题
                     // 章节列表
                     items(
                         items = chapters,
@@ -546,6 +557,8 @@ fun BookDetailScreen(
                     }
 
                     // ── 评论区（P2）──
+                    // 章节列表占了 chapters.size 个 item；此处 commentHeaderIndex 即评论区头的真实下标
+                    commentHeaderIndex += chapters.size
                     item {
                         HorizontalDivider()
                         SectionHeader(title = "评论（${state.commentTotal}）")
@@ -628,6 +641,8 @@ fun BookDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    // 修复：新建书单输入框在键盘弹起时被遮挡 → 补 imePadding 把内容顶到键盘上方
+                    .imePadding()
                     .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
             ) {
                 Text(

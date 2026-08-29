@@ -70,7 +70,9 @@ import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.plugin.PluginManifest
 import com.xiaoswz.reader.data.plugin.PluginRepository
 import com.xiaoswz.reader.data.plugin.PluginStateStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 创意工坊（0.16.3 重设计）。
@@ -188,7 +190,8 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit, onPublish: () -> Un
         }
     }
 
-    LaunchedEffect(Unit) { load(true) }
+    // 修复（M16）：原先同时存在 LaunchedEffect(Unit) 和 LaunchedEffect(selectedType)，
+    // 进入广场会并发发两次列表请求。selectedType 初值也是 null，保留它即可覆盖首屏加载。
     LaunchedEffect(selectedType) { load(true) }
 
     val typeTabs = listOf(
@@ -731,13 +734,17 @@ private fun AnnotationCollectionContent(
 
     LaunchedEffect(Unit) {
         runCatching {
-            val shelf = BookshelfRepository(context.applicationContext)
-            val all = AnnotationRepository.loadAll(context)
-                .filter { annotationType == null || it.entity.type == annotationType }
-            val disp = all.mapNotNull { a ->
-                val book = runCatching { shelf.getBySlug(a.bookId) }.getOrNull()
-                AnnoDisplay(a.bookId, book?.title ?: a.bookId, a.entity.chapterId, a.entity)
-            }.sortedByDescending { it.entity.updatedAt }
+            // 修复（M17）：遍历 annotations/ 目录全部 JSON 属重 IO，原先在主线程执行；
+            // 整段切到 Dispatchers.IO，避免打开标注类插件时掉帧。
+            val disp = withContext(Dispatchers.IO) {
+                val shelf = BookshelfRepository(context.applicationContext)
+                val all = AnnotationRepository.loadAll(context)
+                    .filter { annotationType == null || it.entity.type == annotationType }
+                all.mapNotNull { a ->
+                    val book = runCatching { shelf.getBySlug(a.bookId) }.getOrNull()
+                    AnnoDisplay(a.bookId, book?.title ?: a.bookId, a.entity.chapterId, a.entity)
+                }.sortedByDescending { it.entity.updatedAt }
+            }
             items.clear()
             items.addAll(disp)
         }

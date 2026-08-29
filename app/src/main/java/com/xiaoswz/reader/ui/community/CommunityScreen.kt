@@ -653,6 +653,8 @@ private fun PublishSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // 修复：正文/配图链接两个输入框在键盘弹起时被遮挡 → 补 imePadding 顶起内容
+                .imePadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .padding(bottom = 24.dp),
         ) {

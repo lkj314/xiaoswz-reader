@@ -98,55 +98,46 @@ class ReaderSettingsRepository(private val context: Context) {
         val SEG_MARKERS = booleanPreferencesKey("show_segment_markers")
     }
 
+    /**
+     * 唯一的 Preferences → ReaderSettings 映射：读（settingsFlow）与写（update）共用，
+     * 缺省值统一取自 [ReaderSettings] 的构造默认值，杜绝两处兜底不一致。
+     */
+    private fun Preferences.toSettings(): ReaderSettings {
+        val defaults = ReaderSettings()
+        return ReaderSettings(
+            fontSize = this[Keys.FONT_SIZE] ?: defaults.fontSize,
+            themeIndex = this[Keys.THEME_INDEX] ?: defaults.themeIndex,
+            pageMode = this[Keys.PAGE_MODE] ?: defaults.pageMode,
+            lineSpacing = this[Keys.LINE_SPACING] ?: defaults.lineSpacing,
+            paraSpacing = this[Keys.PARA_SPACING] ?: defaults.paraSpacing,
+            marginIndex = this[Keys.MARGIN_INDEX] ?: defaults.marginIndex,
+            indentFirstLine = this[Keys.INDENT] ?: defaults.indentFirstLine,
+            volumeKeyPaging = this[Keys.VOLUME_KEYS] ?: defaults.volumeKeyPaging,
+            keepScreenOn = this[Keys.KEEP_SCREEN_ON] ?: defaults.keepScreenOn,
+            updateServerUrl = this[Keys.UPDATE_SERVER] ?: defaults.updateServerUrl,
+            prefetchNext = this[Keys.PREFETCH_NEXT] ?: defaults.prefetchNext,
+            prefetchPrev = this[Keys.PREFETCH_PREV] ?: defaults.prefetchPrev,
+            continuousScroll = this[Keys.CONTINUOUS] ?: defaults.continuousScroll,
+            prefetchWifiOnly = this[Keys.PREFETCH_WIFI_ONLY] ?: defaults.prefetchWifiOnly,
+            ttsRate = this[Keys.TTS_RATE] ?: defaults.ttsRate,
+            blueLightFilter = this[Keys.BLUE_LIGHT] ?: defaults.blueLightFilter,
+            restReminderEnabled = this[Keys.REST_REMINDER] ?: defaults.restReminderEnabled,
+            restReminderMinutes = this[Keys.REST_MINUTES] ?: defaults.restReminderMinutes,
+            showSegmentMarkers = this[Keys.SEG_MARKERS] ?: defaults.showSegmentMarkers,
+        )
+    }
+
     val settingsFlow: Flow<ReaderSettings> =
-        context.readerSettingsStore.data.map { prefs ->
-            val defaults = ReaderSettings()
-            ReaderSettings(
-                fontSize = prefs[Keys.FONT_SIZE] ?: defaults.fontSize,
-                themeIndex = prefs[Keys.THEME_INDEX] ?: defaults.themeIndex,
-                pageMode = prefs[Keys.PAGE_MODE] ?: defaults.pageMode,
-                lineSpacing = prefs[Keys.LINE_SPACING] ?: defaults.lineSpacing,
-                paraSpacing = prefs[Keys.PARA_SPACING] ?: defaults.paraSpacing,
-                marginIndex = prefs[Keys.MARGIN_INDEX] ?: defaults.marginIndex,
-                indentFirstLine = prefs[Keys.INDENT] ?: defaults.indentFirstLine,
-                volumeKeyPaging = prefs[Keys.VOLUME_KEYS] ?: defaults.volumeKeyPaging,
-                keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: defaults.keepScreenOn,
-                updateServerUrl = prefs[Keys.UPDATE_SERVER] ?: defaults.updateServerUrl,
-                prefetchNext = prefs[Keys.PREFETCH_NEXT] ?: defaults.prefetchNext,
-                prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: defaults.prefetchPrev,
-                continuousScroll = prefs[Keys.CONTINUOUS] ?: defaults.continuousScroll,
-                prefetchWifiOnly = prefs[Keys.PREFETCH_WIFI_ONLY] ?: defaults.prefetchWifiOnly,
-                ttsRate = prefs[Keys.TTS_RATE] ?: defaults.ttsRate,
-                blueLightFilter = prefs[Keys.BLUE_LIGHT] ?: defaults.blueLightFilter,
-                restReminderEnabled = prefs[Keys.REST_REMINDER] ?: defaults.restReminderEnabled,
-                restReminderMinutes = prefs[Keys.REST_MINUTES] ?: defaults.restReminderMinutes,
-                showSegmentMarkers = prefs[Keys.SEG_MARKERS] ?: defaults.showSegmentMarkers,
-            )
-        }
+        context.readerSettingsStore.data.map { prefs -> prefs.toSettings() }
 
     suspend fun update(transform: (ReaderSettings) -> ReaderSettings) {
         context.readerSettingsStore.edit { prefs ->
-            val current = ReaderSettings(
-                fontSize = prefs[Keys.FONT_SIZE] ?: 18,
-                themeIndex = prefs[Keys.THEME_INDEX] ?: ReaderSettings.THEME_DAY,
-                pageMode = prefs[Keys.PAGE_MODE] ?: ReaderSettings.MODE_COVER,
-                lineSpacing = prefs[Keys.LINE_SPACING] ?: 1.7f,
-                paraSpacing = prefs[Keys.PARA_SPACING] ?: 0,
-                marginIndex = prefs[Keys.MARGIN_INDEX] ?: 1,
-                indentFirstLine = prefs[Keys.INDENT] ?: true,
-                volumeKeyPaging = prefs[Keys.VOLUME_KEYS] ?: true,
-                keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: true,
-                updateServerUrl = prefs[Keys.UPDATE_SERVER] ?: BuildConfig.DEFAULT_UPDATE_SERVER,
-                prefetchNext = prefs[Keys.PREFETCH_NEXT] ?: 3,
-                prefetchPrev = prefs[Keys.PREFETCH_PREV] ?: 1,
-                continuousScroll = prefs[Keys.CONTINUOUS] ?: true,
-                prefetchWifiOnly = prefs[Keys.PREFETCH_WIFI_ONLY] ?: false,
-                ttsRate = prefs[Keys.TTS_RATE] ?: 1.0f,
-                blueLightFilter = prefs[Keys.BLUE_LIGHT] ?: false,
-                restReminderEnabled = prefs[Keys.REST_REMINDER] ?: false,
-                restReminderMinutes = prefs[Keys.REST_MINUTES] ?: 20,
-                showSegmentMarkers = prefs[Keys.SEG_MARKERS] ?: true,
-            )
+            // 修复（M8）：读/写两条路径原先各写一套默认值，且不一致 ——
+            // 写路径把 pageMode 兜底成 MODE_COVER、showSegmentMarkers 兜底成 true，
+            // 读路径却是 MODE_SCROLL / false。全新安装后用户在阅读设置里改任意一项，
+            // update() 会用错误的兜底值构造 current 再整体写回，
+            // 于是「翻页模式」被从滚动静默改成覆盖。现统一走 toSettings()，消除不一致。
+            val current = prefs.toSettings()
             val next = transform(current)
             prefs[Keys.FONT_SIZE] = next.fontSize.coerceIn(
                 ReaderSettings.MIN_FONT_SIZE, ReaderSettings.MAX_FONT_SIZE,

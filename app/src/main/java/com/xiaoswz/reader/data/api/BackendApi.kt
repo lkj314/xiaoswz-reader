@@ -71,10 +71,19 @@ object BackendClient {
     fun setBaseUrl(url: String) {
         if (url != _baseUrl) {
             _baseUrl = url
+            val old = clientRef.getAndSet(null)
             api = build(url)
+            // 修复（M20）：旧 client 不再被使用，回收其线程池/连接池，
+            // 否则每改一次后端地址就泄漏一组线程与连接。
+            old?.dispatcher?.executorService?.shutdown()
         }
     }
 
+    /** 最近一次构建的 OkHttpClient，用于换后端地址时回收旧实例（M20） */
+    private val clientRef = AtomicReference<OkHttpClient?>(null)
+
+    // 修复（M20）：api 会被 setBaseUrl 从任意线程替换，必须 @Volatile 保证跨线程可见
+    @Volatile
     var api: BackendApi = build(_baseUrl)
         private set
 
@@ -103,6 +112,8 @@ object BackendClient {
             )
             .build()
 
+        clientRef.set(client)
+
         return Retrofit.Builder()
             .baseUrl(baseUrl + "/")
             .client(client)
@@ -112,25 +123,43 @@ object BackendClient {
     }
 }
 
-/** 传输层重试：仅对 IOException（连接/超时抖动，常见于 serverless 冷启动）重试一次 */
+/**
+ * 传输层重试：仅对 IOException（连接/超时抖动，常见于 serverless 冷启动）重试一次。
+ *
+ * 修复（H8）：只对幂等方法重试。POST（认购/转账/发帖等）在「服务端已处理、响应丢失」时
+ * 重试会造成重复扣款/重复发帖，故非幂等方法一律直接放行、失败即抛出，绝不重试。
+ * 另外重试等待前先检查 call 是否已取消（用户退出页面/超时），避免在 sleep 里空等。
+ */
 private class RetryInterceptor : okhttp3.Interceptor {
     override fun intercept(chain: okhttp3.Interceptor.Chain): okhttp3.Response {
+        val request = chain.request()
+        // 非幂等方法（POST/PUT/PATCH/DELETE...）：不重试
+        if (request.method !in IDEMPOTENT_METHODS) return chain.proceed(request)
+
         var attempt = 0
         var last: java.io.IOException? = null
         while (attempt < 2) {
             attempt++
             try {
-                return chain.proceed(chain.request())
+                return chain.proceed(request)
             } catch (e: java.io.IOException) {
                 last = e
                 if (attempt >= 2) throw e
+                // 已取消（用户退出/超时）：不再等待，直接抛出
+                if (chain.call().isCanceled()) throw e
                 try {
                     Thread.sleep(800)
                 } catch (_: InterruptedException) {
-                    // 被打断直接退出等待
+                    // 被打断：恢复中断标记后立即重试
+                    Thread.currentThread().interrupt()
                 }
             }
         }
         throw last ?: java.io.IOException("retry exhausted")
+    }
+
+    companion object {
+        /** 可安全重试的幂等方法；其余方法（尤其 POST 写操作）一律不重试 */
+        private val IDEMPOTENT_METHODS = setOf("GET", "HEAD", "OPTIONS")
     }
 }

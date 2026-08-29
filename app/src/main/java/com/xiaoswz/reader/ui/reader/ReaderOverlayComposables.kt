@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -141,7 +142,8 @@ internal fun SearchSheet(
     onResultClick: (SearchMatch) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+    // 修复：搜索框需 imePadding()，键盘弹出时输入框与结果列表不被遮挡
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).imePadding()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -211,7 +213,9 @@ internal fun ReaderShareSheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            // 修复：分享输入框需 imePadding()，键盘弹出时不被遮挡
             .navigationBarsPadding()
+            .imePadding()
             .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Text("分享到社区", style = MaterialTheme.typography.titleLarge)

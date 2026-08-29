@@ -13,6 +13,8 @@ import com.xiaoswz.reader.data.backend.BackendRepository
 import com.xiaoswz.reader.data.model.ChapterDto
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
+import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,8 +74,21 @@ data class ReaderUiState(
 ) {
     val currentIndex: Int get() = toc.indexOfFirst { it.id == currentChapterId }.let { if (it < 0) 0 else it }
     val totalChapters: Int get() = toc.size
-    val prevChapterId: String? get() = toc.getOrNull(toc.indexOfFirst { it.id == currentChapterId } - 1)?.id
-    val nextChapterId: String? get() = toc.getOrNull(toc.indexOfFirst { it.id == currentChapterId } + 1)?.id
+    val prevChapterId: String?
+        get() {
+            // 修复（L3）：未命中时 indexOfFirst 返回 -1，原先 -1-1=-2 恰好取不到元素（行为正确但靠巧合）；
+            // 显式判 -1 返回 null，逻辑清晰且对空目录/单章目录安全。
+            val i = toc.indexOfFirst { it.id == currentChapterId }
+            if (i < 0) return null
+            return toc.getOrNull(i - 1)?.id
+        }
+    val nextChapterId: String?
+        get() {
+            // 修复（L3）：未命中时 indexOfFirst 返回 -1，原先 `-1 + 1 = 0` 会返回 toc[0]（第一章），
+            // 导致「下一章」按钮错误启用、点击直接跳回第一章。现未命中即返回 null。
+            val i = toc.indexOfFirst { it.id == currentChapterId }.takeIf { it >= 0 } ?: return null
+            return toc.getOrNull(i + 1)?.id
+        }
     val hasPrevChapter: Boolean get() = prevChapterId != null
     val hasNextChapter: Boolean get() = nextChapterId != null
 }
@@ -533,7 +548,15 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /** 书内全文搜索：遍历目录逐章抓取（命中缓存则瞬时），返回章内偏移匹配。 */
+    /**
+     * 书内全文搜索：遍历目录逐章抓取（命中缓存则瞬时），返回章内偏移匹配。
+     *
+     * 修复（H6）：
+     * - 新增 [SEARCH_MAX_MATCHES] 结果上限：命中即提前退出，不再对 2000 章目录发 2000 次请求；
+     * - 循环内 ensureActive()：及时响应协程取消（关闭搜索 / 退出阅读页）。
+     * 注：此处保持串行抓取 —— BookRepository.contentCache 是普通 mutableMapOf，
+     * 并发写入有数据竞争，需先把它换成 ConcurrentHashMap（其他文件）才能安全并发。
+     */
     suspend fun searchBook(query: String): List<SearchMatch> {
         val q = query.trim()
         if (q.isEmpty()) return emptyList()
@@ -543,6 +566,10 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val lower = q.lowercase()
         val matches = mutableListOf<SearchMatch>()
         for (dto in toc) {
+            // 可取消：搜索被关闭 / 页面退出时立即停止，不再继续发网络请求
+            coroutineContext.ensureActive()
+            // 已达结果上限，提前退出，避免继续遍历整本目录
+            if (matches.size >= SEARCH_MAX_MATCHES) break
             val cid = dto.id ?: continue
             val content = repository.getChapterContent(cid)
                 .fold({ it.data.content.orEmpty() }, { "" })
@@ -563,8 +590,14 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                     ),
                 )
                 from = idx + q.length
+                if (matches.size >= SEARCH_MAX_MATCHES) break
             }
         }
         return matches
+    }
+
+    private companion object {
+        /** 书内全文搜索最多收集的命中条数 */
+        const val SEARCH_MAX_MATCHES = 200
     }
 }

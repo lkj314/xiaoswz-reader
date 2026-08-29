@@ -9,6 +9,7 @@ import com.xiaoswz.reader.data.api.BookshelfUpsertBody
 import com.xiaoswz.reader.data.api.DeviceIdBody
 import com.xiaoswz.reader.data.api.ProgressUpsertBody
 import com.xiaoswz.reader.data.bookshelf.BookEntity
+import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import kotlinx.coroutines.flow.first
@@ -79,7 +80,15 @@ class SyncRepository(context: Context) {
             mergeRemote(remote)
 
             // 2) 推送本地全量书架/进度 + 删除传播
-            pushLocal(api)
+            // 修复（M10）：统计推送失败条数；部分失败时不刷新 lastSyncAt 并返回失败，
+            // 否则节流窗口内不会重试，UI 还会谎报「同步成功」。
+            val failed = pushLocal(api)
+            if (failed > 0) {
+                Log.w(TAG, "sync incomplete: $failed item(s) failed to push")
+                return Result.failure(
+                    IllegalStateException("同步未完成：$failed 条数据推送失败，请稍后重试"),
+                )
+            }
 
             appSettings.setLastSyncAt(System.currentTimeMillis())
             Result.success(
@@ -145,15 +154,22 @@ class SyncRepository(context: Context) {
         for (rp in remote.progress) {
             val local = localAfter[rp.bookId] ?: continue
             if (rp.updatedAt >= local.lastReadAt && !rp.chapterId.isNullOrBlank()) {
-                shelf.updateProgress(rp.bookId, rp.chapterId, null, rp.updatedAt)
+                // 修复（M9）：第三个参数原先恒传 null，会把本地已有的章节标题覆盖清空。
+                // 云端进度不带标题，故用本地现有标题兜底。
+                shelf.updateProgress(rp.bookId, rp.chapterId, local.lastChapterTitle, rp.updatedAt)
             }
         }
     }
 
-    /** 推送本地全量到云端，并删除云端已本地移除的书 */
-    private suspend fun pushLocal(api: BackendApi) {
+    /**
+     * 推送本地全量到云端，并删除云端已本地移除的书。
+     * 返回推送失败条数（0 = 全部成功），供调用方决定是否刷新同步时间（M10）。
+     */
+    private suspend fun pushLocal(api: BackendApi): Int {
+        var failed = 0
         val localBooks = shelf.observeAll().first()
         val localSlugs = localBooks.map { it.slug }.toSet()
+        val pushedSlugs = mutableSetOf<String>()
 
         for (b in localBooks) {
             val cover = if (b.coverUrl?.startsWith("data:") == true) null else b.coverUrl
@@ -169,7 +185,8 @@ class SyncRepository(context: Context) {
                         updatedAt = b.lastReadAt,
                     ),
                 )
-            }
+            }.onSuccess { pushedSlugs.add(b.slug) }
+                .onFailure { failed++ } // 修复（M10）：不再静默吞掉失败，累计条数
             // 仅当本地有阅读进度时才推送进度（无 lastChapterId 不推送）
             if (!b.lastChapterId.isNullOrBlank()) {
                 runCatching {
@@ -178,20 +195,52 @@ class SyncRepository(context: Context) {
                             bookSourceId = BOOK_SOURCE,
                             bookId = b.slug,
                             chapterId = b.lastChapterId,
-                            chapterIndex = 0,
-                            progressPercent = 0,
+                            // 修复（M9）：原先恒传 0，会把云端进度覆盖回「第 0 章 / 0%」
+                            chapterIndex = chapterIndexFor(b),
+                            progressPercent = b.progressPercent,
                             updatedAt = b.lastReadAt,
                         ),
                     )
-                }
+                }.onFailure { failed++ }
             }
         }
 
         // 删除传播：上次同步推送过、但本次本地已无 → 云端删除
         val synced = appSettings.getSyncedSlugs()
-        for (slug in synced - localSlugs) {
-            runCatching { api.deleteBookshelf(BookIdBody(BOOK_SOURCE, slug)) }
+        val toDelete = synced - localSlugs
+
+        // 修复（H4）护栏 1：本地书架为空时绝不传播删除。AppDatabase 用破坏性迁移，
+        // schema 变更或清数据后 Room 会全空，此时 synced - localSlugs = 云端全部书籍，
+        // 逐条删除会让云端书架被永久清空且不可回滚。保留 synced 记录不动。
+        if (localSlugs.isEmpty()) {
+            if (toDelete.isNotEmpty()) {
+                Log.w(TAG, "skip delete propagation: local bookshelf empty, keep ${toDelete.size} remote item(s)")
+            }
+            return failed
         }
-        appSettings.setSyncedSlugs(localSlugs)
+        // 修复（H4）护栏 2：待删除占比超过一半，多半是本地数据异常（而非用户真的删了这么多书），
+        // 同样跳过删除并记日志，避免异常批量删除。
+        if (synced.isNotEmpty() && toDelete.size * 2 > synced.size) {
+            Log.w(TAG, "skip delete propagation: too many (${toDelete.size}/${synced.size})")
+            return failed
+        }
+
+        for (slug in toDelete) {
+            runCatching { api.deleteBookshelf(BookIdBody(BOOK_SOURCE, slug)) }
+                .onFailure { failed++ }
+        }
+        // 记录：本次推送成功的 + 本地仍保留且此前已同步的（推送失败的保留旧记录，下次重试）
+        appSettings.setSyncedSlugs(pushedSlugs + (synced - toDelete))
+        return failed
+    }
+
+    /**
+     * 本地只持久化了进度百分比（BookEntity.progressPercent），没有存章节序号，
+     * 故按「百分比 × 已知总章节数」反推当前章节下标；总章节数未知（<=0）时记 0。
+     */
+    private fun chapterIndexFor(b: BookEntity): Int {
+        val total = runCatching { BookUpdateStore.getKnown(b.slug) }.getOrNull() ?: 0
+        if (total <= 0 || b.progressPercent <= 0) return 0
+        return (b.progressPercent * total / 100 - 1).coerceAtLeast(0)
     }
 }

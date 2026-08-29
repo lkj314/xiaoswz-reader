@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -152,7 +153,8 @@ fun ChapterCommentSheet(
         }
     }
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        // 修复：含输入框的弹层必须加 imePadding()，否则软键盘弹出会完全遮挡输入条
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp).imePadding()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -273,7 +275,8 @@ fun SegmentThreadSheet(
     onReply: (parentId: String, content: String) -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        // 修复：含输入框的弹层必须加 imePadding()，否则软键盘弹出会完全遮挡输入条
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp).imePadding()) {
             Text("本段段评", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Surface(

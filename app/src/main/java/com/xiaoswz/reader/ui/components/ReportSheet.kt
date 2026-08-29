@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
@@ -50,6 +51,8 @@ fun ReportSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // 修复：举报理由输入框在键盘弹起时被遮挡 → 补 imePadding 顶起内容
+                .imePadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .padding(bottom = 24.dp),
         ) {

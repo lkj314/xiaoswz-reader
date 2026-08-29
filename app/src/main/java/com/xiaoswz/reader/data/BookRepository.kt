@@ -14,9 +14,11 @@ import com.xiaoswz.reader.data.model.BookListResponse
 import com.xiaoswz.reader.data.model.CategoryDto
 import com.xiaoswz.reader.data.model.ChapterContentDto
 import com.xiaoswz.reader.data.model.ChapterDto
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -159,11 +161,12 @@ class BookRepository(
      */
     suspend fun getChapterContent(chapterId: String): Result<ChapterResult> {
         contentCache[chapterId]?.let { return Result.success(ChapterResult(it, false)) }
-        ChapterCacheManager.get(chapterId)?.let { return Result.success(ChapterResult(it, true)) }
+        // 修复：文件缓存读写（含 JSON 解析）改用 suspend 版本，内部切 Dispatchers.IO，不再阻塞主线程
+        ChapterCacheManager.getSuspend(chapterId)?.let { return Result.success(ChapterResult(it, true)) }
         return runCatching {
             val content = api.getChapterContent(chapterId = chapterId)
             contentCache[chapterId] = content
-            ChapterCacheManager.put(content)
+            ChapterCacheManager.putSuspend(content)
             content
         }.map { ChapterResult(it, false) }
     }
@@ -171,14 +174,15 @@ class BookRepository(
     /** 预取章节正文（不阻塞，失败静默）；已缓存且新鲜则跳过，减少主站只读接口 hits */
     suspend fun prefetchChapter(chapterId: String) {
         if (contentCache.containsKey(chapterId)) return
-        if (ChapterCacheManager.isFresh(chapterId)) return
+        // 修复：isFresh 是 File.exists()+lastModified()，改用 suspend 版本在 IO 线程执行
+        if (ChapterCacheManager.isFreshSuspend(chapterId)) return
         runCatching { getChapterContent(chapterId) }
     }
 
     /**
      * 整本离线下载：并发拉取全部章节正文落本地文件缓存。
      * 并发上限 3，温柔对待主站只读接口；已缓存且新鲜的章节直接跳过。
-     * onProgress(done, total) 在主线程外回调，调用方自行切线程更新 UI。
+     * onProgress(done, total) 已切回主线程回调，调用方可直接更新 UI。
      */
     suspend fun downloadWholeBook(
         chapters: List<ChapterDto>,
@@ -187,15 +191,20 @@ class BookRepository(
         if (chapters.isEmpty()) return
         val total = chapters.size
         val done = AtomicInteger(0)
-        // 分批并发（每批 3），温柔对待主站只读接口；已缓存且新鲜的章节直接跳过
+        // 分批并发（每批 3），温柔对待主站只读接口；已缓存且新鲜的章节直接跳过。
+        // 修复：async 显式指定 Dispatchers.IO —— 原来继承主线程（viewModelScope），
+        // 整本下载期间同步文件 IO + 解析全压在主线程导致 UI 冻结。
         coroutineScope {
             chapters.chunked(3).forEach { batch ->
                 batch.mapNotNull { ch -> ch.id }.map { id ->
-                    async {
+                    async(Dispatchers.IO) {
                         if (!ChapterCacheManager.isFresh(id)) {
                             runCatching { getChapterContent(id) }
                         }
-                        onProgress(done.incrementAndGet(), total)
+                        // 修复：回调切回主线程，保持与原实现一致（调用方直接更新 UI）
+                        withContext(Dispatchers.Main.immediate) {
+                            onProgress(done.incrementAndGet(), total)
+                        }
                     }
                 }.awaitAll()
             }

@@ -17,12 +17,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.xiaoswz.reader.data.cache.ChapterCacheManager
 import com.xiaoswz.reader.data.model.ChapterDto
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 阅读器目录抽屉内容
@@ -36,6 +42,15 @@ fun TocDrawerContent(
 ) {
     val listState = rememberLazyListState()
     val currentIndex = toc.indexOfFirst { it.id == currentChapterId }
+
+    // 修复：原先在 itemsIndexed lambda 内逐行调用 isFresh()（File.exists()+lastModified()），
+    // 滑动目录时每行每次重组都做一次文件 IO。改为一次性批量计算成 Set，lambda 内只查集合。
+    var cachedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    LaunchedEffect(toc) {
+        cachedIds = withContext(Dispatchers.IO) {
+            ChapterCacheManager.freshIdsSuspend(toc.mapNotNull { it.id })
+        }
+    }
 
     // 打开时滚动定位到当前章
     LaunchedEffect(currentIndex) {
@@ -63,7 +78,7 @@ fun TocDrawerContent(
             itemsIndexed(toc, key = { _, ch -> ch.id ?: ch.index ?: 0 }) { _, chapter ->
                 val isCurrent = chapter.id == currentChapterId
                 // 已离线缓存且新鲜的章节：标题置灰 + 「缓存」小标，潜移默化提示（不再用顶部警示条）
-                val isCached = chapter.id?.let { ChapterCacheManager.isFresh(it) } == true
+                val isCached = chapter.id != null && chapter.id in cachedIds
                 val titleColor = when {
                     isCurrent -> MaterialTheme.colorScheme.primary
                     isCached -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)

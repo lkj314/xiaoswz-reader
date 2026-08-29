@@ -87,8 +87,10 @@ import com.xiaoswz.reader.data.settings.AppThemeMode
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.ui.update.UpdateDialog
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,9 +120,11 @@ fun SettingsScreen(
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateAutoCheck by remember { mutableStateOf(false) }
 
-    var cacheSizeText by remember { mutableStateOf(formatCacheSize(ChapterCacheManager.sizeBytes())) }
-    var chapterCount by remember { mutableStateOf(ChapterCacheManager.entryCount()) }
-    var metaCacheSizeText by remember { mutableStateOf(formatCacheSize(BookMetaCache.sizeBytes())) }
+    // 修复：缓存大小/条目数需要遍历上千个文件，原先在组合阶段同步执行 → 卡主线程。
+    // 改为先给占位值，再由 LaunchedEffect 切到 Dispatchers.IO 异步算出后回填。
+    var cacheSizeText by remember { mutableStateOf(formatCacheSize(0L)) }
+    var chapterCount by remember { mutableStateOf(0) }
+    var metaCacheSizeText by remember { mutableStateOf(formatCacheSize(0L)) }
     var prefetchWifiOnly by remember { mutableStateOf(false) }
     var themeIndex by remember { mutableStateOf(ReaderSettings.THEME_DAY) }
     val themeNames = listOf("米纸日间", "护眼绿", "夜间模式", "纯黑 OLED")
@@ -148,6 +152,26 @@ fun SettingsScreen(
         continuousScroll = s.continuousScroll
         prefetchWifiOnly = s.prefetchWifiOnly
         crashLog = CrashLogger.getLog(context)
+    }
+
+    // 缓存统计：遍历上千个缓存文件属重 IO，统一切到 Dispatchers.IO；
+    // 清空缓存后复用下面两个函数刷新，保证「计算」与「删除」都不在主线程。
+    suspend fun refreshChapterCacheStats() {
+        val size = withContext(Dispatchers.IO) { ChapterCacheManager.sizeBytes() }
+        val count = withContext(Dispatchers.IO) { ChapterCacheManager.entryCount() }
+        cacheSizeText = formatCacheSize(size)
+        chapterCount = count
+    }
+
+    suspend fun refreshMetaCacheStats() {
+        val size = withContext(Dispatchers.IO) { BookMetaCache.sizeBytes() }
+        metaCacheSizeText = formatCacheSize(size)
+    }
+
+    // 进入设置页后异步统计缓存占用（组合阶段不再做文件 IO）
+    LaunchedEffect(Unit) {
+        refreshChapterCacheStats()
+        refreshMetaCacheStats()
     }
 
     if (showCrashDialog && crashLog != null) {
@@ -418,9 +442,9 @@ fun SettingsScreen(
                     Button(
                         onClick = {
                             scope.launch {
-                                ChapterCacheManager.clear()
-                                cacheSizeText = formatCacheSize(ChapterCacheManager.sizeBytes())
-                                chapterCount = ChapterCacheManager.entryCount()
+                                // 修复：删除上千个文件 + 重新统计体积，全部切到 IO 线程
+                                withContext(Dispatchers.IO) { ChapterCacheManager.clear() }
+                                refreshChapterCacheStats()
                             }
                         },
                         modifier = Modifier.weight(1f),
@@ -428,8 +452,8 @@ fun SettingsScreen(
                     Button(
                         onClick = {
                             scope.launch {
-                                BookMetaCache.clear()
-                                metaCacheSizeText = formatCacheSize(BookMetaCache.sizeBytes())
+                                withContext(Dispatchers.IO) { BookMetaCache.clear() }
+                                refreshMetaCacheStats()
                             }
                         },
                         modifier = Modifier.weight(1f),
@@ -439,11 +463,13 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         scope.launch {
-                            ChapterCacheManager.clear()
-                            BookMetaCache.clear()
-                            cacheSizeText = formatCacheSize(ChapterCacheManager.sizeBytes())
-                            chapterCount = ChapterCacheManager.entryCount()
-                            metaCacheSizeText = formatCacheSize(BookMetaCache.sizeBytes())
+                            // 修复：清空全部缓存同样切到 IO 线程，避免主线程删除上千文件导致卡顿/ANR
+                            withContext(Dispatchers.IO) {
+                                ChapterCacheManager.clear()
+                                BookMetaCache.clear()
+                            }
+                            refreshChapterCacheStats()
+                            refreshMetaCacheStats()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
