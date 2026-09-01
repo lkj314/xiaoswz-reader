@@ -678,22 +678,22 @@ private fun AppShell() {
 @Composable
 private fun SplashScreen() {
     Box(modifier = Modifier.fillMaxSize()) {
-        // 渐变背景：比内页更饱和，确保启动页有明确的色彩存在感
+        // 渐变背景：冲浪·海洋流动品牌 splash
         Box(modifier = Modifier.fillMaxSize()) {
-            // 基础渐变：从浅蓝白到极浅紫灰
+            // 基础渐变：浅海洋泡沫 → 纯白
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color(0xFFE8F0FE), // 浅蓝（顶部）
-                                Color(0xFFF5F3FA), // 极浅紫灰（底部）
+                                Color(0xFFEAF6FB), // 泡沫白（顶部）
+                                Color(0xFFFFFFFF), // 纯白（底部）
                             ),
                         ),
                     ),
             )
-            // 左上光斑（蓝，更明显）
+            // 左上光斑（oceanLight）
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -702,13 +702,13 @@ private fun SplashScreen() {
                     .background(
                         Brush.radialGradient(
                             listOf(
-                                Color(0xFFA5C8FF).copy(alpha = 0.65f),
-                                Color(0xFFA5C8FF).copy(alpha = 0f),
+                                Color(0xFF48CAE4).copy(alpha = 0.45f),
+                                Color(0xFF48CAE4).copy(alpha = 0f),
                             ),
                         ),
                     ),
             )
-            // 右下光斑（薰衣草）
+            // 右下光斑（oceanDeep）
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -717,13 +717,13 @@ private fun SplashScreen() {
                     .background(
                         Brush.radialGradient(
                             listOf(
-                                Color(0xFFC4B5FD).copy(alpha = 0.55f),
-                                Color(0xFFC4B5FD).copy(alpha = 0f),
+                                Color(0xFF023E8A).copy(alpha = 0.40f),
+                                Color(0xFF023E8A).copy(alpha = 0f),
                             ),
                         ),
                     ),
             )
-            // 中右光斑（薄荷）
+            // 中右光斑（oceanMid）
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -732,8 +732,8 @@ private fun SplashScreen() {
                     .background(
                         Brush.radialGradient(
                             listOf(
-                                Color(0xFF9DD8C4).copy(alpha = 0.45f),
-                                Color(0xFF9DD8C4).copy(alpha = 0f),
+                                Color(0xFF0096C7).copy(alpha = 0.30f),
+                                Color(0xFF0096C7).copy(alpha = 0f),
                             ),
                         ),
                     ),

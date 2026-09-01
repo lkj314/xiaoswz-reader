@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.dp
  * 冲浪阅读 v2.1 设计令牌（iOS 原生玻璃 / Liquid Glass · 浅色）
  *
  * 参考 Apple Human Interface Guidelines + iOS 26 Liquid Glass 材质语言：
- *  - 系统蓝 #007AFF 作为唯一强调色
+ *  - 海洋蓝 #0096C7 作为唯一强调色
  *  - 近白磨砂玻璃材质（半透明 + 高光边 + 柔和投影）
  *  - 浅灰分组背景 #F2F2F7，卡片浮于其上形成层次
  *
@@ -17,10 +17,10 @@ import androidx.compose.ui.unit.dp
  */
 object GlassTokens {
 
-    // ── iOS 系统强调色 ──
-    val SystemBlue = Color(0xFF007AFF)
-    val SystemBlueDark = Color(0xFF0A5CCC)
-    val SystemRed = Color(0xFFFF3B30) // iOS 系统红，用于删除等危险操作
+    // ── 海洋强调色 ──
+    val SystemBlue = Color(0xFF0096C7) // oceanMid
+    val SystemBlueDark = Color(0xFF023E8A) // oceanDeep
+    val SystemRed = Color(0xFFFF3B30) // 危险操作
 
     // ── 文字层级（iOS label 体系）──
     val Label = Color(0xFF1C1C1E)        // 主文字
