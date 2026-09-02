@@ -3,9 +3,14 @@ package com.xiaoswz.reader.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,9 +31,63 @@ import com.xiaoswz.reader.ui.theme.WhaleRadius
  *  - Outline 次级：透明底 + 发丝边 + 墨字
  *  - Ghost   弱按钮：浅灰底 #F1F4F7 + Steel 字
  * 全胶囊（WhaleRadius.Full），15sp Medium，左右 24 / 上下 12。
+ *
+ * 两个入口：
+ *  1) MetaButton(text, onClick, ...)            纯文字（可选前置图标）
+ *  2) MetaButton(onClick, ..., content = {...}) 自定义内容（图标 + 文字等）
  */
 enum class MetaButtonVariant { Black, Cobalt, Outline, Ghost }
 
+private data class MetaButtonColors(
+    val container: Color,
+    val content: Color,
+    val border: Color?,
+)
+
+@Composable
+private fun resolveMetaColors(variant: MetaButtonVariant, enabled: Boolean): MetaButtonColors {
+    val base = when (variant) {
+        MetaButtonVariant.Black -> MetaButtonColors(Color(0xFF0A1317), Color.White, null)
+        MetaButtonVariant.Cobalt -> MetaButtonColors(WhaleColors.OceanMid, Color.White, null)
+        MetaButtonVariant.Outline -> MetaButtonColors(Color.Transparent, WhaleColors.TextPrimary, WhaleColors.GlassBorder)
+        MetaButtonVariant.Ghost -> MetaButtonColors(Color(0xFFF1F4F7), WhaleColors.TextSecondary, null)
+    }
+    return if (enabled) {
+        base
+    } else {
+        MetaButtonColors(Color(0xFFEDEFF1), Color(0xFF9AA0A6), null)
+    }
+}
+
+@Composable
+private fun MetaButtonShell(
+    onClick: () -> Unit,
+    modifier: Modifier,
+    variant: MetaButtonVariant,
+    enabled: Boolean,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val (container, _, border) = resolveMetaColors(variant, enabled)
+    val shape = RoundedCornerShape(WhaleRadius.Full)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(container)
+            .let { m -> if (variant == MetaButtonVariant.Outline && enabled && border != null) m.border(1.dp, border, shape) else m }
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            content()
+        }
+    }
+}
+
+/** 纯文字按钮（可选前置图标） */
 @Composable
 fun MetaButton(
     text: String,
@@ -36,28 +95,26 @@ fun MetaButton(
     modifier: Modifier = Modifier.fillMaxWidth(),
     variant: MetaButtonVariant = MetaButtonVariant.Black,
     enabled: Boolean = true,
+    leadingIcon: @Composable (() -> Unit)? = null,
 ) {
-    val shape = RoundedCornerShape(WhaleRadius.Full)
-    val (containerColor, contentColor, borderColor) = when (variant) {
-        MetaButtonVariant.Black -> Triple(Color(0xFF0A1317), Color.White, null)
-        MetaButtonVariant.Cobalt -> Triple(WhaleColors.OceanMid, Color.White, null)
-        MetaButtonVariant.Outline -> Triple(Color.Transparent, WhaleColors.TextPrimary, WhaleColors.GlassBorder)
-        MetaButtonVariant.Ghost -> Triple(Color(0xFFF1F4F7), WhaleColors.TextSecondary, null)
+    val (_, contentColor, _) = resolveMetaColors(variant, enabled)
+    MetaButtonShell(onClick, modifier, variant, enabled) {
+        if (leadingIcon != null) {
+            leadingIcon()
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(text = text, color = contentColor, fontWeight = FontWeight.Medium, fontSize = 15.sp)
     }
-    val (cc, tc) = if (enabled) {
-        Pair(containerColor, contentColor)
-    } else {
-        Pair(Color(0xFFEDEFF1), Color(0xFF9AA0A6))
-    }
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(cc)
-            .let { m -> if (variant == MetaButtonVariant.Outline && enabled && borderColor != null) m.border(1.dp, borderColor, shape) else m }
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text = text, color = tc, fontWeight = FontWeight.Medium, fontSize = 15.sp)
-    }
+}
+
+/** 自定义内容按钮（图标 + 文字等任意 Row 内容） */
+@Composable
+fun MetaButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    variant: MetaButtonVariant = MetaButtonVariant.Black,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit,
+) {
+    MetaButtonShell(onClick, modifier, variant, enabled, content)
 }

@@ -52,6 +52,8 @@ import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.ui.theme.ReaderBodyFont
 import com.xiaoswz.reader.ui.theme.ReaderTheme
 import com.xiaoswz.reader.ui.theme.ReaderThemes
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 
 /**
  * 阅读设置底部面板（M2.5：分区 + 图标 + 字号实时预览样张）
@@ -128,17 +130,13 @@ fun ReaderSettingsSheet(
 
         SettingRow(icon = Icons.Filled.FormatSize, label = "字号") {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { onChange { it.copy(fontSize = it.fontSize - 1) } }) {
-                    Text("A-", style = MaterialTheme.typography.titleMedium)
-                }
+                MetaButton(text = "A-", onClick = { onChange { it.copy(fontSize = it.fontSize - 1) } }, variant = MetaButtonVariant.Ghost)
                 Text(
                     "${settings.fontSize}",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(horizontal = 6.dp),
                 )
-                TextButton(onClick = { onChange { it.copy(fontSize = it.fontSize + 1) } }) {
-                    Text("A+", style = MaterialTheme.typography.titleMedium)
-                }
+                MetaButton(text = "A+", onClick = { onChange { it.copy(fontSize = it.fontSize + 1) } }, variant = MetaButtonVariant.Ghost)
             }
         }
 

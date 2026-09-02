@@ -40,6 +40,8 @@ import android.widget.Toast
 import com.xiaoswz.reader.data.api.NewsItemDto
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.whaleGlassCard
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -124,7 +126,7 @@ fun BoardScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(8.dp))
-                        Button(onClick = vm::setAnchor, modifier = Modifier.fillMaxWidth()) { Text("设定基准价") }
+                        MetaButton(text = "设定基准价", onClick = vm::setAnchor, modifier = Modifier.fillMaxWidth())
                     }
                 }
                 // 回购
@@ -140,7 +142,7 @@ fun BoardScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(8.dp))
-                        Button(onClick = vm::buyback, modifier = Modifier.fillMaxWidth()) { Text("执行回购") }
+                        MetaButton(text = "执行回购", onClick = vm::buyback, modifier = Modifier.fillMaxWidth())
                     }
                 }
                 // 储备调拨
@@ -164,7 +166,7 @@ fun BoardScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(8.dp))
-                        Button(onClick = vm::moveReserve, modifier = Modifier.fillMaxWidth()) { Text("调拨储备") }
+                        MetaButton(text = "调拨储备", onClick = vm::moveReserve, modifier = Modifier.fillMaxWidth())
                     }
                 }
                 // 发布新闻稿
@@ -191,7 +193,7 @@ fun BoardScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(8.dp))
-                        Button(onClick = vm::publishNews, modifier = Modifier.fillMaxWidth()) { Text("发布新闻稿") }
+                        MetaButton(text = "发布新闻稿", onClick = vm::publishNews, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
@@ -236,9 +238,7 @@ private fun PanelCard(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun SentimentChip(label: String, value: String, selected: Boolean, color: Color, onSelect: (String) -> Unit) {
     val bg = if (selected) color.copy(alpha = 0.16f) else Color.Transparent
-    TextButton(onClick = { onSelect(value) }, modifier = Modifier) {
-        Text(label, color = if (selected) color else GlassTokens.SecondaryLabel, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-    }
+    MetaButton(text = label, onClick = { onSelect(value) }, variant = MetaButtonVariant.Ghost)
 }
 
 @Composable

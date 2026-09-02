@@ -43,6 +43,8 @@ import com.xiaoswz.reader.data.api.AdminBookDto
 import com.xiaoswz.reader.data.backend.BackendRepository
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.theme.GlassTokens
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.components.whaleGlassCard
 import kotlinx.coroutines.launch
 
@@ -98,7 +100,7 @@ fun CharacterAdminScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(msg, color = GlassTokens.Label, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.clearToast() }) { Text("知道了") }
+                        MetaButton(text = "知道了", onClick = { vm.clearToast() }, variant = MetaButtonVariant.Ghost)
                     }
                 }
             }
@@ -126,14 +128,15 @@ fun CharacterAdminScreen(
                             Text("书籍：${pickedBook!!.title ?: pickedBook!!.bookId}", color = GlassTokens.Label, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             Text("bookId: ${pickedBook!!.bookId}", color = GlassTokens.SecondaryLabel, fontSize = 12.sp)
                         }
-                        TextButton(onClick = { pickedBook = null; vm.dismissEditor() }) { Text("更换书籍") }
+                        MetaButton(text = "更换书籍", onClick = { pickedBook = null; vm.dismissEditor() }, variant = MetaButtonVariant.Ghost)
                     }
                 }
 
-                Button(
+                MetaButton(
+                    text = "+ 新增角色",
                     onClick = { vm.startAdd() },
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                ) { Text("+ 新增角色") }
+                )
 
                 if (state.isLoading) {
                     Text("加载中…", color = GlassTokens.SecondaryLabel)
@@ -185,15 +188,18 @@ private fun BookPicker(onPick: (AdminBookDto) -> Unit) {
                 placeholder = { Text("输入书名搜索") },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             )
-            Button(onClick = {
-                loading = true; error = null
-                scope.launch {
-                    val res = BackendRepository.adminListBooks(query.takeIf { q -> q.isNotBlank() }, 1)
-                    loading = false
-                    if (res.isSuccess) books = res.getOrNull()?.books ?: emptyList()
-                    else error = "搜索失败（请用管理员账号登录）"
-                }
-            }) { Text("搜索") }
+            MetaButton(
+                text = "搜索",
+                onClick = {
+                    loading = true; error = null
+                    scope.launch {
+                        val res = BackendRepository.adminListBooks(query.takeIf { q -> q.isNotBlank() }, 1)
+                        loading = false
+                        if (res.isSuccess) books = res.getOrNull()?.books ?: emptyList()
+                        else error = "搜索失败（请用管理员账号登录）"
+                    }
+                },
+            )
         }
         Spacer(Modifier.height(12.dp))
         if (loading) Text("搜索中…", color = GlassTokens.SecondaryLabel)
@@ -256,8 +262,8 @@ private fun CharacterRow(
                 }
             }
             Row {
-                TextButton(onClick = onEdit) { Text("编辑") }
-                TextButton(onClick = onDelete) { Text("删除", color = Color(0xFFE25555)) }
+                MetaButton(text = "编辑", onClick = onEdit, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "删除", onClick = onDelete, variant = MetaButtonVariant.Ghost)
             }
         }
     }

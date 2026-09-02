@@ -1,6 +1,6 @@
 {
-  "versionCode": 103,
-  "versionName": "0.19.10",
-  "apkUrl": "surf-reader-0.19.10.apk",
-  "notes": "0.19.10·Meta 按钮体系落地：MetaButton（黑胶囊主 CTA / 钴蓝购买 / 描边 / 幽灵）接入创意工坊·书圈钱包·阅读器上下章；延续 0.19.9 Meta 白底灰边钴蓝配色。"
+  "versionCode": 104,
+  "versionName": "0.19.11",
+  "apkUrl": "surf-reader-0.19.11.apk",
+  "notes": "0.19.11·全站业务按钮接入 MetaButton：MetaButton 升级为完整按钮原语（文字/前置图标/自定义内容），把 42 个界面的纯文字 M3 Button/TextButton/OutlinedButton 统一替换为 Meta 胶囊按钮（主 CTA 黑 / 购买钴蓝 / 描边 / 幽灵）；对话框按钮与图标按钮保留。延续 Meta 白底灰边钴蓝设计语言。"
 }

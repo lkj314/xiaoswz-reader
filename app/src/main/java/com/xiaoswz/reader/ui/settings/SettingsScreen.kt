@@ -64,6 +64,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.xiaoswz.reader.ui.components.AppTopBar
+import com.xiaoswz.reader.ui.components.MetaButton
 import com.xiaoswz.reader.ui.theme.WhaleColors
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.components.WhaleGlassCard
@@ -406,7 +407,8 @@ fun SettingsScreen(
                         .padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Button(
+                    MetaButton(
+                        text = if (serverSaved) "已保存 ✓" else "保存服务器地址",
                         onClick = {
                             scope.launch {
                                 repo.update { it.copy(updateServerUrl = updateServerUrl.trim().trimEnd('/')) }
@@ -414,9 +416,7 @@ fun SettingsScreen(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                    ) {
-                        Text(if (serverSaved) "已保存 ✓" else "保存服务器地址")
-                    }
+                    )
                     Button(
                         onClick = {
                             updateAutoCheck = false
@@ -439,7 +439,8 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Button(
+                    MetaButton(
+                        text = "清空章节缓存",
                         onClick = {
                             scope.launch {
                                 // 修复：删除上千个文件 + 重新统计体积，全部切到 IO 线程
@@ -448,8 +449,9 @@ fun SettingsScreen(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                    ) { Text("清空章节缓存") }
-                    Button(
+                    )
+                    MetaButton(
+                        text = "清空书籍元数据",
                         onClick = {
                             scope.launch {
                                 withContext(Dispatchers.IO) { BookMetaCache.clear() }
@@ -457,10 +459,11 @@ fun SettingsScreen(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                    ) { Text("清空书籍元数据") }
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
-                Button(
+                MetaButton(
+                    text = "清空全部离线缓存",
                     onClick = {
                         scope.launch {
                             // 修复：清空全部缓存同样切到 IO 线程，避免主线程删除上千文件导致卡顿/ANR
@@ -473,7 +476,7 @@ fun SettingsScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("清空全部离线缓存") }
+                )
                 Spacer(Modifier.height(12.dp))
                 // 仅 WiFi 预加载（流量敏感）
                 Row(
@@ -557,9 +560,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Button(onClick = { showCrashDialog = true }) {
-                            Text("查看")
-                        }
+                        MetaButton(text = "查看", onClick = { showCrashDialog = true })
                         Button(
                             onClick = {
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {

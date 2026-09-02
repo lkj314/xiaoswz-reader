@@ -77,6 +77,8 @@ import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.LiquidGlassCard
 import com.xiaoswz.reader.ui.components.SectionHeader
 import com.xiaoswz.reader.ui.components.whaleGlassCard
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.data.booklist.BooklistRepository
 import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
@@ -230,9 +232,7 @@ fun BookDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = { viewModel.retry(slug) }) {
-                        Text("重试")
-                    }
+                    MetaButton(text = "重试", onClick = { viewModel.retry(slug) })
                 }
             }
 
@@ -329,13 +329,12 @@ fun BookDetailScreen(
                                 Column(
                                     verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
-                                    Button(
+                                    MetaButton(
+                                        text = "开始阅读",
                                         onClick = { openChapter(firstChapter?.id) },
                                         enabled = firstChapter != null,
                                         modifier = Modifier.fillMaxWidth(),
-                                    ) {
-                                        Text("开始阅读", maxLines = 1)
-                                    }
+                                    )
                                     // 整本离线下载（0.9.5）：下载后断网可读
                                     if (state.isDownloading) {
                                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -354,18 +353,19 @@ fun BookDetailScreen(
                                             )
                                         }
                                     } else {
-                                        OutlinedButton(
+                                        MetaButton(
+                                            text = "下载整本（离线可读）",
                                             onClick = { viewModel.downloadWholeBook() },
                                             modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            Text("下载整本（离线可读）", maxLines = 1)
-                                        }
+                                            variant = MetaButtonVariant.Outline,
+                                        )
                                     }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     ) {
-                                        OutlinedButton(
+                                        MetaButton(
+                                            text = if (collected) "移出书架" else "加入书架",
                                             onClick = {
                                                 scope.launch {
                                                     if (collected) {
@@ -391,9 +391,8 @@ fun BookDetailScreen(
                                                 }
                                             },
                                             modifier = Modifier.weight(1f),
-                                        ) {
-                                            Text(if (collected) "移出书架" else "加入书架", maxLines = 1)
-                                        }
+                                            variant = MetaButtonVariant.Outline,
+                                        )
                                         OutlinedButton(
                                             onClick = { showAddToBooklist = true },
                                             modifier = Modifier.weight(1f),
@@ -601,15 +600,14 @@ fun BookDetailScreen(
                                         unfocusedTextColor = GlassTokens.Label,
                                     ),
                                 )
-                                Button(
+                                MetaButton(
+                                    text = "发送",
                                     onClick = {
                                         viewModel.postComment(commentText)
                                         commentText = ""
                                     },
                                     enabled = commentText.isNotBlank(),
-                                ) {
-                                    Text("发送")
-                                }
+                                )
                             }
                         } else {
                             // 游客不可发评论：引导登录（评论列表仍对所有人可见）
@@ -618,12 +616,12 @@ fun BookDetailScreen(
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
                             ) {
-                                androidx.compose.material3.OutlinedButton(
+                                MetaButton(
+                                    text = "登录后参与评论 ›",
                                     onClick = onAccountClick,
                                     modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text("登录后参与评论 ›")
-                                }
+                                    variant = MetaButtonVariant.Outline,
+                                )
                             }
                         }
                     }
@@ -726,10 +724,11 @@ fun BookDetailScreen(
                             unfocusedTextColor = GlassTokens.Label,
                         ),
                     )
-                    Button(
+                    MetaButton(
+                        text = "创建并加入",
                         onClick = {
                             val title = newBooklistTitle.trim()
-                            if (title.isEmpty()) return@Button
+                            if (title.isEmpty()) return@MetaButton
                             scope.launch {
                                 addingToBooklist = true
                                 BooklistRepository.createBooklist(title, null, null)
@@ -744,9 +743,7 @@ fun BookDetailScreen(
                             }
                         },
                         enabled = newBooklistTitle.trim().isNotEmpty() && !addingToBooklist,
-                    ) {
-                        Text("创建并加入")
-                    }
+                    )
                 }
             }
         }
@@ -791,12 +788,11 @@ private fun InteractionCard(
                     )
                 }
                 val remaining = voteBalance?.remaining ?: 0
-                Button(
+                MetaButton(
+                    text = if (remaining > 0) "投月票（剩$remaining）" else "今日已投完",
                     onClick = onVote,
                     enabled = remaining > 0,
-                ) {
-                    Text(if (remaining > 0) "投月票（剩$remaining）" else "今日已投完")
-                }
+                )
             }
 
             Spacer(Modifier.height(12.dp))
@@ -837,12 +833,12 @@ private fun InteractionCard(
 
             // 评论区入口：点击平滑滚动到底部评论区（避免几百章时翻到底才能评论）
             Spacer(Modifier.height(12.dp))
-            OutlinedButton(
+            MetaButton(
+                text = "查看评论（${commentTotal}）›",
                 onClick = onOpenComments,
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("查看评论（${commentTotal}）›")
-            }
+                variant = MetaButtonVariant.Outline,
+            )
 
             // 广告栏位（P3）：详情页底部交叉推书
             if (ad != null) {
@@ -999,7 +995,7 @@ private fun AuthorLogZone(
         ) {
             Text(text = "作者碎碎念", style = MaterialTheme.typography.titleMedium)
             if (logs.isNotEmpty()) {
-                TextButton(onClick = onViewAll) { Text("查看全部 ›", color = GlassTokens.SystemBlue) }
+                MetaButton(text = "查看全部 ›", onClick = onViewAll, variant = MetaButtonVariant.Ghost)
             }
         }
         Spacer(Modifier.height(10.dp))

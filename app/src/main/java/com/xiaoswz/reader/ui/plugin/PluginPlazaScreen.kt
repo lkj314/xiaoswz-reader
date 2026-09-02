@@ -210,9 +210,7 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit, onPublish: () -> Un
     ) {
         // 发布入口（干净的门户顶部，不与用户内容争 C 位）
         item {
-            Button(onClick = onPublish, modifier = Modifier.fillMaxWidth()) {
-                Text("+ 发布我的插件")
-            }
+            MetaButton(text = "+ 发布我的插件", onClick = onPublish, modifier = Modifier.fillMaxWidth())
         }
 
         // 分类筛选（横向滚动，避免占用纵向空间）
@@ -300,11 +298,12 @@ private fun PlazaTab(onOpenPlugin: (PluginManifest) -> Unit, onPublish: () -> Un
             // 分页：仍有更多时展示「加载更多」
             if (items.size < total) {
                 item {
-                    Button(
+                    MetaButton(
+                        text = if (loading) "加载中…" else "加载更多",
                         onClick = { load(false) },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !loading,
-                    ) { Text(if (loading) "加载中…" else "加载更多") }
+                    )
                 }
             }
         }
@@ -371,7 +370,7 @@ private fun PluginCard(
             }
             if (likeLabel != null && onLike != null) {
                 Spacer(Modifier.width(8.dp))
-                TextButton(onClick = onLike) { Text(likeLabel) }
+                MetaButton(text = likeLabel, onClick = onLike, variant = MetaButtonVariant.Ghost)
             }
         }
     }
@@ -444,9 +443,7 @@ private fun MineTab(onOpenPlugin: (PluginManifest) -> Unit, onImport: () -> Unit
 
         // 导入入口：对应 Obsidian 手动放入插件目录 / VS Code 从 VSIX 安装
         item {
-            Button(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
-                Text("+ 导入插件（文件 / https 链接）")
-            }
+            MetaButton(text = "+ 导入插件（文件 / https 链接）", onClick = onImport, modifier = Modifier.fillMaxWidth())
         }
 
         item {
@@ -483,7 +480,7 @@ private fun MineTab(onOpenPlugin: (PluginManifest) -> Unit, onImport: () -> Unit
                                 scope.launch { PluginRepository.setEnabled(context, m.id, on) }
                             })
                             Spacer(Modifier.width(8.dp))
-                            Button(onClick = { scope.launch { PluginRepository.uninstall(context, m.id) } }) { Text("卸载") }
+                            MetaButton(text = "卸载", onClick = { scope.launch { PluginRepository.uninstall(context, m.id) } })
                         }
                     }
                 }
@@ -545,8 +542,8 @@ private fun ImportPublishContent(mode: String, onBack: () -> Unit) {
             maxLines = 12,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { docLauncher.launch(arrayOf("application/json", "text/plain")) }) { Text("从文件选择") }
-            Button(onClick = { tryPreview() }) { Text("预览") }
+            MetaButton(text = "从文件选择", onClick = { docLauncher.launch(arrayOf("application/json", "text/plain")) })
+            MetaButton(text = "预览", onClick = { tryPreview() })
         }
 
         Text("或从 https 链接导入", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -557,8 +554,8 @@ private fun ImportPublishContent(mode: String, onBack: () -> Unit) {
                 label = { Text("https 链接（如 GitHub raw）") },
                 modifier = Modifier.weight(1f),
             )
-            Button(onClick = {
-                if (!url.startsWith("https://")) { error = "仅支持 https 链接（明文 http 已被系统拦截）"; return@Button }
+            MetaButton(text = "读取", onClick = {
+                if (!url.startsWith("https://")) { error = "仅支持 https 链接（明文 http 已被系统拦截）"; return@MetaButton }
                 busy = true; error = null
                 scope.launch {
                     PluginRepository.importFromUrl(context, url)
@@ -566,7 +563,7 @@ private fun ImportPublishContent(mode: String, onBack: () -> Unit) {
                         .onFailure { e -> error = "读取失败：${e.message}" }
                     busy = false
                 }
-            }, enabled = !busy) { Text("读取") }
+            }, enabled = !busy)
         }
 
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -577,7 +574,8 @@ private fun ImportPublishContent(mode: String, onBack: () -> Unit) {
             Card(Modifier.fillMaxWidth()) {
                 Text(json.ifBlank { "（已从链接读取）" }, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Button(
+            MetaButton(
+                text = if (busy) "处理中…" else if (mode == "publish") "提交到广场" else "安装到本机",
                 onClick = {
                     busy = true
                     scope.launch {
@@ -600,7 +598,7 @@ private fun ImportPublishContent(mode: String, onBack: () -> Unit) {
                 },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (busy) "处理中…" else if (mode == "publish") "提交到广场" else "安装到本机") }
+            )
         }
     }
 }
@@ -712,7 +710,7 @@ private fun PluginDetailContent(manifest: PluginManifest) {
                     scope.launch { PluginRepository.setEnabled(context, manifest.id, on) }
                 })
                 Spacer(Modifier.weight(1f))
-                Button(onClick = { scope.launch { PluginRepository.uninstall(context, manifest.id) } }) { Text("卸载") }
+                MetaButton(text = "卸载", onClick = { scope.launch { PluginRepository.uninstall(context, manifest.id) } })
             }
         }
 

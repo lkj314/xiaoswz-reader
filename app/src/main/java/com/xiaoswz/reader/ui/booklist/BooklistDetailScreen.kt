@@ -69,6 +69,7 @@ import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.ui.booklist.EditBooklistSheet
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.ReportSheet
+import com.xiaoswz.reader.ui.components.MetaButton
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.launch
 
@@ -137,7 +138,7 @@ fun BooklistDetailScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(state.error ?: "书单不存在或已删除", color = GlassTokens.SecondaryLabel)
                     Spacer(Modifier.height(12.dp))
-                    androidx.compose.material3.Button(onClick = onBack) { Text("返回") }
+                    MetaButton(text = "返回", onClick = onBack)
                 }
             }
             return@Scaffold

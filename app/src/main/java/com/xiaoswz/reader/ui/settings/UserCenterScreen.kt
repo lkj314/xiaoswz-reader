@@ -1,5 +1,6 @@
 package com.xiaoswz.reader.ui.settings
 
+import com.xiaoswz.reader.ui.components.MetaButton
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -166,14 +167,16 @@ fun UserCenterScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("账号", style = MaterialTheme.typography.titleMedium, color = GlassTokens.Label, fontWeight = FontWeight.SemiBold)
                     if (isLoggedIn) {
-                        Button(
+                        MetaButton(
+                            text = "退出登录",
                             onClick = { showLogoutConfirm = true },
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text("退出登录") }
+                        )
                         if (accountRole == "admin") {
                             var ssoBusy by remember { mutableStateOf(false) }
                             var ssoError by remember { mutableStateOf<String?>(null) }
-                            Button(
+                            MetaButton(
+                                text = if (ssoBusy) "正在打开管理台…" else "管理后台",
                                 onClick = {
                                     scope.launch {
                                         ssoBusy = true
@@ -200,13 +203,13 @@ fun UserCenterScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !ssoBusy,
-                            ) { Text(if (ssoBusy) "正在打开管理台…" else "管理后台") }
+                            )
                             ssoError?.let {
                                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                             }
                         }
                     } else {
-                        Button(onClick = onAccountClick, modifier = Modifier.fillMaxWidth()) { Text("登录 / 注册") }
+                        MetaButton(text = "登录 / 注册", onClick = onAccountClick, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
@@ -240,7 +243,8 @@ fun UserCenterScreen(
                                 onCheckedChange = { v -> autoSync = v; scope.launch { appSettings.setAutoSync(v) } },
                             )
                         }
-                        Button(
+                        MetaButton(
+                            text = if (syncing) "同步中…" else "立即同步",
                             onClick = {
                                 syncing = true
                                 syncMsg = null
@@ -257,7 +261,7 @@ fun UserCenterScreen(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !syncing,
-                        ) { Text(if (syncing) "同步中…" else "立即同步") }
+                        )
                         syncMsg?.let {
                             Text(
                                 it,
@@ -267,7 +271,7 @@ fun UserCenterScreen(
                         }
                     } else {
                         Text("登录账号后可开启云同步：书架与阅读进度跨设备备份，换机/重装后登录同一账号即可恢复。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
-                        Button(onClick = onAccountClick, modifier = Modifier.fillMaxWidth()) { Text("去登录") }
+                        MetaButton(text = "去登录", onClick = onAccountClick, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }

@@ -36,6 +36,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.data.api.BookSegmentCommentItem
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -141,9 +143,7 @@ fun SegmentCommentListScreen(
                                     if (state.isLoading) {
                                         CircularProgressIndicator()
                                     } else {
-                                        TextButton(onClick = { vm.loadMore() }) {
-                                            Text("加载更多")
-                                        }
+                                        MetaButton(text = "加载更多", onClick = { vm.loadMore() }, variant = MetaButtonVariant.Ghost)
                                     }
                                 }
                             }

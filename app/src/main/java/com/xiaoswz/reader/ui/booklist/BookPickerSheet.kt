@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.BookRepository
 import com.xiaoswz.reader.data.model.BookDto
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.launch
 
@@ -89,7 +91,8 @@ fun BookPickerSheet(
                     singleLine = true,
                     label = { Text("搜索书名 / 作者") },
                 )
-                androidx.compose.material3.Button(
+                MetaButton(
+                    text = "搜索",
                     onClick = {
                         scope.launch {
                             searching = true
@@ -102,9 +105,7 @@ fun BookPickerSheet(
                         }
                     },
                     enabled = query.trim().isNotEmpty() && !searching,
-                ) {
-                    Text("搜索")
-                }
+                )
             }
             Spacer(Modifier.height(12.dp))
             if (searching) {

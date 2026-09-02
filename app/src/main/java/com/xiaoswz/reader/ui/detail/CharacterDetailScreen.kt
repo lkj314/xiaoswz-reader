@@ -63,6 +63,8 @@ import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.LiquidGlassCard
 import com.xiaoswz.reader.ui.components.SectionHeader
 import com.xiaoswz.reader.ui.theme.GlassTokens
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 
 private fun roleLabel(roleType: String?): String = when (roleType) {
     "main" -> "主角"
@@ -134,9 +136,7 @@ fun CharacterDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = { viewModel.load(characterId) }) {
-                        Text("重试")
-                    }
+                    MetaButton(text = "重试", onClick = { viewModel.load(characterId) })
                 }
             }
 
@@ -326,15 +326,14 @@ fun CharacterDetailScreen(
                                         unfocusedTextColor = GlassTokens.Label,
                                     ),
                                 )
-                                Button(
+                                MetaButton(
+                                    text = "发送",
                                     onClick = {
                                         viewModel.postComment(commentText)
                                         commentText = ""
                                     },
                                     enabled = commentText.isNotBlank(),
-                                ) {
-                                    Text("发送")
-                                }
+                                )
                             }
                         } else {
                             Box(
@@ -342,12 +341,12 @@ fun CharacterDetailScreen(
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
                             ) {
-                                OutlinedButton(
+                                MetaButton(
+                                    text = "登录后参与讨论 ›",
                                     onClick = onAccountClick,
                                     modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text("登录后参与讨论 ›")
-                                }
+                                    variant = MetaButtonVariant.Outline,
+                                )
                             }
                         }
                     }

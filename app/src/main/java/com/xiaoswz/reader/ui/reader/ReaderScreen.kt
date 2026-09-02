@@ -833,9 +833,7 @@ fun ReaderScreen(
                     ) {
                         Text(text = state.error ?: "加载失败", color = theme.text)
                         Spacer(modifier = Modifier.height(12.dp))
-                        Button(onClick = { viewModel.retry() }) {
-                            Text("重试")
-                        }
+                        MetaButton(text = "重试", onClick = { viewModel.retry() })
                     }
                 }
 
@@ -1179,18 +1177,21 @@ fun ReaderScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val segCount = (state.segmentCommentsByChapter[state.currentChapterId] ?: emptyList()).size
-                        TextButton(onClick = { showChapterComment = true }) {
-                            Text("章评", color = Color.White)
-                        }
-                        TextButton(onClick = { showSegmentList = true }) {
-                            Text(
-                                if (segCount > 0) "段评 $segCount" else "段评",
-                                color = Color.White,
-                            )
-                        }
-                        TextButton(onClick = onOpenAllSegments) {
-                            Text("全部段评 ›", color = Color.White)
-                        }
+                        MetaButton(
+                            text = "章评",
+                            onClick = { showChapterComment = true },
+                            variant = MetaButtonVariant.Ghost,
+                        )
+                        MetaButton(
+                            text = if (segCount > 0) "段评 $segCount" else "段评",
+                            onClick = { showSegmentList = true },
+                            variant = MetaButtonVariant.Ghost,
+                        )
+                        MetaButton(
+                            text = "全部段评 ›",
+                            onClick = onOpenAllSegments,
+                            variant = MetaButtonVariant.Ghost,
+                        )
                     }
                 }
             }

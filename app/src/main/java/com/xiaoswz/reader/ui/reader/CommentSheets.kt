@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.data.api.CommentItem
 import com.xiaoswz.reader.data.api.SegmentCommentItem
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 
 /** 共享：单条评论行（章评 / 段评通用）。quote 为段评引用快照，可空。支持楼中楼就地回复。 */
 @Composable
@@ -75,9 +77,9 @@ private fun CommentRow(
             color = if (isReply) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TextButton(onClick = onLike) { Text("赞 $likeCount") }
-            TextButton(onClick = { replying = !replying }) { Text("回复") }
-            TextButton(onClick = onReport) { Text("举报") }
+            MetaButton(text = "赞 $likeCount", onClick = onLike, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "回复", onClick = { replying = !replying }, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "举报", onClick = onReport, variant = MetaButtonVariant.Ghost)
         }
         if (replying) {
             Row(
@@ -92,7 +94,8 @@ private fun CommentRow(
                     maxLines = 3,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(
+                MetaButton(
+                    text = "发送",
                     onClick = {
                         if (replyText.isNotBlank()) {
                             onReply(id, replyText.trim())
@@ -100,7 +103,7 @@ private fun CommentRow(
                             replying = false
                         }
                     },
-                ) { Text("发送") }
+                )
             }
         }
         HorizontalDivider()
@@ -123,14 +126,15 @@ private fun CommentInputBar(onSend: (String) -> Unit) {
             maxLines = 4,
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Button(
+        MetaButton(
+            text = "发送",
             onClick = {
                 if (text.isNotBlank()) {
                     onSend(text.trim())
                     text = ""
                 }
             },
-        ) { Text("发送") }
+        )
     }
 }
 
@@ -161,7 +165,7 @@ fun ChapterCommentSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("章评（${state.commentTotal}）", style = MaterialTheme.typography.titleMedium)
-                TextButton(onClick = onOpenSegment) { Text("段评 ›") }
+                MetaButton(text = "段评 ›", onClick = onOpenSegment, variant = MetaButtonVariant.Ghost)
             }
             Spacer(modifier = Modifier.height(8.dp))
             if (state.isLoading) {
@@ -221,7 +225,7 @@ fun SegmentCommentSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("段评", style = MaterialTheme.typography.titleMedium)
-                TextButton(onClick = onOpenChapter) { Text("章评 ›") }
+                MetaButton(text = "章评 ›", onClick = onOpenChapter, variant = MetaButtonVariant.Ghost)
             }
             Spacer(modifier = Modifier.height(8.dp))
             if (groups.isEmpty()) {

@@ -1,5 +1,7 @@
 package com.xiaoswz.reader.ui.components
 
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,9 +36,11 @@ fun SectionHeader(
         )
         if (actionLabel != null) {
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = onAction ?: {}) {
-                Text(actionLabel)
-            }
+            MetaButton(
+                text = actionLabel,
+                onClick = onAction ?: {},
+                variant = MetaButtonVariant.Ghost,
+            )
         }
     }
 }

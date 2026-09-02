@@ -42,6 +42,8 @@ import com.xiaoswz.reader.data.auth.AuthResult
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.WhaleGlassCard
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -127,11 +129,12 @@ fun AccountScreen(onBack: () -> Unit) {
                     }
 
                     Spacer(Modifier.height(16.dp))
-                    Button(
+                    MetaButton(
+                        text = if (loading) "处理中…" else if (mode == AccountMode.LOGIN) "登录" else "注册并登录",
                         onClick = {
                             if (email.isBlank() || password.isBlank()) {
                                 error = "请输入邮箱和密码"
-                                return@Button
+                                return@MetaButton
                             }
                             loading = true
                             error = null
@@ -151,9 +154,7 @@ fun AccountScreen(onBack: () -> Unit) {
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !loading,
-                    ) {
-                        Text(if (loading) "处理中…" else if (mode == AccountMode.LOGIN) "登录" else "注册并登录")
-                    }
+                    )
 
                     Spacer(Modifier.height(12.dp))
                     Text(
@@ -173,9 +174,11 @@ fun AccountScreen(onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    TextButton(onClick = { mode = AccountMode.REGISTER; error = null }) {
-                        Text("没有账号？去注册")
-                    }
+                    MetaButton(
+                        text = "没有账号？去注册",
+                        onClick = { mode = AccountMode.REGISTER; error = null },
+                        variant = MetaButtonVariant.Ghost,
+                    )
                 }
             }
         }

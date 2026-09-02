@@ -48,6 +48,8 @@ import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import com.xiaoswz.reader.data.api.FundSummaryDto
 import com.xiaoswz.reader.ui.components.AppTopBar
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.components.whaleGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.NumberFormat
@@ -233,12 +235,17 @@ private fun CreateFundCard(state: FundListUiState, vm: FundListViewModel, nf: Nu
                     state.selectedTemplateId.isNotEmpty() &&
                     (state.templates.firstOrNull { it.id == state.selectedTemplateId }?.unlocked == true) &&
                     state.createName.isNotBlank()
-                Button(onClick = vm::createFund, modifier = Modifier.weight(1f), enabled = !state.creating && ready) {
-                    Text(if (state.creating) "发起中…" else "发起产品")
-                }
-                androidx.compose.material3.TextButton(onClick = vm::toggleCreate) {
-                    Text("取消")
-                }
+                MetaButton(
+                    text = if (state.creating) "发起中…" else "发起产品",
+                    onClick = vm::createFund,
+                    modifier = Modifier.weight(1f),
+                    enabled = !state.creating && ready,
+                )
+                MetaButton(
+                    text = "取消",
+                    onClick = vm::toggleCreate,
+                    variant = MetaButtonVariant.Ghost,
+                )
             }
         }
     }

@@ -40,6 +40,8 @@ import com.xiaoswz.reader.data.api.AdminAnnouncementDto
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.components.whaleGlassCard
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import androidx.compose.runtime.collectAsState
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -80,14 +82,12 @@ fun AnnouncementAdminScreen(onBack: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(msg, color = GlassTokens.Label, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.clearToast() }) { Text("知道了") }
+                        MetaButton(text = "知道了", onClick = { vm.clearToast() }, variant = MetaButtonVariant.Ghost)
                     }
                 }
             }
 
-            Button(onClick = { vm.startAdd() }, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-                Text("+ 新建公告")
-            }
+            MetaButton(text = "+ 新建公告", onClick = { vm.startAdd() }, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
 
             if (state.isLoading) {
                 Text("加载中…", color = GlassTokens.SecondaryLabel)
@@ -147,8 +147,8 @@ private fun AnnouncementRow(
                 Text(fmt.format(Date(a.publishedAt)), color = GlassTokens.TertiaryLabel, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
             }
             Row {
-                TextButton(onClick = onEdit) { Text("编辑") }
-                TextButton(onClick = onDelete) { Text("删除", color = Color(0xFFE25555)) }
+                MetaButton(text = "编辑", onClick = onEdit, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "删除", onClick = onDelete, variant = MetaButtonVariant.Ghost)
             }
         }
     }

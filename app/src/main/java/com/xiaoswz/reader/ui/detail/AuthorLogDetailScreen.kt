@@ -39,6 +39,8 @@ import com.xiaoswz.reader.data.backend.BackendRepository
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.LiquidGlassCard
 import com.xiaoswz.reader.ui.components.whaleGlassCard
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -160,10 +162,12 @@ fun AuthorLogDetailScreen(
                     }
                     if (logs.size < total && !isLoading) {
                         item {
-                            TextButton(
+                            MetaButton(
+                                text = "加载更多 ›",
                                 onClick = { load(false) },
                                 modifier = Modifier.fillMaxWidth(),
-                            ) { Text("加载更多 ›", color = GlassTokens.SystemBlue) }
+                                variant = MetaButtonVariant.Ghost,
+                            )
                         }
                     }
                 }

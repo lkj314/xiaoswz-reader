@@ -52,6 +52,8 @@ import com.xiaoswz.reader.data.api.CircleRankItem
 import com.xiaoswz.reader.data.api.ShareholderDto
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.whaleGlassCard
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -153,7 +155,7 @@ fun BookCircleScreen(
                             Spacer(Modifier.height(6.dp))
                             Text("你已领取：$myClaimed / 100", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.Label)
                             Spacer(Modifier.height(10.dp))
-                            Button(onClick = vm::claim) { Text("领取初始书币") }
+                            MetaButton(text = "领取初始书币", onClick = vm::claim)
                         }
                     }
                 }
@@ -190,7 +192,7 @@ fun BookCircleScreen(
                         )
                         Spacer(Modifier.height(10.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Button(onClick = { onBoardClick(bookId) }, modifier = Modifier.weight(1f)) { Text("进入董事会") }
+                            MetaButton(text = "进入董事会", onClick = { onBoardClick(bookId) }, modifier = Modifier.weight(1f))
                             OutlinedButtonCompat(onClick = { onExchangeClick(bookId) }, modifier = Modifier.weight(1f)) { Text("书币交易所") }
                         }
                     }
@@ -252,7 +254,7 @@ fun BookCircleScreen(
                                 color = GlassTokens.SecondaryLabel,
                             )
                             Spacer(Modifier.height(10.dp))
-                            Button(onClick = vm::openIdentityDialog) { Text("加入并设定人设") }
+                            MetaButton(text = "加入并设定人设", onClick = vm::openIdentityDialog)
                         }
                     }
                 } else {
@@ -274,7 +276,7 @@ fun BookCircleScreen(
                                     color = GlassTokens.SecondaryLabel,
                                 )
                             }
-                            TextButton(onClick = vm::openIdentityDialog) { Text("修改", color = GlassTokens.SystemBlue) }
+                            MetaButton(text = "修改", onClick = vm::openIdentityDialog, variant = MetaButtonVariant.Ghost)
                         }
                     }
                 }
@@ -309,12 +311,12 @@ fun BookCircleScreen(
                             )
                             if (unlocked && inv.status == "active") {
                                 Spacer(Modifier.height(8.dp))
-                                Button(onClick = vm::withdraw) { Text("撤回投资（质押退回）") }
+                                MetaButton(text = "撤回投资（质押退回）", onClick = vm::withdraw)
                             }
                         }
                         Spacer(Modifier.height(10.dp))
                         if (c?.canInvest == true) {
-                            Button(onClick = vm::openInvestDialog) { Text("投资本书") }
+                            MetaButton(text = "投资本书", onClick = vm::openInvestDialog)
                         } else {
                             Text("你已加入且暂无投资资格，或已达单书上限", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
                         }

@@ -62,6 +62,8 @@ import com.xiaoswz.reader.data.plugin.DecoratorCap
 import com.xiaoswz.reader.data.plugin.PluginManifest
 import com.xiaoswz.reader.data.settings.ReaderSettings
 import com.xiaoswz.reader.ui.theme.ReaderTheme
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import kotlinx.coroutines.launch
 
 @Composable
@@ -230,12 +232,13 @@ internal fun ReaderShareSheet(
             singleLine = false,
         )
         Spacer(modifier = Modifier.height(12.dp))
-        Button(
+        MetaButton(
+            text = if (posting) "发布中…" else "发布到社区",
             onClick = {
                 val content = text.trim()
                 if (content.isEmpty()) {
                     android.widget.Toast.makeText(context, "内容不能为空", android.widget.Toast.LENGTH_SHORT).show()
-                    return@Button
+                    return@MetaButton
                 }
                 posting = true
                 sheetScope.launch {
@@ -253,9 +256,7 @@ internal fun ReaderShareSheet(
             },
             enabled = !posting,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (posting) "发布中…" else "发布到社区")
-        }
+        )
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
@@ -352,14 +353,14 @@ internal fun AnnoSelectionBar(
                 .padding(horizontal = 6.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onCopy) { Text("复制") }
-            TextButton(onClick = onListen) { Text("听书") }
+            MetaButton(text = "复制", onClick = onCopy, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "听书", onClick = onListen, variant = MetaButtonVariant.Ghost)
             for (plugin in plugins) {
                 val cap = plugin.capabilities.annotation ?: continue
-                TextButton(onClick = { onAnnotate(plugin) }) { Text(cap.label) }
+                MetaButton(text = cap.label, onClick = { onAnnotate(plugin) }, variant = MetaButtonVariant.Ghost)
             }
-            TextButton(onClick = onComment) { Text("评") }
-            TextButton(onClick = onClose) { Text("完成") }
+            MetaButton(text = "评", onClick = onComment, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "完成", onClick = onClose, variant = MetaButtonVariant.Ghost)
         }
     }
 }
@@ -430,10 +431,10 @@ internal fun ReaderSelectionToolbar(
                 .padding(horizontal = 6.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onCopy) { Text("复制") }
-            TextButton(onClick = onSelectAll) { Text("全选") }
-            TextButton(onClick = onListen) { Text("听书") }
-            TextButton(onClick = onComment) { Text("评") }
+            MetaButton(text = "复制", onClick = onCopy, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "全选", onClick = onSelectAll, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "听书", onClick = onListen, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "评", onClick = onComment, variant = MetaButtonVariant.Ghost)
         }
     }
 }

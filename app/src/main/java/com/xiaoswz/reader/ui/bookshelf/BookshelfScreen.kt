@@ -1,5 +1,6 @@
 package com.xiaoswz.reader.ui.bookshelf
 
+import com.xiaoswz.reader.ui.components.MetaButton
 import com.xiaoswz.reader.data.model.resolveCoverUrl
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -288,9 +289,7 @@ private fun HeroBookCard(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                Button(onClick = onClick) {
-                    Text("继续阅读")
-                }
+                MetaButton(text = "继续阅读", onClick = onClick)
             }
         }
     }

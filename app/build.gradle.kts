@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 103
-        versionName = "0.19.10" // 0.19.10·Meta 按钮体系落地：新增 MetaButton（Black 墨黑主 CTA / Cobalt 钴蓝购买 / Outline 描边 / Ghost 弱），接入创意工坊「安装」(钴蓝)、书圈钱包「进入理财产品市场」(钴蓝全宽)、阅读器上下章(幽灵+钴蓝)；0.19.9 Meta 配色基础延续。：修复同步删除传播可清空云端书架（本地为空时跳过删除并加比例护栏）；修复标注非原子写导致全书标注可永久丢失（tmp+rename 原子替换，损坏时绝不覆盖）；修复插件版本门控锁死在 67（改用 BuildConfig.VERSION_CODE）；修复网络重试对 POST 非幂等请求重复提交（仅幂等方法重试+取消检查）；阅读器/缓存文件 IO 迁出主线程（下载与目录滑动不再卡顿）；补齐 5 处弹层 imePadding（键盘不再遮挡输入框）；修复翻页模式被静默篡改、进度百分比整除恒为 0、同步后章节标题丢失与进度归零；书内搜索加上限与可取消。
+        versionCode = 104
+        versionName = "0.19.11" // 0.19.10·Meta 按钮体系落地：新增 MetaButton（Black 墨黑主 CTA / Cobalt 钴蓝购买 / Outline 描边 / Ghost 弱），接入创意工坊「安装」(钴蓝)、书圈钱包「进入理财产品市场」(钴蓝全宽)、阅读器上下章(幽灵+钴蓝)；0.19.9 Meta 配色基础延续。：修复同步删除传播可清空云端书架（本地为空时跳过删除并加比例护栏）；修复标注非原子写导致全书标注可永久丢失（tmp+rename 原子替换，损坏时绝不覆盖）；修复插件版本门控锁死在 67（改用 BuildConfig.VERSION_CODE）；修复网络重试对 POST 非幂等请求重复提交（仅幂等方法重试+取消检查）；阅读器/缓存文件 IO 迁出主线程（下载与目录滑动不再卡顿）；补齐 5 处弹层 imePadding（键盘不再遮挡输入框）；修复翻页模式被静默篡改、进度百分比整除恒为 0、同步后章节标题丢失与进度归零；书内搜索加上限与可取消。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

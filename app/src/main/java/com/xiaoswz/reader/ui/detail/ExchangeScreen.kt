@@ -40,6 +40,8 @@ import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import com.xiaoswz.reader.data.api.ExchangeOrderDto
 import com.xiaoswz.reader.ui.components.AppTopBar
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.components.whaleGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.NumberFormat
@@ -161,7 +163,7 @@ fun ExchangeScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(10.dp))
-                        Button(onClick = vm::placeOrder, modifier = Modifier.fillMaxWidth()) { Text("挂单") }
+                        MetaButton(text = "挂单", onClick = vm::placeOrder, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
@@ -216,9 +218,9 @@ private fun OrderRow(order: ExchangeOrderDto, isMine: Boolean, onFill: () -> Uni
                 )
             }
             if (isMine) {
-                TextButton(onClick = onCancel) { Text("撤单", color = Color(0xFFC62828)) }
+                MetaButton(text = "撤单", onClick = onCancel, variant = MetaButtonVariant.Ghost)
             } else {
-                Button(onClick = onFill) { Text("吃单") }
+                MetaButton(text = "吃单", onClick = onFill)
             }
         }
     }

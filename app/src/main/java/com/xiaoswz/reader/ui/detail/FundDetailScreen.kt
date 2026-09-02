@@ -51,6 +51,8 @@ import com.xiaoswz.reader.data.api.FundYieldPointDto
 import com.xiaoswz.reader.data.api.PricePointDto
 import com.xiaoswz.reader.data.api.StableCoinDto
 import com.xiaoswz.reader.ui.components.AppTopBar
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.components.whaleGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.NumberFormat
@@ -363,7 +365,7 @@ private fun SubscribeCard(state: FundDetailUiState, vm: FundDetailViewModel) {
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(8.dp))
-            Button(onClick = vm::subscribe, modifier = Modifier.fillMaxWidth(), enabled = !state.busy) { Text(if (state.busy) "处理中…" else "认购") }
+            MetaButton(text = if (state.busy) "处理中…" else "认购", onClick = vm::subscribe, modifier = Modifier.fillMaxWidth(), enabled = !state.busy)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
@@ -374,7 +376,7 @@ private fun SubscribeCard(state: FundDetailUiState, vm: FundDetailViewModel) {
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = vm::redeem, enabled = !state.busy) { Text("赎回") }
+                MetaButton(text = "赎回", onClick = vm::redeem, enabled = !state.busy)
             }
         }
     }
@@ -397,7 +399,7 @@ private fun DirectorPanelCard(state: FundDetailUiState, vm: FundDetailViewModel)
             Spacer(Modifier.height(10.dp))
             Text("① 抓取稳定币（每产品每日一次）：当前全池产出概率 ${"%.3f".format(prob * 100)}%。需本产品当日收益为正，且未触及 1 万枚硬顶。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
             Spacer(Modifier.height(8.dp))
-            Button(onClick = vm::grab, modifier = Modifier.fillMaxWidth(), enabled = !state.busy) { Text(if (state.busy) "处理中…" else "抓取稳定币") }
+            MetaButton(text = if (state.busy) "处理中…" else "抓取稳定币", onClick = vm::grab, modifier = Modifier.fillMaxWidth(), enabled = !state.busy)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("② 稳定币调拨：把本产品挖到的稳定币转入其它产品，组建「稳定币 + 书币」超级资产包。", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel, modifier = Modifier.weight(1f))
@@ -421,11 +423,11 @@ private fun DirectorPanelCard(state: FundDetailUiState, vm: FundDetailViewModel)
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = vm::transfer, modifier = Modifier.weight(1f), enabled = !state.busy) { Text("确认转移") }
-                    TextButton(onClick = vm::toggleTransfer) { Text("收起") }
+                    MetaButton(text = "确认转移", onClick = vm::transfer, modifier = Modifier.weight(1f), enabled = !state.busy)
+                    MetaButton(text = "收起", onClick = vm::toggleTransfer, variant = MetaButtonVariant.Ghost)
                 }
             } else {
-                TextButton(onClick = vm::toggleTransfer) { Text("展开调拨表单") }
+                MetaButton(text = "展开调拨表单", onClick = vm::toggleTransfer, variant = MetaButtonVariant.Ghost)
             }
         }
     }

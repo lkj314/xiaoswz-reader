@@ -42,6 +42,8 @@ import com.xiaoswz.reader.data.api.AdminBookDto
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.components.whaleGlassCard
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import androidx.compose.runtime.collectAsState
 
 @Composable
@@ -75,7 +77,7 @@ fun BookAdminScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(msg, color = GlassTokens.Label, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.clearToast() }) { Text("知道了") }
+                        MetaButton(text = "知道了", onClick = { vm.clearToast() }, variant = MetaButtonVariant.Ghost)
                     }
                 }
             }
@@ -90,7 +92,7 @@ fun BookAdminScreen(
                     placeholder = { Text("输入书名搜索（留空看热门）") },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 )
-                Button(onClick = { vm.search() }) { Text("搜索") }
+                MetaButton(text = "搜索", onClick = { vm.search() })
             }
             Spacer(Modifier.height(8.dp))
             Text("共 ${state.total} 本", color = GlassTokens.SecondaryLabel, fontSize = 12.sp)
@@ -111,10 +113,11 @@ fun BookAdminScreen(
                     }
                     if (state.books.size >= 30) {
                         item {
-                            Button(
+                            MetaButton(
+                                text = "下一页",
                                 onClick = { vm.nextPage() },
                                 modifier = Modifier.fillMaxWidth(),
-                            ) { Text("下一页") }
+                            )
                         }
                     }
                 }
@@ -155,8 +158,8 @@ private fun BookRow(
                 if (book.hidden) Text("已隐藏", color = Color(0xFFE25555), fontSize = 12.sp)
             }
             Row {
-                TextButton(onClick = onManageCharacters) { Text("角色") }
-                TextButton(onClick = onEdit) { Text("编辑") }
+                MetaButton(text = "角色", onClick = onManageCharacters, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "编辑", onClick = onEdit, variant = MetaButtonVariant.Ghost)
             }
         }
     }

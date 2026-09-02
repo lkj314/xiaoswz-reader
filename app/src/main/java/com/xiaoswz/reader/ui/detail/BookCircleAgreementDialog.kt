@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.xiaoswz.reader.ui.components.MetaButton
 
 private sealed class AgrBlock {
     data class H(val text: String) : AgrBlock()      // 小节标题
@@ -173,12 +174,11 @@ fun BookCircleAgreementDialog(onAgree: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(Modifier.weight(1f))
-                    Button(
+                    MetaButton(
+                        text = "进入书圈",
                         onClick = onAgree,
                         enabled = checked,
-                    ) {
-                        Text("进入书圈")
-                    }
+                    )
                 }
             }
         }
