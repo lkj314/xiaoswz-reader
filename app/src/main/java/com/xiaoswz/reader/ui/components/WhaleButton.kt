@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,24 +67,27 @@ private fun MetaButtonShell(
     modifier: Modifier,
     variant: MetaButtonVariant,
     enabled: Boolean,
+    contentColor: Color,
     content: @Composable RowScope.() -> Unit,
 ) {
     val (container, _, border) = resolveMetaColors(variant, enabled)
     val shape = RoundedCornerShape(WhaleRadius.Full)
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(container)
-            .let { m -> if (variant == MetaButtonVariant.Outline && enabled && border != null) m.border(1.dp, border, shape) else m }
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+    CompositionLocalProvider(LocalContentColor provides contentColor) {
+        Box(
+            modifier = modifier
+                .clip(shape)
+                .background(container)
+                .let { m -> if (variant == MetaButtonVariant.Outline && enabled && border != null) m.border(1.dp, border, shape) else m }
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            content()
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                content()
+            }
         }
     }
 }
@@ -97,13 +102,13 @@ fun MetaButton(
     enabled: Boolean = true,
     leadingIcon: @Composable (() -> Unit)? = null,
 ) {
-    val (_, contentColor, _) = resolveMetaColors(variant, enabled)
-    MetaButtonShell(onClick, modifier, variant, enabled) {
+    val colors = resolveMetaColors(variant, enabled)
+    MetaButtonShell(onClick, modifier, variant, enabled, colors.content) {
         if (leadingIcon != null) {
             leadingIcon()
             Spacer(Modifier.width(8.dp))
         }
-        Text(text = text, color = contentColor, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+        Text(text = text, color = colors.content, fontWeight = FontWeight.Medium, fontSize = 15.sp)
     }
 }
 
@@ -116,5 +121,6 @@ fun MetaButton(
     enabled: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
-    MetaButtonShell(onClick, modifier, variant, enabled, content)
+    val colors = resolveMetaColors(variant, enabled)
+    MetaButtonShell(onClick, modifier, variant, enabled, colors.content, content)
 }

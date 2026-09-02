@@ -65,6 +65,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import com.xiaoswz.reader.ui.theme.WhaleColors
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.components.WhaleGlassCard
@@ -417,13 +418,15 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.weight(1f),
                     )
-                    Button(
+                    MetaButton(
                         onClick = {
                             updateAutoCheck = false
                             showUpdateDialog = true
                         },
+                        modifier = Modifier,
+                        variant = MetaButtonVariant.Outline,
                     ) {
-                        Icon(Icons.Default.SystemUpdate, contentDescription = null)
+                        Icon(Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(18.dp))
                         Text(" 检查更新")
                     }
                 }
@@ -561,7 +564,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         MetaButton(text = "查看", onClick = { showCrashDialog = true })
-                        Button(
+                        MetaButton(
                             onClick = {
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
@@ -574,8 +577,9 @@ fun SettingsScreen(
                                     ),
                                 )
                             },
+                            modifier = Modifier,
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null)
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                             Text(" 分享")
                         }
                     }

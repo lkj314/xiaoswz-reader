@@ -33,6 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -264,14 +265,14 @@ fun CharacterDetailScreen(
                                             unfocusedTextColor = GlassTokens.Label,
                                         ),
                                     )
-                                    Button(
+                                    MetaButton(
                                         onClick = { viewModel.createTag(state.newTagName) },
                                         enabled = state.newTagName.trim().isNotEmpty() && !state.postingTag,
                                     ) {
                                         if (state.postingTag) {
                                             CircularProgressIndicator(
                                                 modifier = Modifier.size(18.dp),
-                                                color = MaterialTheme.colorScheme.onPrimary,
+                                                color = LocalContentColor.current,
                                                 strokeWidth = 2.dp,
                                             )
                                         } else {

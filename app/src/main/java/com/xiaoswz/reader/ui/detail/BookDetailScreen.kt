@@ -393,9 +393,10 @@ fun BookDetailScreen(
                                             modifier = Modifier.weight(1f),
                                             variant = MetaButtonVariant.Outline,
                                         )
-                                        OutlinedButton(
+                                        MetaButton(
                                             onClick = { showAddToBooklist = true },
                                             modifier = Modifier.weight(1f),
+                                            variant = MetaButtonVariant.Outline,
                                         ) {
                                             Icon(
                                                 Icons.Filled.PlaylistAdd,
