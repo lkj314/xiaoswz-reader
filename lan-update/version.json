@@ -1,6 +1,6 @@
 {
-  "versionCode": 105,
-  "versionName": "0.19.12",
-  "apkUrl": "surf-reader-0.19.12.apk",
-  "notes": "0.19.12·图标按钮胶囊化 + 空状态 Meta 化：MetaButton 内容入口统一给前景色（LocalContentColor），把设置「检查更新/分享」、书详情「加入书单」、角色详情「贴上」等图标+文字按钮接入 Meta 胶囊（主 CTA 黑 / 描边 / 加载态白圈）；EmptyState 升级为柔云圆底+中性图标+可选 CTA 槽，全站空状态统一 Meta。延续白底灰边钴蓝设计语言。"
+  "versionCode": 106,
+  "versionName": "0.19.13",
+  "apkUrl": "surf-reader-0.19.13.apk",
+  "notes": "0.19.13·修复自动更新下载失败：OkHttp 强制 HTTP/1.1 降低 raw/jsDelivr 被中间设备 RST_STREAM 的概率；下载 APK 也接入多通道 fallback+重试，避免 check 走通但下载被 reset。延续白底灰边钴蓝 Meta 设计语言。"
 }
