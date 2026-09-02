@@ -13,14 +13,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -34,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.BlendMode
@@ -89,12 +86,11 @@ import com.xiaoswz.reader.ui.profile.ReadingStatsScreen
 import com.xiaoswz.reader.ui.plugin.PluginPlazaScreen
 import com.xiaoswz.reader.ui.theme.SurfReaderTheme
 import com.xiaoswz.reader.ui.components.WhaleBackground
-import com.xiaoswz.reader.ui.theme.GlassTokens
+import com.xiaoswz.reader.ui.theme.WhaleColors
 import com.xiaoswz.reader.R
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.CircleShape
 
 object Routes {
     const val HOME = "home"
@@ -667,126 +663,53 @@ private fun AppShell() {
     }
 }
 
-/** 品牌闪屏：全屏 iOS 玻璃风 — 可见渐变背景 + 纵向铺开的品牌内容（无卡片包裹） */
+/** 品牌闪屏：Meta 白底 — 钴蓝圆角品牌标 + 墨色品牌字，无彩色光斑 */
 @Composable
 private fun SplashScreen() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        // 渐变背景：冲浪·海洋流动品牌 splash
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 基础渐变：浅海洋泡沫 → 纯白
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color(0xFFEAF6FB), // 泡沫白（顶部）
-                                Color(0xFFFFFFFF), // 纯白（底部）
-                            ),
-                        ),
-                    ),
-            )
-            // 左上光斑（oceanLight）
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset((-100).dp, (-120).dp)
-                    .size(420.dp)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                Color(0xFF48CAE4).copy(alpha = 0.45f),
-                                Color(0xFF48CAE4).copy(alpha = 0f),
-                            ),
-                        ),
-                    ),
-            )
-            // 右下光斑（oceanDeep）
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset((80).dp, (100).dp)
-                    .size(460.dp)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                Color(0xFF023E8A).copy(alpha = 0.40f),
-                                Color(0xFF023E8A).copy(alpha = 0f),
-                            ),
-                        ),
-                    ),
-            )
-            // 中右光斑（oceanMid）
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .offset((60).dp, (-80).dp)
-                    .size(360.dp)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                Color(0xFF0096C7).copy(alpha = 0.30f),
-                                Color(0xFF0096C7).copy(alpha = 0f),
-                            ),
-                        ),
-                    ),
-            )
-        }
-
-        // 内容区：纵向分布，撑满屏幕
-        var appeared by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) { appeared = true }
-
-        AnimatedVisibility(
-            visible = appeared,
-            enter = fadeIn(animationSpec = tween(600)) +
-                scaleIn(
-                    initialScale = 0.92f,
-                    animationSpec = tween(600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                ),
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(WhaleColors.GradientSplash),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Column(
+            // 品牌徽标：钴蓝圆角方块 + 白色海浪 logo
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                    .size(96.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(WhaleColors.OceanMid),
+                contentAlignment = Alignment.Center,
             ) {
-                // 品牌徽标：大号圆形，系统蓝渐变底 + 白色海浪 logo
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .background(GlassTokens.GradientButton),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_surf_logo),
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp),
-                        colorFilter = ColorFilter.tint(Color.White, BlendMode.SrcIn),
-                    )
-                }
-
-                Spacer(Modifier.height(32.dp))
-
-                Text(
-                    text = "冲浪阅读",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = GlassTokens.Label,
-                    letterSpacing = 3.sp,
-                )
-
-                Spacer(Modifier.height(10.dp))
-
-                Text(
-                    text = "畅读每一页",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = GlassTokens.SecondaryLabel.copy(alpha = 0.75f),
-                    letterSpacing = 1.sp,
+                Image(
+                    painter = painterResource(R.drawable.ic_surf_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    colorFilter = ColorFilter.tint(Color.White, BlendMode.SrcIn),
                 )
             }
+
+            Spacer(Modifier.height(28.dp))
+
+            Text(
+                text = "冲浪阅读",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF0A1317),
+                letterSpacing = 2.sp,
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "Surf Reader",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Normal,
+                color = Color(0xFF5D6C7B),
+            )
         }
 
         // 底部加载指示条
@@ -800,7 +723,7 @@ private fun SplashScreen() {
                 modifier = Modifier
                     .size(width = 52.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(GlassTokens.SystemBlue.copy(alpha = 0.35f)),
+                    .background(WhaleColors.OceanMid.copy(alpha = 0.35f)),
             )
         }
     }

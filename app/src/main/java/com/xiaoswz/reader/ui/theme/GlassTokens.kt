@@ -5,81 +5,60 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 /**
- * 冲浪阅读 v2.1 设计令牌（iOS 原生玻璃 / Liquid Glass · 浅色）
- *
- * 参考 Apple Human Interface Guidelines + iOS 26 Liquid Glass 材质语言：
- *  - 海洋蓝 #0096C7 作为唯一强调色
- *  - 近白磨砂玻璃材质（半透明 + 高光边 + 柔和投影）
- *  - 浅灰分组背景 #F2F2F7，卡片浮于其上形成层次
- *
+ * 冲浪阅读 设计令牌（Meta 00003 · 浅色）
+ * 白底灰边 · 钴蓝强调 · 墨阶文字 · 发丝边分隔线 · 扁平白卡（去除 iOS 玻璃光斑）。
  * 这些令牌独立于 Material ColorScheme，供玻璃组件 / 渐变背景直接使用。
- * Material 能映射的色（primary/background/surface…）见 Theme.kt。
  */
 object GlassTokens {
 
-    // ── 海洋强调色 ──
-    val SystemBlue = Color(0xFF0096C7) // oceanMid
-    val SystemBlueDark = Color(0xFF023E8A) // oceanDeep
-    val SystemRed = Color(0xFFFF3B30) // 危险操作
+    // ── 钴蓝强调 ──
+    val SystemBlue = Color(0xFF0064E0)
+    val SystemBlueDark = Color(0xFF0457CB)
+    val SystemRed = Color(0xFFE41E3F)
 
-    // ── 文字层级（iOS label 体系）──
-    val Label = Color(0xFF1C1C1E)        // 主文字
-    val SecondaryLabel = Color(0xFF8E8E93) // 次要文字
-    val TertiaryLabel = Color(0xFFC7C7CC)  // 占位 / 禁用
-    val QuaternaryLabel = Color(0xFFAEAEB2)
+    // ── 文字层级（Meta label 体系）──
+    val Label = Color(0xFF0A1317)        // 主文字 Ink Deep
+    val SecondaryLabel = Color(0xFF5D6C7B) // 次要文字 Steel
+    val TertiaryLabel = Color(0xFF8595A4)  // 占位 / 禁用
+    val QuaternaryLabel = Color(0xFFAEB4BA)
 
     // ── 背景层级 ──
     val SystemBackground = Color(0xFFFFFFFF)
-    val GroupedBackground = Color(0xFFF2F2F7)
+    val GroupedBackground = Color(0xFFF1F4F7)
 
-    // ── 分隔线 ──
-    val Separator = Color(0x4D3C3C43) // rgba(60,60,67,0.29)
+    // ── 分隔线（发丝边）──
+    val Separator = Color(0xFFCED0D4)
 
-    // ── 语义色（iOS 标准）──
-    val Rose = Color(0xFFFF3B30)      // 红：收藏 / 错误
-    val Mint = Color(0xFF34C759)      // 绿：已完成 / 更新
-    val Gold = Color(0xFFFFCC00)      // 黄：成就
+    // ── 语义色（A股：红涨绿跌）──
+    val Rose = Color(0xFFE41E3F)      // 红：涨 / 危险
+    val Mint = Color(0xFF31A24C)      // 绿：跌 / 成功
+    val Gold = Color(0xFFF2A918)      // 黄：注意
 
-    // ── 玻璃材质（浅色磨砂）──
-    /** 卡片填充：近白半透明，叠在背景之上呈磨砂感 */
-    val GlassFill = Color(0xFFFFFFFF).copy(alpha = 0.62f)
-    /** 强填充：弹出层 / 搜索栏需要更高不透明度 */
-    val GlassFillStrong = Color(0xFFFFFFFF).copy(alpha = 0.82f)
-    /** 玻璃边缘高光：1dp 亮边模拟光线打在玻璃 rim */
-    val GlassBorder = Color(0xFFFFFFFF).copy(alpha = 0.70f)
-    /** 顶部光泽：从顶边向内渐隐的白色高光 */
-    val GlassHighlight = Color(0xFFFFFFFF).copy(alpha = 0.55f)
-    /** 玻璃柔和投影 */
-    val GlassShadowColor = Color(0xFF0A1A33).copy(alpha = 0.14f)
+    // ── 玻璃材质（Meta 扁平白卡 + 发丝边）──
+    val GlassFill = Color(0xFFFFFFFF).copy(alpha = 0.95f)
+    val GlassFillStrong = Color(0xFFFFFFFF)
+    val GlassBorder = Color(0xFFDEE1E6)
+    val GlassHighlight = Color(0xFFFFFFFF).copy(alpha = 0.60f)
+    val GlassShadowColor = Color(0xFF0A1317).copy(alpha = 0.08f)
 
-    // ── 圆角（iOS 偏大圆角，包裹感强）──
-    val RadiusSM = 12.dp
-    val RadiusMD = 16.dp
-    val RadiusLG = 20.dp
-    val RadiusXL = 28.dp
+    // ── 圆角（Meta 紧凑）──
+    val RadiusSM = 4.dp
+    val RadiusMD = 8.dp
+    val RadiusLG = 12.dp
+    val RadiusXL = 16.dp
     val RadiusPill = 999.dp
 
     // ── 渐变配方 ──
-    /** CTA 主按钮：systemBlue → systemBlueDark */
     val GradientButton: Brush
         get() = Brush.verticalGradient(listOf(SystemBlue, SystemBlueDark))
 
-    /** 页面背景：极浅蓝灰渐变，给玻璃材质一点可磨砂的色彩 */
     val GradientBackground: Brush
         get() = Brush.verticalGradient(
-            listOf(
-                Color(0xFFF4F6FA),
-                Color(0xFFEAF0F8),
-                Color(0xFFEEF1F9),
-            )
+            listOf(Color(0xFFFFFFFF), Color(0xFFF6F7F9)),
         )
 
-    /** 玻璃卡片：上亮下透，强化体积感 */
     val GradientGlass: Brush
         get() = Brush.verticalGradient(
-            listOf(
-                Color(0xFFFFFFFF).copy(alpha = 0.85f),
-                Color(0xFFFFFFFF).copy(alpha = 0.55f),
-            )
+            listOf(Color(0xFFFFFFFF), Color(0xFFFBFBFC)),
         )
 }
