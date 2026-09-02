@@ -1,6 +1,6 @@
 {
-  "versionCode": 102,
-  "versionName": "0.19.9",
-  "apkUrl": "surf-reader-0.19.9.apk",
-  "notes": "0.19.9·美术方向切换为 Meta 设计系统（模板 00003）：白底灰边 · 钴蓝 #0064E0 主流程 · 墨阶文字 · 语义成功/危险/注意 · 紧凑圆角；闪屏改为钴蓝圆角品牌标；去掉海洋渐变与 iOS 玻璃光斑。"
+  "versionCode": 103,
+  "versionName": "0.19.10",
+  "apkUrl": "surf-reader-0.19.10.apk",
+  "notes": "0.19.10·Meta 按钮体系落地：MetaButton（黑胶囊主 CTA / 钴蓝购买 / 描边 / 幽灵）接入创意工坊·书圈钱包·阅读器上下章；延续 0.19.9 Meta 白底灰边钴蓝配色。"
 }

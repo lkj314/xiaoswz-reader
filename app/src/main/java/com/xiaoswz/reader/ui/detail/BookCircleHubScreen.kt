@@ -2,6 +2,8 @@ package com.xiaoswz.reader.ui.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -225,7 +227,7 @@ private fun HubSummaryCard(
                 )
             }
             Spacer(Modifier.height(12.dp))
-            Text("进入理财产品市场 →", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.SystemBlue, fontWeight = FontWeight.Bold)
+            MetaButton(text = "进入理财产品市场", onClick = onFundsClick, variant = MetaButtonVariant.Cobalt)
         }
     }
 }

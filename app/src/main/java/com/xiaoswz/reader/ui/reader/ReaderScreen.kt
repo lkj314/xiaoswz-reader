@@ -32,6 +32,8 @@ import android.view.WindowManager
 import java.util.Locale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -1034,26 +1036,20 @@ fun ReaderScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            TextButton(
+                            MetaButton(
+                                text = "上一章",
                                 onClick = { viewModel.prevChapter() },
+                                modifier = Modifier,
+                                variant = MetaButtonVariant.Ghost,
                                 enabled = state.prevChapterId != null,
-                            ) {
-                                Text(
-                                    "上一章",
-                                    color = if (state.prevChapterId != null) theme.text
-                                    else theme.text.copy(alpha = 0.35f),
-                                )
-                            }
-                            TextButton(
+                            )
+                            MetaButton(
+                                text = "下一章",
                                 onClick = { viewModel.nextChapter() },
+                                modifier = Modifier,
+                                variant = MetaButtonVariant.Cobalt,
                                 enabled = state.nextChapterId != null,
-                            ) {
-                                Text(
-                                    "下一章",
-                                    color = if (state.nextChapterId != null) theme.text
-                                    else theme.text.copy(alpha = 0.35f),
-                                )
-                            }
+                            )
                         }
                         Spacer(modifier = Modifier.height(28.dp))
                     }

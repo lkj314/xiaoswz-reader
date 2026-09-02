@@ -6,6 +6,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.xiaoswz.reader.ui.components.MetaButton
+import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -365,7 +367,7 @@ private fun PluginCard(
             }
             if (actionLabel != null) {
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = onAction, enabled = enabled) { Text(actionLabel) }
+                MetaButton(text = actionLabel, onClick = onAction, modifier = Modifier, variant = MetaButtonVariant.Cobalt, enabled = enabled)
             }
             if (likeLabel != null && onLike != null) {
                 Spacer(Modifier.width(8.dp))
