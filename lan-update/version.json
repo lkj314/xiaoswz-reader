@@ -1,6 +1,6 @@
 {
-  "versionCode": 100,
-  "versionName": "0.19.7",
-  "apkUrl": "surf-reader-0.19.7.apk",
-  "notes": "0.19.7·美术升级定稿：确立「冲浪·海洋流动」为唯一设计语言（移除 Material You 动态取色），启动页海洋化渐变、组件品牌色对齐、5 个线性导航图标资源落地。"
+  "versionCode": 101,
+  "versionName": "0.19.8",
+  "apkUrl": "surf-reader-0.19.8.apk",
+  "notes": "0.19.8·底栏海洋图标接入：5 个已落地 ic_nav_* 线性图标 + 新增书单/工坊 2 个，接入底部导航栏（替换 Material Icons.Default.*），补全「冲浪·海洋流动」在每日最高频入口的呈现。"
 }

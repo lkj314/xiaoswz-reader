@@ -19,13 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -176,17 +169,17 @@ private val TopLevelRoutes = setOf(
 private data class BottomTab(
     val route: String,
     val label: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val icon: Int,
 )
 
 private val BottomTabs = listOf(
-    BottomTab(Routes.HOME, "首页", Icons.Default.Home),
-    BottomTab(Routes.BOOKSHELF, "书架", Icons.Default.MenuBook),
-    BottomTab(Routes.COMMUNITY, "社区", Icons.Default.Forum),
-    BottomTab(Routes.CIRCLE_HUB, "书圈", Icons.Default.AccountBalance),
-    BottomTab(Routes.BOOKLISTS, "书单", Icons.Default.MenuBook),
-    BottomTab(Routes.PLUGIN_PLAZA, "工坊", Icons.Default.Extension),
-    BottomTab(Routes.SETTINGS, "设置", Icons.Default.Settings),
+    BottomTab(Routes.HOME, "首页", R.drawable.ic_nav_wave),
+    BottomTab(Routes.BOOKSHELF, "书架", R.drawable.ic_nav_books),
+    BottomTab(Routes.COMMUNITY, "社区", R.drawable.ic_nav_compass),
+    BottomTab(Routes.CIRCLE_HUB, "书圈", R.drawable.ic_nav_wallet),
+    BottomTab(Routes.BOOKLISTS, "书单", R.drawable.ic_nav_booklist),
+    BottomTab(Routes.PLUGIN_PLAZA, "工坊", R.drawable.ic_nav_plugin),
+    BottomTab(Routes.SETTINGS, "设置", R.drawable.ic_nav_user),
 )
 
 // 全应用页面转场：横向滑动 + 淡入（书城→详情→阅读不再硬切）
@@ -288,7 +281,7 @@ private fun AppShell() {
                             NavigationBarItem(
                                 selected = currentRoute == tab.route,
                                 onClick = { navController.navigateTopLevel(tab.route) },
-                                icon = { Icon(tab.icon, contentDescription = null) },
+                                icon = { Icon(painter = painterResource(tab.icon), contentDescription = null) },
                                 label = { Text(tab.label) },
                             )
                         }
