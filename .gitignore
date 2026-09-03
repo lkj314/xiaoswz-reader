@@ -81,3 +81,8 @@ VISUAL-SPEC-v2.0.md
 
 # 构建/诊断日志（不入库）
 build_log.txt
+
+# 本地图标生成/替换脚本与预览（含本机绝对路径，严禁入库）
+tools/gen_meta_icons.py
+tools/apply_meta_icons.py
+tools/icons_preview.svg
