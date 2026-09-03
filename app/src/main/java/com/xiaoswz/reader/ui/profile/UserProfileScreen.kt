@@ -17,12 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -56,6 +50,7 @@ import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @Composable
 fun UserProfileScreen(
@@ -173,7 +168,7 @@ fun UserProfileScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.PersonAdd, null, tint = if (profile.isFollowing) GlassTokens.Label else Color.White, modifier = Modifier.size(18.dp))
+                                Icon(MetaIcons.PersonAdd, null, tint = if (profile.isFollowing) GlassTokens.Label else Color.White, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text(followLabel, color = if (profile.isFollowing) GlassTokens.Label else Color.White, style = MaterialTheme.typography.labelLarge)
                             }
@@ -198,7 +193,7 @@ fun UserProfileScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Block, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(18.dp))
+                                Icon(MetaIcons.Block, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text("拉黑", color = GlassTokens.Label, style = MaterialTheme.typography.labelLarge)
                             }
@@ -267,7 +262,7 @@ private fun Avatar(url: String?, size: Int) {
         if (url != null) {
             AsyncImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } else {
-            Icon(Icons.Default.AccountCircle, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size((size * 0.8f).dp))
+            Icon(MetaIcons.AccountCircle, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size((size * 0.8f).dp))
         }
     }
 }
@@ -298,7 +293,7 @@ private fun ProfilePostRow(post: PostItem) {
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Favorite, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(16.dp))
+            Icon(MetaIcons.Favorite, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
             Text("${post.likeCount}", style = MaterialTheme.typography.labelSmall, color = GlassTokens.SecondaryLabel)
             Spacer(Modifier.width(14.dp))
@@ -324,7 +319,7 @@ private fun ProfileBooklistRow(bl: BooklistSummary, onClick: () -> Unit) {
             if (!bl.coverUrl.isNullOrEmpty()) {
                 AsyncImage(model = bl.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)), contentScale = ContentScale.Crop)
             } else {
-                Icon(Icons.Default.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(28.dp))
+                Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(28.dp))
             }
         }
         Spacer(Modifier.width(12.dp))
@@ -353,7 +348,7 @@ private fun ProfileBookshelfRow(item: UserBookshelfItem, onClick: () -> Unit) {
             if (!item.coverUrl.isNullOrEmpty()) {
                 AsyncImage(model = item.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)), contentScale = ContentScale.Crop)
             } else {
-                Icon(Icons.Default.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(28.dp))
+                Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(28.dp))
             }
         }
         Spacer(Modifier.width(12.dp))

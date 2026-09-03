@@ -18,19 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.BorderOuter
-import androidx.compose.material.icons.filled.Comment
-import androidx.compose.material.icons.filled.FormatIndentIncrease
-import androidx.compose.material.icons.filled.FormatSize
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Nightlight
-import androidx.compose.material.icons.filled.Subject
-import androidx.compose.material.icons.filled.VerticalAlignCenter
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,6 +41,7 @@ import com.xiaoswz.reader.ui.theme.ReaderTheme
 import com.xiaoswz.reader.ui.theme.ReaderThemes
 import com.xiaoswz.reader.ui.components.MetaButton
 import com.xiaoswz.reader.ui.components.MetaButtonVariant
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
  * 阅读设置底部面板（M2.5：分区 + 图标 + 字号实时预览样张）
@@ -128,7 +116,7 @@ fun ReaderSettingsSheet(
         SectionTitle("排版")
         Spacer(modifier = Modifier.height(8.dp))
 
-        SettingRow(icon = Icons.Filled.FormatSize, label = "字号") {
+        SettingRow(icon = MetaIcons.FormatSize, label = "字号") {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MetaButton(text = "A-", onClick = { onChange { it.copy(fontSize = it.fontSize - 1) } }, variant = MetaButtonVariant.Ghost)
                 Text(
@@ -140,7 +128,7 @@ fun ReaderSettingsSheet(
             }
         }
 
-        SettingRow(icon = Icons.Filled.VerticalAlignCenter, label = "行距") {
+        SettingRow(icon = MetaIcons.VerticalAlignCenter, label = "行距") {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Slider(
                     value = settings.lineSpacing,
@@ -157,7 +145,7 @@ fun ReaderSettingsSheet(
             }
         }
 
-        SettingRow(icon = Icons.Filled.Subject, label = "段距") {
+        SettingRow(icon = MetaIcons.Subject, label = "段距") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("紧凑" to 0, "适中" to 1, "宽松" to 2).forEach { (label, value) ->
                     FilterChip(
@@ -169,7 +157,7 @@ fun ReaderSettingsSheet(
             }
         }
 
-        SettingRow(icon = Icons.Filled.BorderOuter, label = "边距") {
+        SettingRow(icon = MetaIcons.BorderOuter, label = "边距") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("窄" to 0, "标准" to 1, "宽" to 2).forEach { (label, value) ->
                     FilterChip(
@@ -186,7 +174,7 @@ fun ReaderSettingsSheet(
         // ── 听书 ──
         SectionTitle("听书")
         Spacer(modifier = Modifier.height(8.dp))
-        SettingRow(icon = Icons.Filled.GraphicEq, label = "语音语速") {
+        SettingRow(icon = MetaIcons.GraphicEq, label = "语音语速") {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Slider(
                     value = settings.ttsRate,
@@ -209,17 +197,17 @@ fun ReaderSettingsSheet(
         SectionTitle("护眼")
         Spacer(modifier = Modifier.height(8.dp))
         SettingSwitchRow(
-            icon = Icons.Filled.Nightlight,
+            icon = MetaIcons.Nightlight,
             label = "蓝光过滤",
             checked = settings.blueLightFilter,
         ) { v -> onChange { it.copy(blueLightFilter = v) } }
         SettingSwitchRow(
-            icon = Icons.Filled.Timer,
+            icon = MetaIcons.Timer,
             label = "休息提醒",
             checked = settings.restReminderEnabled,
         ) { v -> onChange { it.copy(restReminderEnabled = v) } }
         if (settings.restReminderEnabled) {
-            SettingRow(icon = Icons.Filled.Timer, label = "间隔") {
+            SettingRow(icon = MetaIcons.Timer, label = "间隔") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(10, 20, 30, 45, 60).forEach { m ->
                         FilterChip(
@@ -237,7 +225,7 @@ fun ReaderSettingsSheet(
         // ── 翻页 ──
         SectionTitle("翻页")
         Spacer(modifier = Modifier.height(8.dp))
-        SettingRow(icon = Icons.Filled.AutoStories, label = "翻页") {
+        SettingRow(icon = MetaIcons.AutoStories, label = "翻页") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = settings.pageMode == ReaderSettings.MODE_COVER,
@@ -258,17 +246,17 @@ fun ReaderSettingsSheet(
         SectionTitle("其他")
         Spacer(modifier = Modifier.height(8.dp))
         SettingSwitchRow(
-            icon = Icons.Filled.FormatIndentIncrease,
+            icon = MetaIcons.FormatIndentIncrease,
             label = "首行缩进",
             checked = settings.indentFirstLine,
         ) { v -> onChange { it.copy(indentFirstLine = v) } }
         SettingSwitchRow(
-            icon = Icons.Filled.VolumeUp,
+            icon = MetaIcons.VolumeUp,
             label = "音量键翻页",
             checked = settings.volumeKeyPaging,
         ) { v -> onChange { it.copy(volumeKeyPaging = v) } }
         SettingSwitchRow(
-            icon = Icons.Filled.Lightbulb,
+            icon = MetaIcons.Lightbulb,
             label = "屏幕常亮",
             checked = settings.keepScreenOn,
         ) { v -> onChange { it.copy(keepScreenOn = v) } }

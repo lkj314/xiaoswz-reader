@@ -18,12 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,6 +57,7 @@ import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.launch
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +88,7 @@ fun BooklistsScreen(
                 showLogo = true,
                 actions = {
                     IconButton(onClick = { showCreate = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "新建书单", tint = GlassTokens.Label)
+                        Icon(MetaIcons.Add, contentDescription = "新建书单", tint = GlassTokens.Label)
                     }
                 },
             )
@@ -253,7 +248,7 @@ private fun BooklistRow(
                     contentScale = ContentScale.Crop,
                 )
             } else {
-                Icon(Icons.Default.MenuBook, contentDescription = null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(32.dp))
+                Icon(MetaIcons.MenuBook, contentDescription = null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(32.dp))
             }
         }
         Spacer(Modifier.width(12.dp))
@@ -283,7 +278,7 @@ private fun BooklistRow(
                     color = GlassTokens.TertiaryLabel,
                 )
                 Spacer(Modifier.width(12.dp))
-                Icon(Icons.Default.Star, contentDescription = null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(14.dp))
+                Icon(MetaIcons.Star, contentDescription = null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(2.dp))
                 Text("${bl.collectCount}", style = MaterialTheme.typography.labelSmall, color = GlassTokens.TertiaryLabel)
                 Spacer(Modifier.width(12.dp))
@@ -293,10 +288,10 @@ private fun BooklistRow(
         if (isOwner) {
             Spacer(Modifier.width(4.dp))
             IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Edit, contentDescription = "编辑书单", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(18.dp))
+                Icon(MetaIcons.Edit, contentDescription = "编辑书单", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(18.dp))
             }
             IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "删除书单", tint = GlassTokens.SystemRed, modifier = Modifier.size(18.dp))
+                Icon(MetaIcons.Delete, contentDescription = "删除书单", tint = GlassTokens.SystemRed, modifier = Modifier.size(18.dp))
             }
         }
     }

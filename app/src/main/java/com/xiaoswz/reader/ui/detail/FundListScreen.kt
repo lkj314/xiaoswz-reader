@@ -17,13 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -54,6 +47,7 @@ import com.xiaoswz.reader.ui.components.whaleGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.NumberFormat
 import java.util.Locale
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @Composable
 fun FundListScreen(
@@ -86,7 +80,7 @@ fun FundListScreen(
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Savings, null, tint = Color(0xFF2BB673), modifier = Modifier.size(22.dp))
+                            Icon(MetaIcons.Savings, null, tint = Color(0xFF2BB673), modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("书圈理财产品", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
                         }
@@ -116,7 +110,7 @@ fun FundListScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text("＋ 发起一款理财产品（董事）", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = GlassTokens.SystemBlue)
-                                Icon(Icons.Default.Add, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(20.dp))
+                                Icon(MetaIcons.Add, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(20.dp))
                             }
                         }
                     }
@@ -320,14 +314,14 @@ private fun TemplateCard(t: FundTemplateUi, selected: Boolean, onClick: () -> Un
                 if (!enabled) {
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Lock, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(13.dp))
+                        Icon(MetaIcons.Lock, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("未解锁 · ${t.unlockHint}", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
                     }
                 }
             }
             if (selected) {
-                Icon(Icons.Default.Star, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(20.dp))
+                Icon(MetaIcons.Star, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -354,7 +348,7 @@ private fun FundCard(fund: FundSummaryDto, onClick: () -> Unit, nf: NumberFormat
                     )
                 }
                 Icon(
-                    if (up) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                    if (up) MetaIcons.TrendingUp else MetaIcons.TrendingDown,
                     null,
                     tint = if (up) Color(0xFF2BB673) else Color(0xFFC62828),
                     modifier = Modifier.size(22.dp),

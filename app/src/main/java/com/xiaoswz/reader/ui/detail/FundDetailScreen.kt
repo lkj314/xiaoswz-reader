@@ -16,12 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,6 +53,7 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @Composable
 fun FundDetailScreen(
@@ -127,7 +122,7 @@ fun FundDetailScreen(
                         ) {
                             Column(Modifier.padding(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Lock, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(20.dp))
+                                    Icon(MetaIcons.Lock, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(20.dp))
                                     Spacer(Modifier.width(8.dp))
                                     Text("董事专属操作", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
                                 }
@@ -175,7 +170,7 @@ private fun FundHeaderCard(fund: com.xiaoswz.reader.data.api.FundDetailResponse)
                     Text("《${fund.bookId}》· ${if (fund.status == "active") "运行中" else "已退市"}", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
                 }
                 Icon(
-                    if (up) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                    if (up) MetaIcons.TrendingUp else MetaIcons.TrendingDown,
                     null,
                     tint = if (up) Color(0xFF2BB673) else Color(0xFFC62828),
                     modifier = Modifier.size(28.dp),
@@ -314,7 +309,7 @@ private fun StableListCard(stablecoins: List<StableCoinDto>, nf: NumberFormat) {
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Star, null, tint = Color(0xFFE0A200), modifier = Modifier.size(20.dp))
+                Icon(MetaIcons.Star, null, tint = Color(0xFFE0A200), modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("已产出的稳定币（${stablecoins.size}）", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
             }
@@ -392,7 +387,7 @@ private fun DirectorPanelCard(state: FundDetailUiState, vm: FundDetailViewModel)
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Lock, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(20.dp))
+                Icon(MetaIcons.Lock, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("董事操作台", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
             }
@@ -442,7 +437,7 @@ private fun StableReserveCard(reserve: com.xiaoswz.reader.data.api.StableReserve
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Savings, null, tint = Color(0xFFE0A200), modifier = Modifier.size(20.dp))
+                Icon(MetaIcons.Savings, null, tint = Color(0xFFE0A200), modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("书圈稳定币全局状态", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
             }

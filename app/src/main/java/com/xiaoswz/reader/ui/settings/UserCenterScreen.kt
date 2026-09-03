@@ -19,11 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -62,6 +57,7 @@ import com.xiaoswz.reader.ui.components.whaleGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
  * 用户中心（0.8.0）：从设置页抽出的专属账号区。
@@ -221,7 +217,7 @@ fun UserCenterScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Cloud, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(20.dp))
+                        Icon(MetaIcons.Cloud, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("云同步", style = MaterialTheme.typography.titleMedium, color = GlassTokens.Label, fontWeight = FontWeight.SemiBold)
                     }
@@ -290,11 +286,11 @@ fun UserCenterScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.EmojiEvents, null, tint = GlassTokens.Gold, modifier = Modifier.size(20.dp))
+                        Icon(MetaIcons.EmojiEvents, null, tint = GlassTokens.Gold, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("阅读成就", style = MaterialTheme.typography.titleMedium, color = GlassTokens.Label, fontWeight = FontWeight.SemiBold)
                     }
-                    Icon(Icons.Default.ArrowForward, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(18.dp))
+                    Icon(MetaIcons.ArrowForward, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(18.dp))
                 }
             }
         }

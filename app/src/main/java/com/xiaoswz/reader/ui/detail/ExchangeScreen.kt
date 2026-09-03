@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,6 +44,7 @@ import com.xiaoswz.reader.ui.components.whaleGlassCard
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.NumberFormat
 import java.util.Locale
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @Composable
 fun ExchangeScreen(
@@ -83,7 +82,7 @@ fun ExchangeScreen(
                             Text("卖出（你的书币）", style = MaterialTheme.typography.bodySmall, color = GlassTokens.SecondaryLabel)
                             Spacer(Modifier.weight(1f))
                             IconButton(onClick = vm::swapPair, modifier = Modifier.size(32.dp)) {
-                                Icon(Icons.Default.SwapHoriz, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(24.dp))
+                                Icon(MetaIcons.SwapHoriz, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(24.dp))
                             }
                         }
                         OutlinedTextField(

@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.xiaoswz.reader.ui.theme.GlassTokens
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
  * 内容举报底部弹层（0.7.8）：通用举报帖子 / 书单。reason 可为 null（后端允许匿名空理由）。
@@ -60,7 +59,7 @@ fun ReportSheet(
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = GlassTokens.Label)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭", tint = GlassTokens.Label)
+                    Icon(MetaIcons.Close, contentDescription = "关闭", tint = GlassTokens.Label)
                 }
             }
             Spacer(Modifier.height(12.dp))

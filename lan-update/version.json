@@ -1,6 +1,6 @@
 {
-  "versionCode": 106,
-  "versionName": "0.19.13",
-  "apkUrl": "surf-reader-0.19.13.apk",
-  "notes": "0.19.13·修复自动更新下载失败：OkHttp 强制 HTTP/1.1 降低 raw/jsDelivr 被中间设备 RST_STREAM 的概率；下载 APK 也接入多通道 fallback+重试，避免 check 走通但下载被 reset。延续白底灰边钴蓝 Meta 设计语言。"
+  "versionCode": 107,
+  "versionName": "0.19.14",
+  "apkUrl": "surf-reader-0.19.14.apk",
+  "notes": "0.19.14·操作图标 Meta 化：自研 58 枚 Meta 线性图标（24dp 视口 / 1.75dp 圆头描边 / 可 tint），新增 MetaIcons 统一入口，全站 126 处原生 Material Icons 引用全部替换，操作图标与 Meta 白底灰边设计语言一致。"
 }

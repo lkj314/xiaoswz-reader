@@ -11,17 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.NavigateBefore
-import androidx.compose.material.icons.filled.NavigateNext
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xiaoswz.reader.data.plugin.PluginManifest
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 // 菜单遮罩底色（所有阅读主题下都可读）
 private val OverlayBg = Color(0xCC14181D)
@@ -69,7 +59,7 @@ fun ReaderTopBar(
         ) {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
+                    MetaIcons.ArrowBack,
                     contentDescription = "返回",
                     tint = OverlayText,
                 )
@@ -132,41 +122,41 @@ fun ReaderBottomBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onToc) {
-                Icon(Icons.Filled.Menu, contentDescription = "目录", tint = OverlayText)
+                Icon(MetaIcons.Menu, contentDescription = "目录", tint = OverlayText)
             }
             IconButton(onClick = onPrev, enabled = hasPrev) {
                 Icon(
-                    Icons.Filled.NavigateBefore,
+                    MetaIcons.NavigateBefore,
                     contentDescription = "上一章",
                     tint = if (hasPrev) OverlayText else OverlayTextDim,
                 )
             }
             IconButton(onClick = onSettings) {
-                Icon(Icons.Filled.Settings, contentDescription = "设置", tint = OverlayText)
+                Icon(MetaIcons.Settings, contentDescription = "设置", tint = OverlayText)
             }
             IconButton(onClick = onNext, enabled = hasNext) {
                 Icon(
-                    Icons.Filled.NavigateNext,
+                    MetaIcons.NavigateNext,
                     contentDescription = "下一章",
                     tint = if (hasNext) OverlayText else OverlayTextDim,
                 )
             }
             IconButton(onClick = onTtsToggle) {
                 Icon(
-                    if (ttsActive) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                    if (ttsActive) MetaIcons.Stop else MetaIcons.PlayArrow,
                     contentDescription = if (ttsActive) "停止听书" else "听书",
                     tint = if (ttsActive) MaterialTheme.colorScheme.primary else OverlayText,
                 )
             }
             IconButton(onClick = onSearch) {
-                Icon(Icons.Filled.Search, contentDescription = "书内搜索", tint = OverlayText)
+                Icon(MetaIcons.Search, contentDescription = "书内搜索", tint = OverlayText)
             }
             IconButton(onClick = onShare) {
-                Icon(Icons.Filled.Share, contentDescription = "分享到社区", tint = OverlayText)
+                Icon(MetaIcons.Share, contentDescription = "分享到社区", tint = OverlayText)
             }
             IconButton(onClick = onAnnoToggle, enabled = annoAvailable) {
                 Icon(
-                    Icons.Filled.Create,
+                    MetaIcons.Create,
                     contentDescription = "划词标注",
                     tint = if (annoActive) MaterialTheme.colorScheme.primary else OverlayText,
                 )

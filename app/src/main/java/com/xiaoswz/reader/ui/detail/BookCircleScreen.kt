@@ -16,11 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Gavel
-import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -58,6 +53,7 @@ import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 private val roleLabel = mapOf(
     "owner" to "圈主",
@@ -109,7 +105,7 @@ fun BookCircleScreen(
                 }
                 // 我的本书币余额胶囊
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(20.dp))
+                    Icon(MetaIcons.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
                         "我的《${bookId}》书币：${state.balance}",
@@ -142,7 +138,7 @@ fun BookCircleScreen(
                     CircleGlassCard {
                         Column(Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(22.dp))
+                                Icon(MetaIcons.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(22.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("初始书币领取", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
                             }
@@ -168,7 +164,7 @@ fun BookCircleScreen(
                 CircleGlassCard {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Gavel, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(22.dp))
+                            Icon(MetaIcons.Gavel, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("董事会 / 圈主席位", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
                         }
@@ -206,7 +202,7 @@ fun BookCircleScreen(
                 CircleGlassCard {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFE0A200), modifier = Modifier.size(22.dp))
+                            Icon(MetaIcons.EmojiEvents, null, tint = Color(0xFFE0A200), modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("股权结构（股东名册 Top10）", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
                         }
@@ -265,7 +261,7 @@ fun BookCircleScreen(
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(Icons.Default.Star, null, tint = Color(0xFF9B6DFF), modifier = Modifier.size(22.dp))
+                            Icon(MetaIcons.Star, null, tint = Color(0xFF9B6DFF), modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(8.dp))
                             Column(Modifier.weight(1f)) {
                                 Text("本书圈人设", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
@@ -288,7 +284,7 @@ fun BookCircleScreen(
                 CircleGlassCard {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(22.dp))
+                            Icon(MetaIcons.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("投资这本书", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
                         }
@@ -500,7 +496,7 @@ private fun RankRow(item: CircleRankItem) {
             modifier = Modifier.fillMaxWidth().padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.EmojiEvents, null, tint = roleColor[item.role] ?: GlassTokens.SecondaryLabel, modifier = Modifier.size(20.dp))
+            Icon(MetaIcons.EmojiEvents, null, tint = roleColor[item.role] ?: GlassTokens.SecondaryLabel, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(

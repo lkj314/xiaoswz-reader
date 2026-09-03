@@ -13,12 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -35,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.components.whaleGlassCard
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @Composable
 fun CreatorHubScreen(
@@ -65,7 +60,7 @@ fun CreatorHubScreen(
             }
             item {
                 HubCard(
-                    icon = Icons.Default.Person,
+                    icon = MetaIcons.Person,
                     title = "角色录入",
                     subtitle = "为书籍新增 / 编辑 / 删除热门角色（名字、主角配角、头像、简介）",
                     onClick = onCharacters,
@@ -73,7 +68,7 @@ fun CreatorHubScreen(
             }
             item {
                 HubCard(
-                    icon = Icons.Default.Edit,
+                    icon = MetaIcons.Edit,
                     title = "书籍编辑",
                     subtitle = "搜索书籍，修改书名 / 作者 / 封面 / 隐藏状态（不碰正文）",
                     onClick = onBooks,
@@ -81,7 +76,7 @@ fun CreatorHubScreen(
             }
             item {
                 HubCard(
-                    icon = Icons.Default.Campaign,
+                    icon = MetaIcons.Campaign,
                     title = "公告管理",
                     subtitle = "发布 / 编辑 / 删除运营公告（信息 / 警告 / 重要）",
                     onClick = onAnnouncements,
@@ -89,7 +84,7 @@ fun CreatorHubScreen(
             }
             item {
                 HubCard(
-                    icon = Icons.Default.Chat,
+                    icon = MetaIcons.Chat,
                     title = "作者日志",
                     subtitle = "写碎碎念 / 公告 / 章节改动说明，读者在书籍详情页可见",
                     onClick = onAuthorLogs,
@@ -97,7 +92,7 @@ fun CreatorHubScreen(
             }
             item {
                 HubCard(
-                    icon = Icons.Default.MonetizationOn,
+                    icon = MetaIcons.MonetizationOn,
                     title = "书币账本",
                     subtitle = "查看你的书币余额与每一笔进出记录（透明可查，不可交易提现）",
                     onClick = onCoin,

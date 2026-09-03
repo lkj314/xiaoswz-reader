@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -41,6 +39,7 @@ import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /** 相对时间：刚发布→「刚刚」；<60min→「x 分钟前」；<24h→「x 小时前」；更早→日期。 */
 private fun formatRelativeTime(ts: Long): String {
@@ -85,7 +84,7 @@ fun SegmentCommentListScreen(
                 title = { Text("全部段评") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(MetaIcons.ArrowBack, contentDescription = "返回")
                     }
                 },
             )

@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,6 +43,7 @@ import com.xiaoswz.reader.data.api.HomeResponse
 import com.xiaoswz.reader.data.booklist.BooklistRepository
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.launch
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
  * 首页运营位（0.7.6）：横幅 Banner + 公告 + 精选书单。由后端 AppConfig KV（home_banner / featured_booklists）
@@ -135,7 +134,7 @@ private fun FeaturedBooklistCard(bl: BooklistSummary, onClick: () -> Unit) {
             if (!bl.coverUrl.isNullOrEmpty()) {
                 AsyncImage(model = bl.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)), contentScale = ContentScale.Crop)
             } else {
-                Icon(Icons.Default.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(32.dp))
+                Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(32.dp))
             }
         }
         Spacer(Modifier.height(8.dp))

@@ -22,10 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,7 +36,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -88,9 +83,9 @@ import com.xiaoswz.reader.data.api.AuthorLogDto
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 private fun statusText(s: String?): String = when (s) {
     "ONGOING" -> "连载中"
@@ -221,7 +216,7 @@ fun BookDetailScreen(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.SystemUpdate,
+                        imageVector = MetaIcons.SystemUpdate,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
@@ -399,7 +394,7 @@ fun BookDetailScreen(
                                             variant = MetaButtonVariant.Outline,
                                         ) {
                                             Icon(
-                                                Icons.Filled.PlaylistAdd,
+                                                MetaIcons.PlaylistAdd,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(18.dp),
                                             )
@@ -472,7 +467,7 @@ fun BookDetailScreen(
                                     .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Default.Groups, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(26.dp))
+                                Icon(MetaIcons.Groups, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(26.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
@@ -821,7 +816,7 @@ private fun InteractionCard(
                     val my = rating?.myScore ?: 0
                     for (i in 1..5) {
                         Icon(
-                            imageVector = if (i <= my) Icons.Filled.Star else Icons.Filled.StarBorder,
+                            imageVector = if (i <= my) MetaIcons.Star else MetaIcons.StarBorder,
                             contentDescription = null,
                             tint = if (i <= my) GlassTokens.SystemBlue else GlassTokens.SecondaryLabel,
                             modifier = Modifier

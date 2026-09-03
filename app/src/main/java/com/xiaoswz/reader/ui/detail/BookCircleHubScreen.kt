@@ -17,11 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -55,6 +50,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 private val dirRoleColorMap = mapOf(
     "owner" to Color(0xFFE0A200),
@@ -216,11 +212,11 @@ private fun HubSummaryCard(
             )
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                MetricChip(Icons.Default.AccountBalance, "已加入", joined.toString(), GlassTokens.SystemBlue)
-                MetricChip(Icons.Default.PieChart, "已投资", invested.toString(), Color(0xFF9B6DFF))
-                MetricChip(Icons.Default.Savings, "理财市值", nf.format(fundValue.toLong()), Color(0xFF2BB673))
+                MetricChip(MetaIcons.AccountBalance, "已加入", joined.toString(), GlassTokens.SystemBlue)
+                MetricChip(MetaIcons.PieChart, "已投资", invested.toString(), Color(0xFF9B6DFF))
+                MetricChip(MetaIcons.Savings, "理财市值", nf.format(fundValue.toLong()), Color(0xFF2BB673))
                 MetricChip(
-                    Icons.Default.MonetizationOn,
+                    MetaIcons.MonetizationOn,
                     "理财收益",
                     (if (yieldPositive) "+" else "") + "%.1f%%".format(fundYieldPct),
                     if (yieldPositive) Color(0xFF2BB673) else Color(0xFFC62828),

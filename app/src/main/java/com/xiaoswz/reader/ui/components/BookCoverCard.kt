@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -33,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.model.formatWordCount
 import com.xiaoswz.reader.data.model.resolveCoverUrl
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
  * 统一封面卡片：书城与书架共用，保证视觉一致。
@@ -86,7 +85,7 @@ fun BookCoverCard(
                     modifier = Modifier.align(Alignment.TopEnd),
                 ) {
                     Icon(
-                        Icons.Default.Close,
+                        MetaIcons.Close,
                         contentDescription = "移出书架",
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     )

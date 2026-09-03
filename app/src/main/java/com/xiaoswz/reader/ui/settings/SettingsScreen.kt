@@ -20,18 +20,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.ui.res.painterResource
+import com.xiaoswz.reader.R
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -276,7 +266,7 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Person, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(28.dp))
+                        Icon(painterResource(R.drawable.ic_meta_person), null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(28.dp))
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text(
@@ -292,7 +282,7 @@ fun SettingsScreen(
                             )
                         }
                     }
-                    Icon(Icons.Default.ArrowForward, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(18.dp))
+                    Icon(painterResource(R.drawable.ic_meta_chevron_right), null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(18.dp))
                 }
             }
 
@@ -311,7 +301,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Edit, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(28.dp))
+                            Icon(painterResource(R.drawable.ic_meta_edit), null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(28.dp))
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(
@@ -327,14 +317,14 @@ fun SettingsScreen(
                                 )
                             }
                         }
-                        Icon(Icons.Default.ArrowForward, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(18.dp))
+                        Icon(painterResource(R.drawable.ic_meta_chevron_right), null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(18.dp))
                     }
                 }
             }
 
             // ── 外观（应用外壳主题）──
             SettingsCard(
-                icon = Icons.Default.Palette,
+                icon = R.drawable.ic_meta_palette,
                 title = "外观",
                 subtitle = "应用外壳浅色 / 深色，跟随系统或手动切换",
             ) {
@@ -361,7 +351,7 @@ fun SettingsScreen(
 
             // ── 阅读主题（真正生效在阅读器）──
             SettingsCard(
-                icon = Icons.Default.AutoStories,
+                icon = R.drawable.ic_meta_book_open,
                 title = "阅读主题",
                 subtitle = "详细排版设置请在阅读页内打开设置面板调整",
             ) {
@@ -390,7 +380,7 @@ fun SettingsScreen(
 
             // ── 应用更新（云端优先，局域网可手填兜底）──
             SettingsCard(
-                icon = Icons.Default.Cloud,
+                icon = R.drawable.ic_meta_cloud,
                 title = "应用更新",
                 subtitle = "云端更新地址（默认），也可填局域网 http://IP:端口",
             ) {
@@ -426,7 +416,7 @@ fun SettingsScreen(
                         modifier = Modifier,
                         variant = MetaButtonVariant.Outline,
                     ) {
-                        Icon(Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(painterResource(R.drawable.ic_meta_update), contentDescription = null, modifier = Modifier.size(18.dp))
                         Text(" 检查更新")
                     }
                 }
@@ -434,7 +424,7 @@ fun SettingsScreen(
 
             // ── 离线缓存 ──
             SettingsCard(
-                icon = Icons.Default.Storage,
+                icon = R.drawable.ic_meta_storage,
                 title = "离线缓存",
                 subtitle = "章节正文：$cacheSizeText（$chapterCount 章）· 书籍元数据：$metaCacheSizeText（断网可读，随卸载清除）",
             ) {
@@ -554,7 +544,7 @@ fun SettingsScreen(
 
             // ── 崩溃日志 ──
             SettingsCard(
-                icon = Icons.Default.BugReport,
+                icon = R.drawable.ic_meta_bug,
                 title = "崩溃日志",
                 subtitle = if (crashLog == null) "暂无崩溃记录，应用运行正常。" else "检测到崩溃记录，点开查看完整堆栈并分享给我定位问题。",
             ) {
@@ -579,7 +569,7 @@ fun SettingsScreen(
                             },
                             modifier = Modifier,
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(painterResource(R.drawable.ic_meta_share), contentDescription = null, modifier = Modifier.size(18.dp))
                             Text(" 分享")
                         }
                     }
@@ -588,7 +578,7 @@ fun SettingsScreen(
 
             // ── 关于 ──
             SettingsCard(
-                icon = Icons.Default.Info,
+                icon = R.drawable.ic_meta_info,
                 title = "关于",
                 subtitle = "冲浪阅读是一款原生安卓小说阅读客户端，数据全部来自冲浪中文网公开只读 API，不登录、不直连数据库。",
             )
@@ -598,7 +588,7 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: Int,
     title: String,
     subtitle: String,
     content: @Composable (() -> Unit)? = null,
@@ -611,7 +601,12 @@ private fun SettingsCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
                 Column(modifier = Modifier.padding(start = 10.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium)
                     Text(

@@ -17,8 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +37,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.xiaoswz.reader.data.api.BadgeDto
 import com.xiaoswz.reader.ui.components.AppTopBar
 import com.xiaoswz.reader.ui.theme.GlassTokens
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @Composable
 fun ReadingStatsScreen(
@@ -142,7 +141,7 @@ private fun BadgeRow(badge: BadgeDto) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Default.EmojiEvents,
+                MetaIcons.EmojiEvents,
                 null,
                 tint = if (badge.unlocked) Color.White else GlassTokens.TertiaryLabel,
                 modifier = Modifier.size(24.dp),

@@ -14,8 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -41,6 +39,7 @@ import com.xiaoswz.reader.ui.theme.GlassTokens
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 private val ledgerLabel = mapOf(
     "earn_read" to "阅读奖励",
@@ -91,7 +90,7 @@ fun CoinScreen(onBack: () -> Unit) {
                         modifier = Modifier.fillMaxWidth().padding(18.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Default.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(34.dp))
+                        Icon(MetaIcons.MonetizationOn, null, tint = Color(0xFFE0A200), modifier = Modifier.size(34.dp))
                         Spacer(Modifier.width(14.dp))
                         Column {
                             Text("书币总资产", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.SecondaryLabel)

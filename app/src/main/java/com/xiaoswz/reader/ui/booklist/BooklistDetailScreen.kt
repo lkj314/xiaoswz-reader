@@ -20,17 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,6 +61,7 @@ import com.xiaoswz.reader.ui.components.ReportSheet
 import com.xiaoswz.reader.ui.components.MetaButton
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.launch
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,14 +100,14 @@ fun BooklistDetailScreen(
                 actions = {
                     if (isOwner) {
                         IconButton(onClick = { editBooklist = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "编辑书单", tint = GlassTokens.Label)
+                            Icon(MetaIcons.Edit, contentDescription = "编辑书单", tint = GlassTokens.Label)
                         }
                         IconButton(onClick = { deleteConfirm = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "删除书单", tint = GlassTokens.SystemRed)
+                            Icon(MetaIcons.Delete, contentDescription = "删除书单", tint = GlassTokens.SystemRed)
                         }
                     } else {
                         IconButton(onClick = { showReport = true }) {
-                            Icon(Icons.Default.Warning, contentDescription = "举报", tint = GlassTokens.Label)
+                            Icon(MetaIcons.Warning, contentDescription = "举报", tint = GlassTokens.Label)
                         }
                     }
                 },
@@ -165,7 +155,7 @@ fun BooklistDetailScreen(
                                 contentScale = ContentScale.Crop,
                             )
                         } else {
-                            Icon(Icons.Default.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(40.dp))
+                            Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(40.dp))
                         }
                     }
                     Spacer(Modifier.width(14.dp))
@@ -176,7 +166,7 @@ fun BooklistDetailScreen(
                             modifier = Modifier.clickable { onUserClick(detail.owner.id) },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(Icons.Default.AccountCircle, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(18.dp))
+                            Icon(MetaIcons.AccountCircle, null, tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(detail.owner.displayName ?: "读者", style = MaterialTheme.typography.labelMedium, color = GlassTokens.SecondaryLabel)
                             if (detail.isOfficial) {
@@ -189,7 +179,7 @@ fun BooklistDetailScreen(
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Star, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(14.dp))
+                            Icon(MetaIcons.Star, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(3.dp))
                             Text("${detail.collectCount} 收藏", style = MaterialTheme.typography.labelSmall, color = GlassTokens.TertiaryLabel)
                             Spacer(Modifier.width(12.dp))
@@ -228,7 +218,7 @@ fun BooklistDetailScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.Star,
+                                MetaIcons.Star,
                                 null,
                                 tint = if (detail.collected) Color.White else GlassTokens.SystemBlue,
                                 modifier = Modifier.size(18.dp),
@@ -263,7 +253,7 @@ fun BooklistDetailScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Share, null, tint = GlassTokens.Label, modifier = Modifier.size(18.dp))
+                            Icon(MetaIcons.Share, null, tint = GlassTokens.Label, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("分享", color = GlassTokens.Label, style = MaterialTheme.typography.labelLarge)
                         }
@@ -282,7 +272,7 @@ fun BooklistDetailScreen(
                     androidx.compose.material3.AssistChip(
                         onClick = { showPicker = true },
                         label = { Text("添加书籍") },
-                        leadingIcon = { Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp)) },
+                        leadingIcon = { Icon(MetaIcons.Add, null, modifier = Modifier.size(18.dp)) },
                     )
                 }
             }
@@ -464,7 +454,7 @@ private fun BooklistItemRow(
             if (!item.coverUrl.isNullOrEmpty()) {
                 AsyncImage(model = item.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)), contentScale = ContentScale.Crop)
             } else {
-                Icon(Icons.Default.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(28.dp))
+                Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(28.dp))
             }
         }
         Spacer(Modifier.width(12.dp))
@@ -482,20 +472,20 @@ private fun BooklistItemRow(
         }
         if (isOwner) {
             IconButton(onClick = onEditNote, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Edit, contentDescription = "编辑备注", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(16.dp))
+                Icon(MetaIcons.Edit, contentDescription = "编辑备注", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(16.dp))
             }
             IconButton(onClick = onMoveUp, enabled = canMoveUp, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移", tint = if (canMoveUp) GlassTokens.SecondaryLabel else GlassTokens.TertiaryLabel, modifier = Modifier.size(16.dp))
+                Icon(MetaIcons.KeyboardArrowUp, contentDescription = "上移", tint = if (canMoveUp) GlassTokens.SecondaryLabel else GlassTokens.TertiaryLabel, modifier = Modifier.size(16.dp))
             }
             IconButton(onClick = onMoveDown, enabled = canMoveDown, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移", tint = if (canMoveDown) GlassTokens.SecondaryLabel else GlassTokens.TertiaryLabel, modifier = Modifier.size(16.dp))
+                Icon(MetaIcons.KeyboardArrowDown, contentDescription = "下移", tint = if (canMoveDown) GlassTokens.SecondaryLabel else GlassTokens.TertiaryLabel, modifier = Modifier.size(16.dp))
             }
             IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "从书单移除", tint = GlassTokens.SystemRed, modifier = Modifier.size(16.dp))
+                Icon(MetaIcons.Delete, contentDescription = "从书单移除", tint = GlassTokens.SystemRed, modifier = Modifier.size(16.dp))
             }
         } else {
             IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "从书单移除", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(16.dp))
+                Icon(MetaIcons.Delete, contentDescription = "从书单移除", tint = GlassTokens.SecondaryLabel, modifier = Modifier.size(16.dp))
             }
         }
     }

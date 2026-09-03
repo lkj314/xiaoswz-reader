@@ -26,10 +26,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -75,6 +71,7 @@ import com.xiaoswz.reader.data.plugin.PluginStateStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
  * 创意工坊（0.16.3 重设计）。
@@ -122,7 +119,7 @@ fun PluginPlazaScreen(onBack: () -> Unit) {
                             else -> onBack()
                         }
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(MetaIcons.ArrowBack, contentDescription = "返回")
                     }
                 },
             )
@@ -145,7 +142,7 @@ fun PluginPlazaScreen(onBack: () -> Unit) {
                             onClick = { selectedTab = index },
                             text = { Text(label) },
                             icon = if (index == 0) {
-                                { Icon(Icons.Default.Extension, contentDescription = null) }
+                                { Icon(MetaIcons.Extension, contentDescription = null) }
                             } else null,
                         )
                     }
@@ -791,7 +788,7 @@ private fun AnnotationCollectionContent(
                                             items.remove(d)
                                         }
                                     },
-                                ) { Icon(Icons.Filled.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error) }
+                                ) { Icon(MetaIcons.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error) }
                             }
                             Text(
                                 "第 ${d.chapterId} 章",

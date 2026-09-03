@@ -24,20 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -90,6 +76,7 @@ import com.xiaoswz.reader.ui.components.ReportSheet
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.theme.WhaleColors
 import kotlinx.coroutines.launch
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -135,14 +122,14 @@ fun CommunityScreen(
                 actions = {
                     IconButton(onClick = onReadingStats) {
                         Icon(
-                            imageVector = Icons.Default.EmojiEvents,
+                            imageVector = MetaIcons.EmojiEvents,
                             contentDescription = "阅读成就",
                             tint = GlassTokens.Label,
                         )
                     }
                     IconButton(onClick = { showPublish = true }) {
                         Icon(
-                            imageVector = Icons.Default.Create,
+                            imageVector = MetaIcons.Create,
                             contentDescription = "发帖",
                             tint = GlassTokens.Label,
                         )
@@ -218,7 +205,7 @@ fun CommunityScreen(
                 singleLine = true,
                 trailingIcon = {
                     IconButton(onClick = { viewModel.setKeyword(keyword) }) {
-                        Icon(Icons.Default.Send, contentDescription = "搜索", tint = GlassTokens.Label)
+                        Icon(MetaIcons.Send, contentDescription = "搜索", tint = GlassTokens.Label)
                     }
                 },
                 shape = RoundedCornerShape(GlassTokens.RadiusPill),
@@ -481,7 +468,7 @@ private fun PostCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    imageVector = if (post.liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    imageVector = if (post.liked) MetaIcons.Favorite else MetaIcons.FavoriteBorder,
                     contentDescription = "点赞",
                     tint = if (post.liked) GlassTokens.Rose else GlassTokens.SecondaryLabel,
                     modifier = Modifier.size(18.dp),
@@ -496,7 +483,7 @@ private fun PostCard(
             Spacer(Modifier.width(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.ChatBubbleOutline,
+                    imageVector = MetaIcons.ChatBubbleOutline,
                     contentDescription = "评论",
                     tint = GlassTokens.SecondaryLabel,
                     modifier = Modifier.size(18.dp),
@@ -517,7 +504,7 @@ private fun PostCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
+                        imageVector = MetaIcons.Edit,
                         contentDescription = "编辑动态",
                         tint = GlassTokens.Label,
                         modifier = Modifier.size(18.dp),
@@ -539,7 +526,7 @@ private fun PostCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = MetaIcons.Delete,
                         contentDescription = "删除动态",
                         tint = GlassTokens.Rose,
                         modifier = Modifier.size(18.dp),
@@ -593,7 +580,7 @@ private fun Avatar(url: String?, size: Int, modifier: Modifier = Modifier) {
             )
         } else {
             Icon(
-                imageVector = Icons.Default.AccountCircle,
+                imageVector = MetaIcons.AccountCircle,
                 contentDescription = null,
                 tint = GlassTokens.TertiaryLabel,
                 modifier = Modifier.size((size * 0.8f).dp),
@@ -667,7 +654,7 @@ private fun PublishSheet(
                 )
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭", tint = GlassTokens.Label)
+                    Icon(MetaIcons.Close, contentDescription = "关闭", tint = GlassTokens.Label)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -837,7 +824,7 @@ private fun EditPostSheet(
                 )
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭", tint = GlassTokens.Label)
+                    Icon(MetaIcons.Close, contentDescription = "关闭", tint = GlassTokens.Label)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -981,7 +968,7 @@ private fun PostDetailSheet(
                     val isOwner = d.author.id == accountId
                     if (isOwner) {
                         IconButton(onClick = onEditPost) {
-                            Icon(Icons.Default.Edit, contentDescription = "编辑动态", tint = GlassTokens.Label)
+                            Icon(MetaIcons.Edit, contentDescription = "编辑动态", tint = GlassTokens.Label)
                         }
                     }
                     if (isOwner || isAdmin) {
@@ -1002,15 +989,15 @@ private fun PostDetailSheet(
                                     }
                             }
                         }) {
-                            Icon(Icons.Default.Delete, contentDescription = "删除动态", tint = GlassTokens.Rose)
+                            Icon(MetaIcons.Delete, contentDescription = "删除动态", tint = GlassTokens.Rose)
                         }
                     }
                 }
                 IconButton(onClick = { showReport = true }) {
-                    Icon(Icons.Default.Warning, contentDescription = "举报", tint = GlassTokens.Label)
+                    Icon(MetaIcons.Warning, contentDescription = "举报", tint = GlassTokens.Label)
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭", tint = GlassTokens.Label)
+                    Icon(MetaIcons.Close, contentDescription = "关闭", tint = GlassTokens.Label)
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -1064,7 +1051,7 @@ private fun PostDetailSheet(
                                     .padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Default.MenuBook, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(18.dp))
+                                Icon(MetaIcons.MenuBook, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("📚 ${d.booklist!!.title ?: "书单"}", style = MaterialTheme.typography.bodyMedium, color = GlassTokens.SystemBlue)
                             }
@@ -1106,7 +1093,7 @@ private fun PostDetailSheet(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Icon(
-                                    if (d.liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    if (d.liked) MetaIcons.Favorite else MetaIcons.FavoriteBorder,
                                     contentDescription = "点赞",
                                     tint = if (d.liked) GlassTokens.Rose else GlassTokens.SecondaryLabel,
                                     modifier = Modifier.size(20.dp),
@@ -1211,7 +1198,7 @@ private fun PostDetailSheet(
                             },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Send, contentDescription = "发送", tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(MetaIcons.Send, contentDescription = "发送", tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -1312,7 +1299,7 @@ private fun CommunityEmptyState() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Default.Forum, null, Modifier.size(56.dp), tint = GlassTokens.SecondaryLabel)
+        Icon(MetaIcons.Forum, null, Modifier.size(56.dp), tint = GlassTokens.SecondaryLabel)
         Spacer(Modifier.height(16.dp))
         Text("这里还很安静", style = MaterialTheme.typography.titleMedium, color = GlassTokens.Label)
         Spacer(Modifier.height(8.dp))
@@ -1327,7 +1314,7 @@ private fun CommunityErrorState(error: String, onRetry: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Default.Forum, null, Modifier.size(56.dp), tint = GlassTokens.SecondaryLabel)
+        Icon(MetaIcons.Forum, null, Modifier.size(56.dp), tint = GlassTokens.SecondaryLabel)
         Spacer(Modifier.height(16.dp))
         Text(error, style = MaterialTheme.typography.bodyLarge, color = GlassTokens.Label)
         Spacer(Modifier.height(16.dp))
@@ -1350,7 +1337,7 @@ private fun CommunityLoginHint(onAccountClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Default.Forum, null, Modifier.size(56.dp), tint = GlassTokens.SecondaryLabel)
+        Icon(MetaIcons.Forum, null, Modifier.size(56.dp), tint = GlassTokens.SecondaryLabel)
         Spacer(Modifier.height(16.dp))
         Text("登录后查看关注动态", style = MaterialTheme.typography.titleMedium, color = GlassTokens.Label)
         Spacer(Modifier.height(16.dp))

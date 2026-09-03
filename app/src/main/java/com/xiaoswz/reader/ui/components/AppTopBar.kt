@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.Image
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.xiaoswz.reader.R
 import com.xiaoswz.reader.ui.theme.GlassTokens
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
  * 全站统一顶部栏（v0.3.9 抽出，根因见 TOPBAR-POSTMORTEM.md）：
@@ -62,7 +61,7 @@ fun AppTopBar(
         ) {
             if (onBack != null) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = MetaIcons.ArrowBack,
                     contentDescription = "返回",
                     tint = color,
                     modifier = Modifier

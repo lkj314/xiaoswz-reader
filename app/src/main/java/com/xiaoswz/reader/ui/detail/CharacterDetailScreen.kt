@@ -23,10 +23,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +62,7 @@ import com.xiaoswz.reader.ui.components.SectionHeader
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.components.MetaButton
 import com.xiaoswz.reader.ui.components.MetaButtonVariant
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 private fun roleLabel(roleType: String?): String = when (roleType) {
     "main" -> "主角"
@@ -126,7 +123,7 @@ fun CharacterDetailScreen(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.SystemUpdate,
+                        imageVector = MetaIcons.SystemUpdate,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
@@ -197,7 +194,7 @@ fun CharacterDetailScreen(
                                 ) {
                                     IconButton(onClick = { viewModel.toggleHeart() }) {
                                         Icon(
-                                            imageVector = if (ch.myHeart) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                            imageVector = if (ch.myHeart) MetaIcons.Favorite else MetaIcons.FavoriteBorder,
                                             contentDescription = null,
                                             tint = if (ch.myHeart) Color(0xFFE25555) else GlassTokens.SecondaryLabel,
                                             modifier = Modifier.size(28.dp),

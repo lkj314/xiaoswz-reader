@@ -25,9 +25,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -76,6 +73,7 @@ import com.xiaoswz.reader.ui.update.UpdateDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
  * 首页（0.8.2 由「书城」拆出）：保持整洁——只放欢迎 Hero + 热度轮播 + 浏览书库入口。
@@ -140,7 +138,7 @@ fun HomeScreen(
                 title = null,
                 actions = {
                     Icon(
-                        imageVector = Icons.Default.SystemUpdate,
+                        imageVector = MetaIcons.SystemUpdate,
                         contentDescription = "检查更新",
                         tint = GlassTokens.Label,
                         modifier = Modifier
@@ -253,7 +251,7 @@ private fun BrowseLibraryCard(onBrowseLibrary: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowForward,
+                    imageVector = MetaIcons.ArrowForward,
                     contentDescription = "进入书库",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp),

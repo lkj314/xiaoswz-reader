@@ -24,8 +24,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -65,6 +63,7 @@ import com.xiaoswz.reader.ui.theme.ReaderTheme
 import com.xiaoswz.reader.ui.components.MetaButton
 import com.xiaoswz.reader.ui.components.MetaButtonVariant
 import kotlinx.coroutines.launch
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @Composable
 internal fun SegmentMarkedText(
@@ -152,7 +151,7 @@ internal fun SearchSheet(
         ) {
             Text("书内搜索", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = "关闭") }
+            IconButton(onClick = onDismiss) { Icon(MetaIcons.Close, contentDescription = "关闭") }
         }
         OutlinedTextField(
             value = query,

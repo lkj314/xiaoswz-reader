@@ -28,8 +28,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,6 +72,7 @@ import com.xiaoswz.reader.ui.components.BookCoverCard
 import com.xiaoswz.reader.ui.components.BookCoverSkeleton
 import com.xiaoswz.reader.ui.components.SectionHeader
 import kotlinx.coroutines.launch
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 private const val STATUS_ALL = "all"
 private const val STATUS_ONGOING = "ONGOING"
@@ -161,7 +160,7 @@ fun BookLibraryScreen(
                             },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.Search,
+                                    MetaIcons.Search,
                                     contentDescription = "搜索",
                                     tint = GlassTokens.SecondaryLabel,
                                 )

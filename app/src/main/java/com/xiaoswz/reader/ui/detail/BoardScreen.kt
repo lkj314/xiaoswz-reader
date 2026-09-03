@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,6 +45,7 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.xiaoswz.reader.ui.theme.MetaIcons
 
 @Composable
 fun BoardScreen(
@@ -80,7 +79,7 @@ fun BoardScreen(
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Lock, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(22.dp))
+                            Icon(MetaIcons.Lock, null, tint = GlassTokens.SystemBlue, modifier = Modifier.size(22.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("董事会控制台", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GlassTokens.Label)
                         }
