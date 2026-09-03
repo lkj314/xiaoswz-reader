@@ -1,4 +1,5 @@
 package com.xiaoswz.reader.ui.community
+import com.xiaoswz.reader.ui.components.MetaAvatarImage
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -401,7 +402,7 @@ private fun PostCard(
     ) {
         // 作者行
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Avatar(url = post.author.avatarUrl, size = 36, modifier = Modifier.clickable { onUserClick(post.author.id) })
+            Avatar(url = post.author.avatarUrl, size = 36, name = post.author.displayName ?: "", modifier = Modifier.clickable { onUserClick(post.author.id) })
             Spacer(Modifier.width(10.dp))
             Column {
                 Text(
@@ -563,30 +564,13 @@ private fun PostCard(
 }
 
 @Composable
-private fun Avatar(url: String?, size: Int, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(size.dp)
-            .clip(CircleShape)
-            .background(GlassTokens.GroupedBackground),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (url != null) {
-            AsyncImage(
-                model = url,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-        } else {
-            Icon(
-                imageVector = MetaIcons.AccountCircle,
-                contentDescription = null,
-                tint = GlassTokens.TertiaryLabel,
-                modifier = Modifier.size((size * 0.8f).dp),
-            )
-        }
-    }
+private fun Avatar(url: String?, size: Int, name: String = "", modifier: Modifier = Modifier) {
+    MetaAvatarImage(
+        model = url,
+        name = name.ifBlank { "读者" },
+        modifier = modifier.size(size.dp),
+        contentScale = ContentScale.Crop,
+    )
 }
 
 @Composable
@@ -1022,7 +1006,7 @@ private fun PostDetailSheet(
                 ) {
                     item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Avatar(url = d.author.avatarUrl, size = 36, modifier = Modifier.clickable { onUserClick(d.author.id) })
+                            Avatar(url = d.author.avatarUrl, size = 36, name = d.author.displayName ?: "", modifier = Modifier.clickable { onUserClick(d.author.id) })
                             Spacer(Modifier.width(10.dp))
                             Column {
                                 Text(
@@ -1233,7 +1217,7 @@ private fun CommentRow(
 ) {
     var showConfirm by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Avatar(url = c.author.avatarUrl, size = 30)
+        Avatar(url = c.author.avatarUrl, size = 30, name = c.author.displayName ?: "")
         Spacer(Modifier.width(8.dp))
         Column {
             Text(

@@ -1,4 +1,5 @@
 package com.xiaoswz.reader.ui.booklist
+import com.xiaoswz.reader.ui.components.MetaCoverImage
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -36,7 +37,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.BookRepository
 import com.xiaoswz.reader.data.model.BookDto
 import com.xiaoswz.reader.ui.components.MetaButton
@@ -133,9 +133,14 @@ fun BookPickerSheet(
                                 modifier = Modifier.size(48.dp).clip(RoundedCornerShape(GlassTokens.RadiusMD)).background(GlassTokens.GlassFill),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (!book.coverImage.isNullOrEmpty()) {
-                                    AsyncImage(model = book.coverImage, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)), contentScale = ContentScale.Crop)
-                                }
+                                MetaCoverImage(
+                                    model = book.coverImage,
+                                    title = book.title ?: "",
+                                    modifier = Modifier.fillMaxSize(),
+                                    shape = RoundedCornerShape(GlassTokens.RadiusMD),
+                                    cornerRadius = GlassTokens.RadiusMD,
+                                    contentScale = ContentScale.Crop,
+                                )
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {

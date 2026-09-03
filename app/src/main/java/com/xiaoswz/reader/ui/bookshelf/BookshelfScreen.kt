@@ -1,7 +1,7 @@
 package com.xiaoswz.reader.ui.bookshelf
+import com.xiaoswz.reader.ui.components.MetaCoverImage
 
 import com.xiaoswz.reader.ui.components.MetaButton
-import com.xiaoswz.reader.data.model.resolveCoverUrl
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,7 +47,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.bookshelf.BookEntity
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookUpdateStore
@@ -228,14 +227,13 @@ private fun HeroBookCard(
             .liquidGlass(radius = GlassTokens.RadiusLG),
     ) {
         Row(modifier = Modifier.padding(16.dp)) {
-            AsyncImage(
-                model = resolveCoverUrl(book.coverUrl),
-                contentDescription = book.title,
+            MetaCoverImage(
+                model = book.coverUrl,
+                title = book.title,
                 modifier = Modifier
                     .width(100.dp)
                     .height(150.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop,
             )
             Spacer(Modifier.width(16.dp))

@@ -1,4 +1,6 @@
 package com.xiaoswz.reader.ui.profile
+import com.xiaoswz.reader.ui.components.MetaCoverImage
+import com.xiaoswz.reader.ui.components.MetaAvatarImage
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -98,7 +100,7 @@ fun UserProfileScreen(
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(url = profile.avatarUrl, size = 64)
+                    Avatar(url = profile.avatarUrl, size = 64, name = profile.displayName ?: "")
                     Spacer(Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -254,17 +256,13 @@ private fun StatChip(value: String, label: String) {
 }
 
 @Composable
-private fun Avatar(url: String?, size: Int) {
-    Box(
-        modifier = Modifier.size(size.dp).clip(CircleShape).background(GlassTokens.GroupedBackground),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (url != null) {
-            AsyncImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        } else {
-            Icon(MetaIcons.AccountCircle, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size((size * 0.8f).dp))
-        }
-    }
+private fun Avatar(url: String?, size: Int, name: String = "") {
+    MetaAvatarImage(
+        model = url,
+        name = name.ifBlank { "我" },
+        modifier = Modifier.size(size.dp),
+        contentScale = ContentScale.Crop,
+    )
 }
 
 @Composable
@@ -316,11 +314,14 @@ private fun ProfileBooklistRow(bl: BooklistSummary, onClick: () -> Unit) {
             modifier = Modifier.size(56.dp).clip(RoundedCornerShape(GlassTokens.RadiusMD)).background(GlassTokens.GlassFill),
             contentAlignment = Alignment.Center,
         ) {
-            if (!bl.coverUrl.isNullOrEmpty()) {
-                AsyncImage(model = bl.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)), contentScale = ContentScale.Crop)
-            } else {
-                Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(28.dp))
-            }
+            MetaCoverImage(
+                model = bl.coverUrl,
+                title = bl.title,
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(GlassTokens.RadiusMD),
+                cornerRadius = GlassTokens.RadiusMD,
+                contentScale = ContentScale.Crop,
+            )
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -345,11 +346,14 @@ private fun ProfileBookshelfRow(item: UserBookshelfItem, onClick: () -> Unit) {
             modifier = Modifier.size(56.dp).clip(RoundedCornerShape(GlassTokens.RadiusMD)).background(GlassTokens.GlassFill),
             contentAlignment = Alignment.Center,
         ) {
-            if (!item.coverUrl.isNullOrEmpty()) {
-                AsyncImage(model = item.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)), contentScale = ContentScale.Crop)
-            } else {
-                Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(28.dp))
-            }
+            MetaCoverImage(
+                model = item.coverUrl,
+                title = item.title ?: "未知书目",
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(GlassTokens.RadiusMD),
+                cornerRadius = GlassTokens.RadiusMD,
+                contentScale = ContentScale.Crop,
+            )
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {

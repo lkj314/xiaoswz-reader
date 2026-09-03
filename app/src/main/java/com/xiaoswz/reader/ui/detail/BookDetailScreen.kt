@@ -1,4 +1,6 @@
 package com.xiaoswz.reader.ui.detail
+import com.xiaoswz.reader.ui.components.MetaCoverImage
+import com.xiaoswz.reader.ui.components.MetaAvatarImage
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -56,10 +58,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import com.xiaoswz.reader.data.model.formatWordCount
-import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.model.shrinkCover
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookEntity
@@ -263,14 +263,13 @@ fun BookDetailScreen(
                         ) {
                             Column {
                                 Row {
-                                    AsyncImage(
-                                        model = resolveCoverUrl(detail.coverUrl),
-                                        contentDescription = detail.name,
+                                    MetaCoverImage(
+                                        model = detail.coverUrl,
+                                        title = detail.name.orEmpty(),
                                         modifier = Modifier
                                             .width(120.dp)
                                             .height(180.dp)
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                                            .clip(RoundedCornerShape(16.dp)),
                                         contentScale = ContentScale.Crop,
                                     )
                                     Spacer(Modifier.width(16.dp))
@@ -666,13 +665,12 @@ fun BookDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                AsyncImage(
-                                    model = resolveCoverUrl(bl.coverUrl),
-                                    contentDescription = bl.title,
+                                MetaCoverImage(
+                                    model = bl.coverUrl,
+                                    title = bl.title,
                                     modifier = Modifier
                                         .size(44.dp, 60.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        .clip(RoundedCornerShape(8.dp)),
                                     contentScale = ContentScale.Crop,
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
@@ -886,13 +884,12 @@ private fun CharacterChip(
             modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            AsyncImage(
+            MetaAvatarImage(
                 model = ch.avatarUrl,
-                contentDescription = ch.name,
+                name = ch.name,
                 modifier = Modifier
                     .size(64.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .clip(CircleShape),
                 contentScale = ContentScale.Crop,
             )
             Spacer(Modifier.height(8.dp))

@@ -1,4 +1,5 @@
 package com.xiaoswz.reader.ui.community
+import com.xiaoswz.reader.ui.components.MetaCoverImage
 
 import android.content.Intent
 import android.net.Uri
@@ -131,11 +132,14 @@ private fun FeaturedBooklistCard(bl: BooklistSummary, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(GlassTokens.RadiusMD)).background(GlassTokens.GlassFill),
             contentAlignment = Alignment.Center,
         ) {
-            if (!bl.coverUrl.isNullOrEmpty()) {
-                AsyncImage(model = bl.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)), contentScale = ContentScale.Crop)
-            } else {
-                Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(32.dp))
-            }
+            MetaCoverImage(
+                model = bl.coverUrl,
+                title = bl.title,
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(GlassTokens.RadiusMD),
+                cornerRadius = GlassTokens.RadiusMD,
+                contentScale = ContentScale.Crop,
+            )
         }
         Spacer(Modifier.height(8.dp))
         Text(bl.title, style = MaterialTheme.typography.bodyMedium, color = GlassTokens.Label, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)

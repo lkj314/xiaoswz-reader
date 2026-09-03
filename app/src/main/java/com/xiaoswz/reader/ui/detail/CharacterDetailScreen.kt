@@ -1,6 +1,7 @@
 @file:OptIn(ExperimentalLayoutApi::class)
 
 package com.xiaoswz.reader.ui.detail
+import com.xiaoswz.reader.ui.components.MetaAvatarImage
 
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import android.widget.Toast
@@ -53,7 +54,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.api.CharacterTagDto
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.ui.components.AppTopBar
@@ -155,13 +155,12 @@ fun CharacterDetailScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                AsyncImage(
+                                MetaAvatarImage(
                                     model = ch.avatarUrl,
-                                    contentDescription = ch.name,
+                                    name = ch.name,
                                     modifier = Modifier
                                         .size(96.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        .clip(CircleShape),
                                     contentScale = ContentScale.Crop,
                                 )
                                 Spacer(Modifier.height(12.dp))

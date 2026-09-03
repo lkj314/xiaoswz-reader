@@ -1,4 +1,5 @@
 package com.xiaoswz.reader.ui.booklist
+import com.xiaoswz.reader.ui.components.MetaCoverImage
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -51,7 +52,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.api.BooklistSummary
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.ui.components.AppTopBar
@@ -240,16 +240,14 @@ private fun BooklistRow(
             modifier = Modifier.size(72.dp).clip(RoundedCornerShape(GlassTokens.RadiusMD)).background(GlassTokens.GlassFill),
             contentAlignment = Alignment.Center,
         ) {
-            if (!bl.coverUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = bl.coverUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                Icon(MetaIcons.MenuBook, contentDescription = null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(32.dp))
-            }
+            MetaCoverImage(
+                model = bl.coverUrl,
+                title = bl.title,
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(GlassTokens.RadiusMD),
+                cornerRadius = GlassTokens.RadiusMD,
+                contentScale = ContentScale.Crop,
+            )
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {

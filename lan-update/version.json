@@ -1,6 +1,6 @@
 {
-  "versionCode": 107,
-  "versionName": "0.19.14",
-  "apkUrl": "surf-reader-0.19.14.apk",
-  "notes": "0.19.14·操作图标 Meta 化：自研 58 枚 Meta 线性图标（24dp 视口 / 1.75dp 圆头描边 / 可 tint），新增 MetaIcons 统一入口，全站 126 处原生 Material Icons 引用全部替换，操作图标与 Meta 白底灰边设计语言一致。"
+  "versionCode": 108,
+  "versionName": "0.20.0",
+  "apkUrl": "surf-reader-0.20.0.apk",
+  "notes": "0.20.0·书封/头像 Meta 化：封面缺失/加载中/失败统一显示排版式柔彩占位（书名哈希确定性取色 + 钴蓝强调条 + 大字号书名），书城/书架/详情/书单/角色头像全覆盖；统一骨架屏体系（修复旧流光带像素坐标 bug，浅/深色自适应高光）；移除 material-icons-extended 依赖精简 APK。"
 }

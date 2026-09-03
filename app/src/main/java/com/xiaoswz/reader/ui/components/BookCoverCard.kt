@@ -1,8 +1,8 @@
 package com.xiaoswz.reader.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -24,13 +24,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.model.formatWordCount
-import com.xiaoswz.reader.data.model.resolveCoverUrl
+import com.xiaoswz.reader.ui.theme.GlassTokens
 import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
@@ -70,11 +67,14 @@ fun BookCoverCard(
                 .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
-            AsyncImage(
-                model = resolveCoverUrl(coverUrl),
-                contentDescription = title,
+            // 0.20.0：加载中 / 无封面 / 加载失败统一显示 Meta 排版式柔彩书封占位
+            MetaCoverImage(
+                model = coverUrl,
+                title = title,
+                author = author,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
+                shape = RoundedCornerShape(GlassTokens.RadiusXL),
+                cornerRadius = GlassTokens.RadiusXL,
             )
             if (badge != null) {
                 Box(Modifier.align(Alignment.TopStart).padding(8.dp)) { badge() }

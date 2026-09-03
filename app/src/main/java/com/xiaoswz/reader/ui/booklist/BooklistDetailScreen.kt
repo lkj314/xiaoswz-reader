@@ -1,4 +1,5 @@
 package com.xiaoswz.reader.ui.booklist
+import com.xiaoswz.reader.ui.components.MetaCoverImage
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,7 +51,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.xiaoswz.reader.data.api.BooklistItemDto
 import com.xiaoswz.reader.data.api.BOOK_SOURCE_MAIN
 import com.xiaoswz.reader.data.booklist.BooklistRepository
@@ -147,16 +147,14 @@ fun BooklistDetailScreen(
                             .background(GlassTokens.GlassFill),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (!detail.coverUrl.isNullOrEmpty()) {
-                            AsyncImage(
-                                model = detail.coverUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusLG)),
-                                contentScale = ContentScale.Crop,
-                            )
-                        } else {
-                            Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(40.dp))
-                        }
+                        MetaCoverImage(
+                            model = detail.coverUrl,
+                            title = detail.title,
+                            modifier = Modifier.fillMaxSize(),
+                            shape = RoundedCornerShape(GlassTokens.RadiusLG),
+                            cornerRadius = GlassTokens.RadiusLG,
+                            contentScale = ContentScale.Crop,
+                        )
                     }
                     Spacer(Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -451,11 +449,14 @@ private fun BooklistItemRow(
             modifier = Modifier.size(56.dp).clip(RoundedCornerShape(GlassTokens.RadiusMD)).background(GlassTokens.GlassFill),
             contentAlignment = Alignment.Center,
         ) {
-            if (!item.coverUrl.isNullOrEmpty()) {
-                AsyncImage(model = item.coverUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(GlassTokens.RadiusMD)), contentScale = ContentScale.Crop)
-            } else {
-                Icon(MetaIcons.MenuBook, null, tint = GlassTokens.TertiaryLabel, modifier = Modifier.size(28.dp))
-            }
+                MetaCoverImage(
+                    model = item.coverUrl,
+                    title = item.title ?: "未知书目",
+                    modifier = Modifier.fillMaxSize(),
+                    shape = RoundedCornerShape(GlassTokens.RadiusMD),
+                    cornerRadius = GlassTokens.RadiusMD,
+                    contentScale = ContentScale.Crop,
+                )
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {

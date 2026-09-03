@@ -1,4 +1,5 @@
 package com.xiaoswz.reader.ui.bookstore
+import com.xiaoswz.reader.ui.components.MetaCoverImage
 
 import com.xiaoswz.reader.ui.components.AppTopBar
 
@@ -57,13 +58,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.xiaoswz.reader.BuildConfig
 import com.xiaoswz.reader.data.model.BookDto
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
 import com.xiaoswz.reader.data.bookshelf.BookEntity
 import com.xiaoswz.reader.ui.theme.GlassTokens
-import com.xiaoswz.reader.data.model.resolveCoverUrl
 import com.xiaoswz.reader.data.settings.ReaderSettingsRepository
 import com.xiaoswz.reader.data.update.UpdateManager
 import com.xiaoswz.reader.ui.components.LiquidGlassCard
@@ -302,9 +301,9 @@ private fun ContinueReadingCard(
                 .clip(RoundedCornerShape(16.dp))
                 .background(GlassTokens.GlassFillStrong),
         ) {
-            AsyncImage(
-                model = resolveCoverUrl(book.coverUrl),
-                contentDescription = book.title,
+            MetaCoverImage(
+                model = book.coverUrl,
+                title = book.title,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
@@ -441,9 +440,9 @@ private fun FeaturedCarousel(
                     .fillMaxSize()
                     .clickable { book.slug?.let(onBookClick) },
             ) {
-                AsyncImage(
-                    model = resolveCoverUrl(book.coverImage),
-                    contentDescription = book.title,
+                MetaCoverImage(
+                    model = book.coverImage,
+                    title = book.title ?: "",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
