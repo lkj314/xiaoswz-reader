@@ -52,6 +52,8 @@ class UpdateManager(private val context: Context) {
         private val FALLBACK_SERVERS = listOf(
             BuildConfig.DEFAULT_UPDATE_SERVER,
             "https://cdn.jsdelivr.net/gh/lkj314/xiaoswz-reader@main/lan-update",
+            // Vercel 备用通道：GitHub(raw/jsDelivr) 国内常被中间设备 RST 时兜底，独立网络路径
+            "https://xiaoswz-reader-backend.vercel.app/lan-update",
         )
     }
 

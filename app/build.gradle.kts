@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 110
-        versionName = "0.20.2" // 0.20.2·hotfix：书封区分——彩色预设书封仅用于真正无封面(coverUrl 空)的书；有封面(主站提供)一律加载真实封面，加载中/失败走中性灰底，不再用彩色预设书封冒充真实封面。
+        versionCode = 111
+        versionName = "0.20.3" // 0.20.3·hotfix：更新通道加 Vercel 备用（GitHub raw/jsDelivr 国内被 RST 时兜底）；延续 0.20.2 书封区分。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")
