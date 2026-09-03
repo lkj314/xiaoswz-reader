@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 109
-        versionName = "0.20.1" // 0.20.1·hotfix：修复 MetaCoverPalette.of 取色符号位 bug（hash 高位转 Int 产生负索引 ArrayIndexOutOfBounds，开屏即闪退）；延续 0.20.0 书封/头像 Meta 化 + 统一骨架屏 + 精简 APK。
+        versionCode = 110
+        versionName = "0.20.2" // 0.20.2·hotfix：书封区分——彩色预设书封仅用于真正无封面(coverUrl 空)的书；有封面(主站提供)一律加载真实封面，加载中/失败走中性灰底，不再用彩色预设书封冒充真实封面。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

@@ -137,7 +137,12 @@ fun MetaCoverPlaceholder(
 }
 
 /**
- * Meta 书封图片：加载中 / 失败 / 无封面时统一回落到排版式柔彩占位。
+ * Meta 书封图片。
+ *
+ * 区分两类书，避免「主站明明有封面，却因加载慢/防盗链被拦截而被误判为无封面、被强制替换成预设书封」：
+ * - **真的没有封面**（coverUrl 为空）：显示排版式柔彩占位（预设书封）——这是它唯一的用途；
+ * - **有封面**（coverUrl 非空，封面由书源主站提供，与正文一样完全来自主站）：一律加载真实封面，
+ *   加载中显示中性流光灰底、加载失败显示中性灰底，绝不拿彩色预设书封冒充真实封面。
  *
  * model 传封面原始串（http / data: / 相对路径均可），内部走 [resolveCoverUrl] 归一化。
  */
@@ -153,13 +158,36 @@ fun MetaCoverImage(
     cornerRadius: Dp = GlassTokens.RadiusXL,
 ) {
     val resolved = remember(model) { resolveCoverUrl(model) }
+    if (resolved == null) {
+        // 完全没有封面：显示排版式柔彩占位（预设书封仅用于此场景，不冒充真实封面）
+        MetaCoverPlaceholder(title, modifier, author, cornerRadius = cornerRadius)
+        return
+    }
     SubcomposeAsyncImage(
         model = resolved,
         contentDescription = contentDescription,
         modifier = modifier.clip(shape),
         contentScale = contentScale,
-        loading = { MetaCoverPlaceholder(title, Modifier.fillMaxSize(), author, cornerRadius = cornerRadius) },
-        error = { MetaCoverPlaceholder(title, Modifier.fillMaxSize(), author, cornerRadius = cornerRadius) },
+        loading = { MetaCoverNeutral(Modifier.fillMaxSize(), loading = true, cornerRadius = cornerRadius) },
+        error = { MetaCoverNeutral(Modifier.fillMaxSize(), loading = false, cornerRadius = cornerRadius) },
+    )
+}
+
+/**
+ * 有封面书籍在「加载中 / 加载失败」时的中性底：柔云灰（与骨架屏同色），加载时附流光。
+ * 它只是「封面正在加载 / 暂时取不到」的占位，绝不是封面本身，因此不用彩色预设书封。
+ */
+@Composable
+private fun MetaCoverNeutral(
+    modifier: Modifier = Modifier,
+    loading: Boolean = false,
+    cornerRadius: Dp = GlassTokens.RadiusXL,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(WhaleColors.Foam)
+            .then(if (loading) Modifier.skeletonShimmer(true) else Modifier),
     )
 }
 
