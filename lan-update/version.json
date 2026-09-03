@@ -1,6 +1,6 @@
 {
-  "versionCode": 108,
-  "versionName": "0.20.0",
-  "apkUrl": "surf-reader-0.20.0.apk",
-  "notes": "0.20.0·书封/头像 Meta 化：封面缺失/加载中/失败统一显示排版式柔彩占位（书名哈希确定性取色 + 钴蓝强调条 + 大字号书名），书城/书架/详情/书单/角色头像全覆盖；统一骨架屏体系（修复旧流光带像素坐标 bug，浅/深色自适应高光）；移除 material-icons-extended 依赖精简 APK。"
+  "versionCode": 109,
+  "versionName": "0.20.1",
+  "apkUrl": "surf-reader-0.20.1.apk",
+  "notes": "0.20.1·hotfix：修复书封取色符号位 bug——MetaCoverPalette.of 在 hash 高位为 1 时强转 Int 得到负数，取模后产生负索引 ArrayIndexOutOfBounds，任何带封面的界面（书架/书城/详情/书单）冷启动即闪退。改为先 Long 取模再转 Int。回归自 0.20.0 书封 Meta 化。"
 }

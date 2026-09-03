@@ -56,7 +56,8 @@ object MetaCoverPalette {
      */
     fun of(seed: String): CoverPalette {
         if (seed.isBlank()) return PALETTES[0]
-        val idx = ((hash(seed) and 0xFFFFFFFFL).toInt()) % PALETTES.size
+        // 先对 Long 取模（结果恒为非负），再转 Int，避免高位被当作负数导致负索引
+        val idx = ((hash(seed) and 0xFFFFFFFFL) % PALETTES.size.toLong()).toInt()
         return PALETTES[idx]
     }
 
