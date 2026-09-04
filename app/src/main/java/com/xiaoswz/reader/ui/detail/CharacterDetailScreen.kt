@@ -262,6 +262,7 @@ fun CharacterDetailScreen(
                                         ),
                                     )
                                     MetaButton(
+                                        modifier = Modifier,
                                         onClick = { viewModel.createTag(state.newTagName) },
                                         enabled = state.newTagName.trim().isNotEmpty() && !state.postingTag,
                                     ) {

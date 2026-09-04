@@ -77,7 +77,7 @@ fun BookAdminScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(msg, color = GlassTokens.Label, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        MetaButton(text = "知道了", onClick = { vm.clearToast() }, variant = MetaButtonVariant.Ghost)
+                        MetaButton(text = "知道了", onClick = { vm.clearToast() }, modifier = Modifier, variant = MetaButtonVariant.Ghost)
                     }
                 }
             }
@@ -92,7 +92,7 @@ fun BookAdminScreen(
                     placeholder = { Text("输入书名搜索（留空看热门）") },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 )
-                MetaButton(text = "搜索", onClick = { vm.search() })
+                MetaButton(text = "搜索", onClick = { vm.search() }, modifier = Modifier)
             }
             Spacer(Modifier.height(8.dp))
             Text("共 ${state.total} 本", color = GlassTokens.SecondaryLabel, fontSize = 12.sp)

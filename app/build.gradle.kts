@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 112
-        versionName = "0.20.4" // 0.20.4·回归修复：MetaButton 默认 fillMaxWidth() 压塌同级按钮导致 23 处功能丢失（听书/全选/评、字号 A+、回复举报、9 个输入框等）全部复活；补 Coil 双层缓存 + 共享流光动画 + 详情请求并发化，修首页与书籍详情加载很久。美术观感零变化。
+        versionCode = 113
+        versionName = "0.20.5" // 0.20.5·美术改版按钮塌陷补充修复：全量复扫后补齐 0.20.4 未落盘的 16 处横排按钮塌陷（撤单/赎回/搜索/发送/贴上/章评/查看全部/投月票/知道了×4/更换书籍/标注工具条复制·听书·评·完成），美术观感零变化。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

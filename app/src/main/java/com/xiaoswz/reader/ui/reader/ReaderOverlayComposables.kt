@@ -353,14 +353,14 @@ internal fun AnnoSelectionBar(
                 .padding(horizontal = 6.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MetaButton(text = "复制", onClick = onCopy, variant = MetaButtonVariant.Ghost)
-            MetaButton(text = "听书", onClick = onListen, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "复制", onClick = onCopy, modifier = Modifier, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "听书", onClick = onListen, modifier = Modifier, variant = MetaButtonVariant.Ghost)
             for (plugin in plugins) {
                 val cap = plugin.capabilities.annotation ?: continue
-                MetaButton(text = cap.label, onClick = { onAnnotate(plugin) }, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = cap.label, onClick = { onAnnotate(plugin) }, modifier = Modifier, variant = MetaButtonVariant.Ghost)
             }
-            MetaButton(text = "评", onClick = onComment, variant = MetaButtonVariant.Ghost)
-            MetaButton(text = "完成", onClick = onClose, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "评", onClick = onComment, modifier = Modifier, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "完成", onClick = onClose, modifier = Modifier, variant = MetaButtonVariant.Ghost)
         }
     }
 }

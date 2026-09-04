@@ -77,9 +77,9 @@ private fun CommentRow(
             color = if (isReply) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurface,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetaButton(text = "赞 $likeCount", onClick = onLike, variant = MetaButtonVariant.Ghost)
-            MetaButton(text = "回复", onClick = { replying = !replying }, variant = MetaButtonVariant.Ghost)
-            MetaButton(text = "举报", onClick = onReport, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "赞 $likeCount", onClick = onLike, modifier = Modifier, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "回复", onClick = { replying = !replying }, modifier = Modifier, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "举报", onClick = onReport, modifier = Modifier, variant = MetaButtonVariant.Ghost)
         }
         if (replying) {
             Row(
@@ -95,6 +95,7 @@ private fun CommentRow(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 MetaButton(
+                    modifier = Modifier,
                     text = "发送",
                     onClick = {
                         if (replyText.isNotBlank()) {
@@ -225,7 +226,7 @@ fun SegmentCommentSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("段评", style = MaterialTheme.typography.titleMedium)
-                MetaButton(text = "章评 ›", onClick = onOpenChapter, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "章评 ›", onClick = onOpenChapter, modifier = Modifier, variant = MetaButtonVariant.Ghost)
             }
             Spacer(modifier = Modifier.height(8.dp))
             if (groups.isEmpty()) {

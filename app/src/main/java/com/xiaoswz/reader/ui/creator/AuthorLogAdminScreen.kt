@@ -94,7 +94,7 @@ fun AuthorLogAdminScreen(onBack: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(msg, color = GlassTokens.Label, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        MetaButton(text = "知道了", onClick = { vm.clearToast() }, variant = MetaButtonVariant.Ghost)
+                        MetaButton(text = "知道了", onClick = { vm.clearToast() }, modifier = Modifier, variant = MetaButtonVariant.Ghost)
                     }
                 }
             }

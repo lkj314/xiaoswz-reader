@@ -371,7 +371,7 @@ private fun SubscribeCard(state: FundDetailUiState, vm: FundDetailViewModel) {
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
-                MetaButton(text = "赎回", onClick = vm::redeem, enabled = !state.busy)
+                MetaButton(text = "赎回", onClick = vm::redeem, modifier = Modifier, enabled = !state.busy)
             }
         }
     }

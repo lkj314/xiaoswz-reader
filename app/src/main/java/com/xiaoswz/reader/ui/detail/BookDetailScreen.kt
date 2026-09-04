@@ -596,6 +596,7 @@ fun BookDetailScreen(
                                     ),
                                 )
                                 MetaButton(
+                                    modifier = Modifier,
                                     text = "发送",
                                     onClick = {
                                         viewModel.postComment(commentText)
@@ -784,6 +785,7 @@ private fun InteractionCard(
                 }
                 val remaining = voteBalance?.remaining ?: 0
                 MetaButton(
+                    modifier = Modifier,
                     text = if (remaining > 0) "投月票（剩$remaining）" else "今日已投完",
                     onClick = onVote,
                     enabled = remaining > 0,
@@ -989,7 +991,7 @@ private fun AuthorLogZone(
         ) {
             Text(text = "作者碎碎念", style = MaterialTheme.typography.titleMedium)
             if (logs.isNotEmpty()) {
-                MetaButton(text = "查看全部 ›", onClick = onViewAll, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "查看全部 ›", onClick = onViewAll, modifier = Modifier, variant = MetaButtonVariant.Ghost)
             }
         }
         Spacer(Modifier.height(10.dp))

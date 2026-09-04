@@ -367,7 +367,7 @@ private fun PluginCard(
             }
             if (likeLabel != null && onLike != null) {
                 Spacer(Modifier.width(8.dp))
-                MetaButton(text = likeLabel, onClick = onLike, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = likeLabel, onClick = onLike, modifier = Modifier, variant = MetaButtonVariant.Ghost)
             }
         }
     }
@@ -477,7 +477,7 @@ private fun MineTab(onOpenPlugin: (PluginManifest) -> Unit, onImport: () -> Unit
                                 scope.launch { PluginRepository.setEnabled(context, m.id, on) }
                             })
                             Spacer(Modifier.width(8.dp))
-                            MetaButton(text = "卸载", onClick = { scope.launch { PluginRepository.uninstall(context, m.id) } })
+                            MetaButton(text = "卸载", onClick = { scope.launch { PluginRepository.uninstall(context, m.id) } }, modifier = Modifier)
                         }
                     }
                 }
@@ -539,8 +539,8 @@ private fun ImportPublishContent(mode: String, onBack: () -> Unit) {
             maxLines = 12,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetaButton(text = "从文件选择", onClick = { docLauncher.launch(arrayOf("application/json", "text/plain")) })
-            MetaButton(text = "预览", onClick = { tryPreview() })
+            MetaButton(text = "从文件选择", onClick = { docLauncher.launch(arrayOf("application/json", "text/plain")) }, modifier = Modifier)
+            MetaButton(text = "预览", onClick = { tryPreview() }, modifier = Modifier)
         }
 
         Text("或从 https 链接导入", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -551,7 +551,7 @@ private fun ImportPublishContent(mode: String, onBack: () -> Unit) {
                 label = { Text("https 链接（如 GitHub raw）") },
                 modifier = Modifier.weight(1f),
             )
-            MetaButton(text = "读取", onClick = {
+            MetaButton(text = "读取", modifier = Modifier, onClick = {
                 if (!url.startsWith("https://")) { error = "仅支持 https 链接（明文 http 已被系统拦截）"; return@MetaButton }
                 busy = true; error = null
                 scope.launch {

@@ -100,7 +100,7 @@ fun CharacterAdminScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(msg, color = GlassTokens.Label, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        MetaButton(text = "知道了", onClick = { vm.clearToast() }, variant = MetaButtonVariant.Ghost)
+                        MetaButton(text = "知道了", onClick = { vm.clearToast() }, modifier = Modifier, variant = MetaButtonVariant.Ghost)
                     }
                 }
             }
@@ -128,7 +128,7 @@ fun CharacterAdminScreen(
                             Text("书籍：${pickedBook!!.title ?: pickedBook!!.bookId}", color = GlassTokens.Label, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             Text("bookId: ${pickedBook!!.bookId}", color = GlassTokens.SecondaryLabel, fontSize = 12.sp)
                         }
-                        MetaButton(text = "更换书籍", onClick = { pickedBook = null; vm.dismissEditor() }, variant = MetaButtonVariant.Ghost)
+                        MetaButton(text = "更换书籍", onClick = { pickedBook = null; vm.dismissEditor() }, modifier = Modifier, variant = MetaButtonVariant.Ghost)
                     }
                 }
 
@@ -189,6 +189,7 @@ private fun BookPicker(onPick: (AdminBookDto) -> Unit) {
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             )
             MetaButton(
+                modifier = Modifier,
                 text = "搜索",
                 onClick = {
                     loading = true; error = null
