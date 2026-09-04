@@ -158,8 +158,8 @@ private fun BookRow(
                 if (book.hidden) Text("已隐藏", color = Color(0xFFE25555), fontSize = 12.sp)
             }
             Row {
-                MetaButton(text = "角色", onClick = onManageCharacters, variant = MetaButtonVariant.Ghost)
-                MetaButton(text = "编辑", onClick = onEdit, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "角色", onClick = onManageCharacters, modifier = Modifier, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "编辑", onClick = onEdit, modifier = Modifier, variant = MetaButtonVariant.Ghost)
             }
         }
     }

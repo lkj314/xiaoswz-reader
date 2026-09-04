@@ -177,6 +177,7 @@ fun AccountScreen(onBack: () -> Unit) {
                     MetaButton(
                         text = "没有账号？去注册",
                         onClick = { mode = AccountMode.REGISTER; error = null },
+                        modifier = Modifier.weight(1f),
                         variant = MetaButtonVariant.Ghost,
                     )
                 }

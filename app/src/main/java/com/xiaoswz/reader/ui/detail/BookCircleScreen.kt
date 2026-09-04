@@ -272,7 +272,7 @@ fun BookCircleScreen(
                                     color = GlassTokens.SecondaryLabel,
                                 )
                             }
-                            MetaButton(text = "修改", onClick = vm::openIdentityDialog, variant = MetaButtonVariant.Ghost)
+                            MetaButton(text = "修改", onClick = vm::openIdentityDialog, modifier = Modifier.weight(1f), variant = MetaButtonVariant.Ghost)
                         }
                     }
                 }

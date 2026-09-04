@@ -165,7 +165,7 @@ fun ChapterCommentSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("章评（${state.commentTotal}）", style = MaterialTheme.typography.titleMedium)
-                MetaButton(text = "段评 ›", onClick = onOpenSegment, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "段评 ›", onClick = onOpenSegment, variant = MetaButtonVariant.Ghost, modifier = Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(8.dp))
             if (state.isLoading) {

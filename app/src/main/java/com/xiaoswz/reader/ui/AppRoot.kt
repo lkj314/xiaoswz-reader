@@ -2,6 +2,10 @@ package com.xiaoswz.reader.ui
 
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,6 +28,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +53,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.xiaoswz.reader.ui.components.LocalShimmerProgress
 import com.xiaoswz.reader.data.settings.AppSettingsRepository
 import com.xiaoswz.reader.data.settings.AppThemeMode
 import com.xiaoswz.reader.data.bookshelf.BookshelfRepository
@@ -243,15 +249,34 @@ fun AppRoot() {
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { delay(1100); showSplash = false }
 
-    SurfReaderTheme(darkTheme = darkTheme) {
-        AnimatedVisibility(
-            visible = showSplash,
-            exit = fadeOut(animationSpec = tween(300)),
-        ) { SplashScreen() }
-        AnimatedVisibility(
-            visible = !showSplash,
-            enter = fadeIn(animationSpec = tween(500)),
-        ) { AppShell() }
+    // 0.20.4 性能修复：全 App 只跑这一个流光动画，供所有骨架屏共享读取
+    // （旧版每个骨架 cell 各起一个无限动画，一屏几十个 → 整屏持续重绘、观感像一直在加载）
+    val shimmerTransition = rememberInfiniteTransition(label = "appShimmer")
+    val shimmerProgress = shimmerTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1300, easing = LinearEasing),
+        ),
+        label = "appShimmerProgress",
+    )
+
+    // 注：封面/头像的 Coil 双层缓存（内存 25% 堆 + 磁盘 50MB）已改由 SurfReaderApp
+    // 实现 ImageLoaderFactory 注入为进程单例，这里不再通过 LocalImageLoader 提供
+    // （LocalImageLoader 已废弃且不设置单例，混用会生成第二个无缓存实例）。
+    CompositionLocalProvider(
+        LocalShimmerProgress provides shimmerProgress,
+    ) {
+        SurfReaderTheme(darkTheme = darkTheme) {
+            AnimatedVisibility(
+                visible = showSplash,
+                exit = fadeOut(animationSpec = tween(300)),
+            ) { SplashScreen() }
+            AnimatedVisibility(
+                visible = !showSplash,
+                enter = fadeIn(animationSpec = tween(500)),
+            ) { AppShell() }
+        }
     }
 }
 

@@ -238,6 +238,7 @@ private fun CreateFundCard(state: FundListUiState, vm: FundListViewModel, nf: Nu
                 MetaButton(
                     text = "取消",
                     onClick = vm::toggleCreate,
+                    modifier = Modifier.weight(1f),
                     variant = MetaButtonVariant.Ghost,
                 )
             }

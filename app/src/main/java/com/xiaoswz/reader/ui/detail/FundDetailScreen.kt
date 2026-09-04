@@ -419,7 +419,7 @@ private fun DirectorPanelCard(state: FundDetailUiState, vm: FundDetailViewModel)
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MetaButton(text = "确认转移", onClick = vm::transfer, modifier = Modifier.weight(1f), enabled = !state.busy)
-                    MetaButton(text = "收起", onClick = vm::toggleTransfer, variant = MetaButtonVariant.Ghost)
+                    MetaButton(text = "收起", onClick = vm::toggleTransfer, modifier = Modifier.weight(1f), variant = MetaButtonVariant.Ghost)
                 }
             } else {
                 MetaButton(text = "展开调拨表单", onClick = vm::toggleTransfer, variant = MetaButtonVariant.Ghost)

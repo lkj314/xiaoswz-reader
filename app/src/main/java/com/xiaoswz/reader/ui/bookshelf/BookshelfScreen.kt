@@ -71,10 +71,9 @@ fun BookshelfScreen(
     val scope = rememberCoroutineScope()
     val repo = remember { BookshelfRepository(context.applicationContext) }
     val books by repo.observeAll().collectAsState(initial = emptyList())
-    // 打开书架时再修复一次：联网按 slug 重新拉取封面写回（首页启动已先 blank 防崩）
-    LaunchedEffect(Unit) {
-        repo.repairCovers { slug -> ApiClient.api.getBookDetail(bookId = slug).coverUrl }
-    }
+    // 封面修复只在 AppRoot 启动时执行一次（0.20.4 性能修复）。
+    // 旧代码在这里每次打开书架都再跑一遍 repairCovers —— 整表 UPDATE + 逐本联网，
+    // 与启动那次完全重复，是书架打开卡顿的直接原因。已移除。
 
     // 状态筛选（0.16.0）：全部 / 在读 / 读完 / 想读
     var filter by remember { mutableStateOf("all") }

@@ -325,6 +325,7 @@ fun CharacterDetailScreen(
                                 )
                                 MetaButton(
                                     text = "发送",
+                                    modifier = Modifier,
                                     onClick = {
                                         viewModel.postComment(commentText)
                                         commentText = ""

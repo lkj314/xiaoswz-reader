@@ -219,7 +219,7 @@ private fun OrderRow(order: ExchangeOrderDto, isMine: Boolean, onFill: () -> Uni
             if (isMine) {
                 MetaButton(text = "撤单", onClick = onCancel, variant = MetaButtonVariant.Ghost)
             } else {
-                MetaButton(text = "吃单", onClick = onFill)
+                MetaButton(text = "吃单", onClick = onFill, modifier = Modifier.weight(1f))
             }
         }
     }

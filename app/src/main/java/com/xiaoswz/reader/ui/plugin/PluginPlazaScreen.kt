@@ -707,7 +707,7 @@ private fun PluginDetailContent(manifest: PluginManifest) {
                     scope.launch { PluginRepository.setEnabled(context, manifest.id, on) }
                 })
                 Spacer(Modifier.weight(1f))
-                MetaButton(text = "卸载", onClick = { scope.launch { PluginRepository.uninstall(context, manifest.id) } })
+                MetaButton(text = "卸载", onClick = { scope.launch { PluginRepository.uninstall(context, manifest.id) } }, modifier = Modifier.weight(1f))
             }
         }
 

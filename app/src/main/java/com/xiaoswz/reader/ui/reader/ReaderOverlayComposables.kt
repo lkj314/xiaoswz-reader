@@ -54,6 +54,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.xiaoswz.reader.data.annotation.AnnotationEntity
 import com.xiaoswz.reader.data.community.CommunityRepository
 import com.xiaoswz.reader.data.plugin.DecoratorCap
@@ -419,7 +420,9 @@ internal fun ReaderSelectionToolbar(
     val barH = with(density) { 44.dp.toPx() }
     val centerX = (rect.left + rect.right) / 2f
     val y = if (rect.top > barH + 24f) rect.top - barH - 12f else rect.bottom + 12f
-    Box(modifier = Modifier.fillMaxSize()) {
+    // 0.20.4：置顶绘制。本层先于后方的蓝光过滤层 / 菜单层加入父 Box，
+    // 按 Compose「后绘者在上」的规则会被它们盖住（蓝光层还会让它偏色）。
+    Box(modifier = Modifier.fillMaxSize().zIndex(1f)) {
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -430,10 +433,10 @@ internal fun ReaderSelectionToolbar(
                 .padding(horizontal = 6.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MetaButton(text = "复制", onClick = onCopy, variant = MetaButtonVariant.Ghost)
-            MetaButton(text = "全选", onClick = onSelectAll, variant = MetaButtonVariant.Ghost)
-            MetaButton(text = "听书", onClick = onListen, variant = MetaButtonVariant.Ghost)
-            MetaButton(text = "评", onClick = onComment, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "复制", onClick = onCopy, modifier = Modifier, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "全选", onClick = onSelectAll, modifier = Modifier, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "听书", onClick = onListen, modifier = Modifier, variant = MetaButtonVariant.Ghost)
+            MetaButton(text = "评", onClick = onComment, modifier = Modifier, variant = MetaButtonVariant.Ghost)
         }
     }
 }

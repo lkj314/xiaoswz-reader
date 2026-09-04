@@ -22,8 +22,8 @@ android {
         applicationId = "com.xiaoswz.reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 111
-        versionName = "0.20.3" // 0.20.3·hotfix：更新通道加 Vercel 备用（GitHub raw/jsDelivr 国内被 RST 时兜底）；延续 0.20.2 书封区分。
+        versionCode = 112
+        versionName = "0.20.4" // 0.20.4·回归修复：MetaButton 默认 fillMaxWidth() 压塌同级按钮导致 23 处功能丢失（听书/全选/评、字号 A+、回复举报、9 个输入框等）全部复活；补 Coil 双层缓存 + 共享流光动画 + 详情请求并发化，修首页与书籍详情加载很久。美术观感零变化。
 
         // 数据源：冲浪中文网公开只读 API
         buildConfigField("String", "API_BASE_URL", "\"https://xiaoswz.vercel.app\"")

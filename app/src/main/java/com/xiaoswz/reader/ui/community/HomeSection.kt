@@ -44,6 +44,7 @@ import com.xiaoswz.reader.data.api.HomeResponse
 import com.xiaoswz.reader.data.booklist.BooklistRepository
 import com.xiaoswz.reader.ui.theme.GlassTokens
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.xiaoswz.reader.ui.theme.MetaIcons
 
 /**
@@ -55,8 +56,11 @@ fun HomeSection(onBooklistClick: (String) -> Unit) {
     val context = LocalContext.current
     var home by remember { mutableStateOf<HomeResponse?>(null) }
 
+    // 0.20.4 性能修复：旧代码在这里 new 了一个脱离生命周期的 CoroutineScope，
+    // 每次重组/重进首页都会再拉一次运营位且无法取消。改用 LaunchedEffect 自带 scope
+    // （随组件离开自动取消），保留 IO 线程执行。
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        withContext(kotlinx.coroutines.Dispatchers.IO) {
             BooklistRepository.getHome().onSuccess { home = it }
         }
     }

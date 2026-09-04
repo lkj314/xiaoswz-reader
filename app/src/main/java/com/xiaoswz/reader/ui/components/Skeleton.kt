@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,20 +59,39 @@ private fun skeletonHighlight(base: Color): Color =
     if (base.luminance() < 0.5f) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.78f)
 
 /**
+ * 全 App 共享的流光进度（0.20.4 性能修复）。
+ *
+ * 旧实现在每个骨架 cell 内各自 `rememberInfiniteTransition()`：书城/书架一屏几十张封面
+ * 就会同时跑几十个独立的无限动画，封面还在加载时整屏持续重绘，既卡顿又让人觉得
+ * 「一直在加载」。现在由 AppRoot 提供**一个**共享进度，所有骨架一起流光，
+ * 动画实例从 N 个降到 1 个。
+ *
+ * 未提供时（例如独立预览）自动回退为各 cell 自建动画，行为与旧版一致。
+ */
+val LocalShimmerProgress = compositionLocalOf<State<Float>?> { null }
+
+/**
  * 给任意容器套上流光。必须在已设定尺寸的容器上使用（内部按像素计算高光带）。
  */
 @Composable
 fun Modifier.skeletonShimmer(enabled: Boolean = true): Modifier {
     if (!enabled) return this
-    val transition = rememberInfiniteTransition(label = "skeletonShimmer")
-    val progress by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1300, easing = LinearEasing),
-        ),
-        label = "skeletonShimmerProgress",
-    )
+    val shared = LocalShimmerProgress.current
+    val progress = if (shared != null) {
+        // 共享模式：不再自建动画，直接读取 AppRoot 提供的那一个进度
+        shared.value
+    } else {
+        val transition = rememberInfiniteTransition(label = "skeletonShimmer")
+        val local by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1300, easing = LinearEasing),
+            ),
+            label = "skeletonShimmerProgress",
+        )
+        local
+    }
     val base = skeletonBase
     val highlight = skeletonHighlight(base)
     return this.drawBehind {

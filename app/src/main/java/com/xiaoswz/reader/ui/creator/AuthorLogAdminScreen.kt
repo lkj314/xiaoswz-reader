@@ -231,8 +231,8 @@ private fun AuthorLogAdminRow(
                 Text(fmt.format(Date(log.createdAt)), color = GlassTokens.TertiaryLabel, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
             }
             Row {
-                MetaButton(text = "编辑", onClick = onEdit, variant = MetaButtonVariant.Ghost)
-                MetaButton(text = "删除", onClick = onDelete, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "编辑", onClick = onEdit, modifier = Modifier, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "删除", onClick = onDelete, modifier = Modifier, variant = MetaButtonVariant.Ghost)
             }
         }
     }

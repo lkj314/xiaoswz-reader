@@ -177,6 +177,7 @@ fun BookCircleAgreementDialog(onAgree: () -> Unit) {
                     MetaButton(
                         text = "进入书圈",
                         onClick = onAgree,
+                        modifier = Modifier.weight(1f),
                         enabled = checked,
                     )
                 }

@@ -553,7 +553,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        MetaButton(text = "查看", onClick = { showCrashDialog = true })
+                        MetaButton(text = "查看", onClick = { showCrashDialog = true }, modifier = Modifier.weight(1f))
                         MetaButton(
                             onClick = {
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {

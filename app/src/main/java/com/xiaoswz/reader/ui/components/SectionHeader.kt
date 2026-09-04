@@ -39,6 +39,7 @@ fun SectionHeader(
             MetaButton(
                 text = actionLabel,
                 onClick = onAction ?: {},
+                modifier = Modifier.weight(1f),
                 variant = MetaButtonVariant.Ghost,
             )
         }

@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
@@ -81,27 +83,38 @@ class BookDetailViewModel(
             val cover = (resolvedCover as? String)?.takeIf { it.startsWith("http") }
             BackendRepository.reportBookView(slug, detail.name, detail.author, cover)
 
-            // 并行拉取展示数据
-            val stats = BackendRepository.getBookStats(slug).getOrNull()
-            val balance = BackendRepository.getVoteBalance().getOrNull()
-            val rating = BackendRepository.getRating(slug).getOrNull()
-            val comments = BackendRepository.getComments(slug).getOrNull()
-            val characters = BackendRepository.getCharacters(slug).getOrNull()
-            val ad = BackendRepository.getAds("detail").getOrNull()?.creatives?.firstOrNull()
+            // 0.20.4 性能修复：这 6 个是互不依赖的独立请求，旧版逐个 await 等于串行，
+            // 6 次网络往返叠加导致互动区（评论/角色/广告）迟迟不出现。改为并发发出，
+            // 总耗时从「6 次往返之和」降到「最慢的那一次」。
+            coroutineScope {
+                val statsDeferred = async { BackendRepository.getBookStats(slug).getOrNull() }
+                val balanceDeferred = async { BackendRepository.getVoteBalance().getOrNull() }
+                val ratingDeferred = async { BackendRepository.getRating(slug).getOrNull() }
+                val commentsDeferred = async { BackendRepository.getComments(slug).getOrNull() }
+                val charactersDeferred = async { BackendRepository.getCharacters(slug).getOrNull() }
+                val adDeferred = async { BackendRepository.getAds("detail").getOrNull()?.creatives?.firstOrNull() }
 
-            _uiState.update {
-                it.copy(
-                    stats = stats,
-                    voteBalance = balance,
-                    rating = rating,
-                    comments = comments?.comments ?: emptyList(),
-                    commentTotal = comments?.total ?: 0,
-                    characters = characters?.characters ?: emptyList(),
-                    ad = ad,
-                )
+                val stats = statsDeferred.await()
+                val balance = balanceDeferred.await()
+                val rating = ratingDeferred.await()
+                val comments = commentsDeferred.await()
+                val characters = charactersDeferred.await()
+                val ad = adDeferred.await()
+
+                _uiState.update {
+                    it.copy(
+                        stats = stats,
+                        voteBalance = balance,
+                        rating = rating,
+                        comments = comments?.comments ?: emptyList(),
+                        commentTotal = comments?.total ?: 0,
+                        characters = characters?.characters ?: emptyList(),
+                        ad = ad,
+                    )
+                }
+                // 广告曝光上报（fire-and-forget）
+                ad?.id?.let { id -> BackendRepository.reportImpression(id, "detail") }
             }
-            // 广告曝光上报（fire-and-forget）
-            ad?.id?.let { id -> BackendRepository.reportImpression(id, "detail") }
         }
     }
 

@@ -1176,16 +1176,19 @@ fun ReaderScreen(
                         MetaButton(
                             text = "章评",
                             onClick = { showChapterComment = true },
+                            modifier = Modifier,
                             variant = MetaButtonVariant.Ghost,
                         )
                         MetaButton(
                             text = if (segCount > 0) "段评 $segCount" else "段评",
                             onClick = { showSegmentList = true },
+                            modifier = Modifier,
                             variant = MetaButtonVariant.Ghost,
                         )
                         MetaButton(
                             text = "全部段评 ›",
                             onClick = onOpenAllSegments,
+                            modifier = Modifier,
                             variant = MetaButtonVariant.Ghost,
                         )
                     }

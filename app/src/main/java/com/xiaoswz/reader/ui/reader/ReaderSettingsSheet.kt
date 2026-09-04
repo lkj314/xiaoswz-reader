@@ -118,13 +118,13 @@ fun ReaderSettingsSheet(
 
         SettingRow(icon = MetaIcons.FormatSize, label = "字号") {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MetaButton(text = "A-", onClick = { onChange { it.copy(fontSize = it.fontSize - 1) } }, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "A-", onClick = { onChange { it.copy(fontSize = it.fontSize - 1) } }, modifier = Modifier, variant = MetaButtonVariant.Ghost)
                 Text(
                     "${settings.fontSize}",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(horizontal = 6.dp),
                 )
-                MetaButton(text = "A+", onClick = { onChange { it.copy(fontSize = it.fontSize + 1) } }, variant = MetaButtonVariant.Ghost)
+                MetaButton(text = "A+", onClick = { onChange { it.copy(fontSize = it.fontSize + 1) } }, modifier = Modifier, variant = MetaButtonVariant.Ghost)
             }
         }
 

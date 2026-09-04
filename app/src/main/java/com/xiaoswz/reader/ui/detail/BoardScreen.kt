@@ -237,7 +237,7 @@ private fun PanelCard(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun SentimentChip(label: String, value: String, selected: Boolean, color: Color, onSelect: (String) -> Unit) {
     val bg = if (selected) color.copy(alpha = 0.16f) else Color.Transparent
-    MetaButton(text = label, onClick = { onSelect(value) }, variant = MetaButtonVariant.Ghost)
+    MetaButton(text = label, onClick = { onSelect(value) }, modifier = Modifier, variant = MetaButtonVariant.Ghost)
 }
 
 @Composable

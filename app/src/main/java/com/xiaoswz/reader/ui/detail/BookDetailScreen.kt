@@ -720,6 +720,7 @@ fun BookDetailScreen(
                     )
                     MetaButton(
                         text = "创建并加入",
+                        modifier = Modifier,
                         onClick = {
                             val title = newBooklistTitle.trim()
                             if (title.isEmpty()) return@MetaButton
